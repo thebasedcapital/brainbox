@@ -1,0 +1,50 @@
+# Build artifacts we don't need
+*.db
+*.db-journal
+*.backup
+*.jsonl
+*.wasm
+*.pdf
+*.aux
+*.out
+
+# Docs/papers (not needed for runtime)
+WHITEPAPER.md
+WHITEPAPER.pdf
+BRAINBOX-SESSION.md
+TEST_GAPS_REPORT.md
+BENCHMARK-PAPER-PLAN.md
+HANDOVER.md
+paper/
+prompts/
+
+# Test/benchmark files (not needed for runtime)
+src/prelaunch.ts
+src/test.ts
+src/verify.ts
+src/benchmark.ts
+src/benchmark-runner.ts
+src/benchmark-scenarios.ts
+src/benchmark-metrics.ts
+src/benchmark-report.ts
+src/bench-vs-rust.ts
+src/trace-synapses.ts
+benchmark-results/
+tasks/
+
+# Dist benchmark files (not needed for runtime)
+dist/benchmark*.js
+dist/benchmark*.js.map
+dist/benchmark*.d.ts
+dist/bench-vs-rust*
+dist/trace-synapses*
+dist/verify*
+dist/test*
+
+# Assets (animations/images for GitHub README, not needed at runtime)
+assets/
+
+# Misc docs
+MACOS-DAEMON-VISION.md
+RESEARCH-HOOKS.md
+brainbox-mind.md

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.db
+*.db-journal
+*.backup
+*.jsonl
+*.wasm
+*.pdf
+*.aux
+*.out
+*.log
+BRAINBOX-SESSION.md

@@ -1,0 +1,47 @@
+{
+  "name": "brainbox-hebbian",
+  "version": "0.1.4",
+  "description": "Hebbian memory system for AI agents — learns access patterns, builds neural pathways, saves tokens",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "brainbox": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "postinstall": "node dist/cli.js install",
+    "dev": "tsx src/cli.ts",
+    "test": "tsx src/test.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thebasedcapital/brainbox.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "hebbian",
+    "memory",
+    "ai-agent",
+    "mcp",
+    "claude-code",
+    "spreading-activation",
+    "procedural-memory"
+  ],
+  "dependencies": {
+    "@huggingface/transformers": "^3.3.0",
+    "@kilocode/plugin": "^1.0.21",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "better-sqlite3": "^11.0.0",
+    "tree-sitter-wasms": "^0.1.13",
+    "web-tree-sitter": "^0.25.3"
+  },
+  "optionalDependencies": {
+    "fsevents": "^2.3.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0"
+  }
+}

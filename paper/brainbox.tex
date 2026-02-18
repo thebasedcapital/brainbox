@@ -1,0 +1,901 @@
+\documentclass[11pt,a4paper]{article}
+
+% Packages
+\usepackage[margin=1in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{tabularx}
+\usepackage{microtype}
+
+% Colors
+\definecolor{codegreen}{rgb}{0.2,0.6,0.2}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+\definecolor{linkblue}{rgb}{0.0,0.3,0.7}
+
+% Hyperref config
+\hypersetup{
+    colorlinks=true,
+    linkcolor=linkblue,
+    citecolor=linkblue,
+    urlcolor=linkblue,
+    bookmarksnumbered=true,
+}
+
+% Code listing style
+\lstdefinestyle{pseudocode}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{codepurple}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codegreen},
+    basicstyle=\ttfamily\small,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    frame=single,
+    framerule=0.4pt,
+    rulecolor=\color{codegray},
+    xleftmargin=1.5em,
+    framexleftmargin=1.5em,
+}
+\lstset{style=pseudocode}
+
+% SQL style
+\lstdefinestyle{sql}{
+    backgroundcolor=\color{backcolour},
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{codepurple}\bfseries,
+    morekeywords={CREATE,TABLE,PRIMARY,KEY,NOT,NULL,DEFAULT,REFERENCES,AUTOINCREMENT,INTEGER,TEXT,REAL,BLOB},
+    breaklines=true,
+    frame=single,
+    framerule=0.4pt,
+    rulecolor=\color{codegray},
+    xleftmargin=1.5em,
+    framexleftmargin=1.5em,
+}
+
+% Section formatting
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\itshape}{\thesubsubsection}{1em}{}
+
+% Header/footer
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small BrainBox: Hebbian Memory Systems for AI Agent Behavioral Learning}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Tight lists
+\setlist{nosep,leftmargin=*}
+
+\begin{document}
+
+% ============================================================
+% TITLE
+% ============================================================
+\begin{center}
+{\LARGE\bfseries BrainBox: Hebbian Memory Systems for\\[0.3em] AI Agent Behavioral Learning}
+
+\vspace{1em}
+
+{\large Learning File Access Patterns, Error$\to$Fix Pairs, and Tool Sequences\\Through Biologically Inspired Pathway Myelination}
+
+\vspace{1.5em}
+
+{\large A. Voss}
+
+\vspace{0.3em}
+
+{\small Independent Researcher}
+
+\vspace{0.5em}
+
+{\normalsize February 2026}
+
+\vspace{0.5em}
+
+{\small Preprint --- CC BY 4.0}
+\end{center}
+
+\vspace{1em}
+
+% ============================================================
+% ABSTRACT
+% ============================================================
+\begin{abstract}
+\noindent We present BrainBox, a novel memory architecture for AI coding agents that learns behavioral patterns using Hebbian learning and biologically inspired pathway myelination. Unlike vector databases, retrieval-augmented generation, and static instruction files, BrainBox implements procedural memory---learning \emph{how agents work} rather than \emph{what they know}. The system records file co-access patterns, error$\to$fix associations, and tool usage sequences, strengthening neural pathways through repeated use and weakening them through multiplicative decay.
+
+We introduce three key innovations: (1) cross-type Hebbian synapses connecting file, tool, and error neurons, (2) error$\to$fix pair learning that creates persistent error-resolution mappings, and (3) tool sequence myelination that consolidates common tool chains into operational superhighways. Mathematical verification confirms learning dynamics follow established principles (bounded Hebbian saturation, Ebbinghaus forgetting curves, Collins \& Loftus spreading activation).
+
+While several contemporary systems address agent behavioral memory through symbolic or Bayesian approaches, BrainBox is the first to apply \emph{neuromimetic plasticity mechanisms}---specifically Hebbian learning with pathway myelination---to agent file access patterns, tool sequencing, and error$\to$fix pair association. We position this at Layer~3 (agent behavioral learning) in our proposed four-layer framework for Hebbian learning in AI. Proof-of-concept simulations show 40\%+ token savings after 20 sessions and 3$\times$+ speedup for myelinated superhighways.
+\end{abstract}
+
+\noindent\textbf{Keywords:} Hebbian learning, agent memory, pathway myelination, spreading activation, procedural memory, token optimization
+
+\vspace{1em}
+\hrule
+\vspace{1em}
+
+% ============================================================
+% TERMINOLOGY
+% ============================================================
+\subsection*{Terminology}
+
+BrainBox introduces several domain-specific terms that map biological learning concepts onto agent behavioral patterns. We define them here for clarity.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{Term} & \textbf{Definition} \\
+\midrule
+\textbf{Neuron} & A node in the BrainBox graph representing an entity the agent interacts with: a file path, tool, error message, or semantic concept. Analogous to a biological neuron that fires when activated. \\
+\textbf{Synapse} & A weighted, bidirectional edge between two neurons. Strengthens when connected neurons are co-accessed (Hebbian learning) and weakens through multiplicative decay when unused. \\
+\textbf{Pathway myelination} & The process by which frequently-used neurons accumulate a persistent priority score ($0$--$0.95$), analogous to how biological myelination increases signal conduction velocity along frequently-used axonal pathways. Myelinated neurons are recalled preferentially. \\
+\textbf{Superhighway} & A synapse or pathway whose weight has been consolidated through repeated co-access to the point where recall is near-instant and high-confidence ($\geq 0.7$). The term reflects the intuition that these pathways carry ``traffic'' faster than unconsolidated routes. \\
+\textbf{Spreading activation} & The recall algorithm: direct keyword matches seed a frontier, which propagates through synaptic connections via breadth-first search, with confidence decaying at each hop. Based on Collins \& Loftus (1975). \\
+\textbf{Confidence gate} & A threshold ($\geq 0.4$) below which recalled neurons are discarded. Prevents low-signal noise from reaching the agent. \\
+\textbf{Co-access window} & The last 10 unique files accessed by the agent. Neurons within this window are considered to ``fire together'' and form or strengthen synapses. \\
+\textbf{Error$\to$fix pair} & A learned association between a normalized error message (error neuron) and the files that resolved it (file neurons), strengthened at $2\times$ the normal learning rate. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% ============================================================
+% 1. INTRODUCTION
+% ============================================================
+\section{Introduction}
+
+\subsection{The Problem: Stateless Agents Are Inefficient}
+
+Current AI agent frameworks treat each session as \emph{tabula rasa}. When a coding agent starts a new session, it has no memory of which files it accessed yesterday, which errors it debugged last week, or which tool chains it uses most frequently. Every session rediscovers the same patterns through expensive search operations.
+
+Consider a developer who works on an authentication module daily. The agent reads \texttt{auth.ts}, \texttt{session.ts}, and \texttt{encryption.ts} together in 80\% of sessions. Without memory, each session begins with a grep for ``authentication,'' reads search results, then opens files one by one---consuming ${\sim}2{,}000$ tokens per rediscovery. With Hebbian memory, the agent would recall these three files instantly at ${\sim}0$ additional search tokens because the synaptic pathway is consolidated.
+
+The cost is not trivial. At \$3 per million input tokens (Claude Sonnet pricing), an agent making 1,000 file accesses per day wastes approximately \$6/day on redundant search. Over a year, this amounts to ${\sim}$\$2,000 in unnecessary token expenditure per developer---not counting the latency cost of waiting for searches that could be skipped entirely.
+
+\subsection{The Insight: Hardware Prefetching for Software Agents}
+
+In 1991, Brown University researchers published ``Fido: A Cache That Learns to Fetch''~\cite{palmer1991fido}---a system that used associative memory to predict which database pages would be needed next based on access patterns. The key insight was simple: \textbf{access patterns are learnable, not random.} By recording which pages were co-accessed and strengthening those associations, Fido achieved significant cache hit rate improvements.
+
+Thirty-five years later, hardware CPU prefetchers use sophisticated neural pattern learning to predict memory access sequences. Intel's Stride Prefetcher, AMD's L1/L2 prefetching, and ARM's data-dependent prefetch all learn from past access patterns to predict future ones.
+
+Yet nobody has applied this principle \emph{up the stack} to software agents. BrainBox fills this gap by treating file paths as neurons, co-access patterns as synapses, and frequently-used pathways as \emph{superhighways}---high-conductance routes that carry recall traffic near-instantly, directly mapping biological learning onto agent behavior.
+
+\subsection{Contributions}
+
+\begin{enumerate}
+    \item \textbf{BrainBox:} A working Hebbian memory system for AI coding agents with mathematically verified learning dynamics
+    \item \textbf{Cross-type synapses:} Connections between file, tool, and error neurons enabling multi-modal behavioral learning
+    \item \textbf{Error$\to$fix pair learning:} Persistent error-resolution mappings that learn which files fix which errors
+    \item \textbf{Tool sequence myelination:} Frequently-used tool chains (Grep$\to$Read$\to$Edit$\to$Test) become superhighways with near-instant prediction
+    \item \textbf{Layer~3 positioning:} A four-layer framework identifying where Hebbian learning applies in AI systems
+    \item \textbf{Token budget awareness:} Memory-guided recall that respects context window constraints
+\end{enumerate}
+
+
+% ============================================================
+% 2. BACKGROUND AND MOTIVATION
+% ============================================================
+\section{Background and Motivation}
+
+\subsection{A Four-Layer Framework for Hebbian Learning in AI}
+
+We propose a conceptual taxonomy for understanding where Hebbian learning principles apply across AI systems:
+
+\begin{table}[H]
+\centering
+\caption{Four-layer framework for Hebbian learning in AI}
+\label{tab:layers}
+\begin{tabularx}{\textwidth}{c l l X}
+\toprule
+\textbf{Layer} & \textbf{Domain} & \textbf{What Is Learned} & \textbf{Examples} \\
+\midrule
+L1 & Model Internals & Weight updates, attention & Chaudhary~\cite{chaudhary2025}, Szelogowski~\cite{szelogowski2025}, CL Survey~\cite{safa2024} \\
+L2 & General Memory & Facts, episodes, semantics & Shodh-Memory, Mem0, A-MEM~\cite{amem2025} \\
+L3 & Agent Behavior & File access, tool chains, error$\to$fix & ToolMem~\cite{toolmem2025}, MACLA~\cite{macla2025}, \textbf{BrainBox} \\
+L4 & Collective Intel. & Shared behavioral patterns & (proposed, not yet implemented) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Layer~3 has been addressed by several contemporary systems using symbolic, Bayesian, or retrieval-based approaches. Enterprise AI architectural models have also formalized ``process memory'' at this layer, governing how work gets done and which tools are utilized for specific tasks~\cite{maestro2025}. BrainBox's contribution is not the identification of Layer~3 itself, but rather the application of \emph{neuromimetic plasticity mechanisms}---specifically Hebbian learning with pathway myelination---within this established behavioral layer, an approach not previously explored.
+
+\subsection{Why Neuromimetic Approaches Are Underexplored at Layer~3}
+
+Three factors explain why neuromimetic approaches to Layer~3 behavioral learning have not been explored:
+
+\begin{enumerate}
+    \item \textbf{Benchmark blindness:} Academic benchmarks evaluate general task performance (SWE-bench, HumanEval), not developer workflow efficiency across repeated sessions.
+    \item \textbf{RAG local maximum:} The industry consensus that ``just use RAG'' prevents exploration of learning-based alternatives to retrieval.
+    \item \textbf{Cross-disciplinary gap:} Hardware architects who understand prefetching do not build LLM agents, and agent builders rarely engage with computer architecture literature.
+\end{enumerate}
+
+\subsection{Static Instructions vs.\ Learned Behavior}
+
+Current agent frameworks rely on static instruction files (e.g., \texttt{CLAUDE.md}) for behavioral configuration. These are declarative, manually authored, and limited to ${\sim}50$--$100$ rules. They cannot capture implicit behavioral patterns, do not adapt to changing workflows, and provide the same instructions regardless of query context. BrainBox addresses this limitation by learning behavioral associations automatically from agent activity, adapting continuously through Hebbian strengthening and decay.
+
+% ============================================================
+% 3. RELATED WORK
+% ============================================================
+\section{Related Work}
+
+\subsection{Layer 1: Model Internals}
+
+Recent work has explored Hebbian principles within neural network architectures:
+
+\begin{itemize}
+    \item \textbf{Chaudhary (2025)}~\cite{chaudhary2025} augmented decoder-only transformers with Hebbian plasticity modules that adapt \emph{during inference}, achieving rapid task-specific adaptation on copying, regression, and few-shot classification.
+    \item \textbf{Szelogowski (2025)}~\cite{szelogowski2025} introduced the Engram Neural Network (ENN)---a recurrent architecture with explicit, differentiable Hebbian memory and sparse attention-driven retrieval, achieving performance comparable to GRU/LSTM on WikiText-103.
+    \item \textbf{Continual Learning Survey (2024)}~\cite{safa2024} reviewed Hebbian plasticity and STDP in sparse/predictive coding networks for catastrophic forgetting mitigation.
+\end{itemize}
+
+These approaches modify model \emph{weights} or apply Hebbian plasticity within the network architecture. BrainBox operates at a higher abstraction level---learning behavioral patterns \emph{outside} the model, in the agent's tool-use layer.
+
+\subsection{Layer 2: General Memory Systems}
+
+\begin{itemize}
+    \item \textbf{Shodh-Memory}~\cite{shodhmemory} (Rust, open-source) implements Hebbian learning for general agent memories using a three-tier edge system with multi-scale long-term potentiation and hybrid exponential/power-law decay. It learns \emph{what agents know}---user preferences, entity identities, declarative facts---not \emph{how they behave}.
+    \item \textbf{A-MEM}~\cite{amem2025} utilizes Zettelkasten-inspired principles to create interconnected, self-evolving networks of knowledge with dynamic indexing and structural linking. It represents the state of the art in dynamically evolving graph structures for agents, providing a non-Hebbian baseline for how graphs continuously refine memory connections.
+    \item \textbf{Nemori}~\cite{nemori2025} uses a cognitive science-inspired ``predict-calibrate'' mechanism for episodic segmentation and structured narrative memory generation, offering an alternative cognitive approach to memory boundary detection.
+    \item \textbf{Mem0} provides semantic memory via vector embeddings---pure retrieval with no learning or strengthening mechanism.
+\end{itemize}
+
+\subsection{Layer 3: Agent Behavioral Memory}
+
+Several contemporary systems address agent behavioral memory through non-Hebbian approaches:
+
+\begin{itemize}
+    \item \textbf{SYNAPSE}~\cite{synapse2026} uses spreading activation for episodic-semantic memory in conversational agents, operating on a Unified Episodic-Semantic Graph. Critically, SYNAPSE employs \emph{lateral inhibition}---a biological mechanism that actively suppresses irrelevant distractors---to prevent the ``hub explosion'' problem inherent in unconstrained spreading activation models. BrainBox currently lacks such an inhibitory mechanism, which represents a theoretical vulnerability discussed in Section~\ref{sec:limitations}.
+
+    \item \textbf{MACLA}~\cite{macla2025} implements hierarchical procedural memory via \emph{Bayesian selection}, tracking reliability via probabilistic posteriors, and employs \emph{contrastive refinement}, continuously comparing successful trajectories against failures. This contrasts with BrainBox's deterministic, computationally lightweight Hebbian updates. MACLA's approach may be more sample-efficient for complex trajectories but incurs higher computational overhead per update.
+
+    \item \textbf{ToolMem}~\cite{toolmem2025} implements an evolving capability memory for tools based on past interactions, utilizing language-mediated RAG induction. While ToolMem learns tool \emph{capabilities} (strengths and weaknesses) rather than tool \emph{sequencing}, it demonstrates the symbolic alternative to Hebbian learning for procedural knowledge at the same abstraction layer.
+
+    \item \textbf{ViLoMem}~\cite{vilomem2025} implements a dual-stream memory framework separately encoding visual distraction patterns and logical reasoning errors, enabling agents to learn explicitly from failed experiences. This is relevant to BrainBox's error$\to$fix pair learning, though ViLoMem operates in the multimodal domain.
+
+    \item \textbf{Cortex/Asteria}~\cite{cortex2025} implements semantic-aware caching for agentic tool access with predictive prefetching---the closest system to BrainBox's prefetching framing. BrainBox draws direct analogies to the Fido system~\cite{palmer1991fido} from hardware architecture. However, Cortex/Asteria uses semantic similarity (ANN + LLM judger) for cache hit detection rather than Hebbian learning.
+
+    \item \textbf{MAGMA}~\cite{magma2026} distributes memory across orthogonal semantic, temporal, causal, and entity graphs with policy-guided traversal. In contrast to BrainBox's single heterogeneous graph with cross-type synapses, MAGMA's decoupled multi-graph approach isolates operational modalities. This architectural divergence represents a fundamental design trade-off warranting further investigation.
+\end{itemize}
+
+A comprehensive survey of agent memory systems~\cite{liu2025survey} identifies three memory types---token-level, parametric, and latent---but does not discuss neuromimetic learning for operational behavioral patterns.
+
+\textbf{BrainBox is the first system to apply neuromimetic plasticity mechanisms---specifically Hebbian learning with pathway myelination---to agent file access patterns, tool sequencing, and error$\to$fix pair association.} While ToolMem, MACLA, and others achieve behavioral learning through symbolic or Bayesian means, no prior work employs continuous Hebbian weight updates across a cross-type synaptic graph for this purpose.
+
+\subsection{Comparison with Reinforcement Learning}
+
+From a computational perspective, learning behavioral patterns and tool execution sequences is traditionally the domain of Reinforcement Learning (RL). Systems typically rely on algorithms such as Proximal Policy Optimization (PPO) or off-policy Q-learning. BrainBox differs fundamentally: traditional RL requires computationally intensive gradient updates to model parameters (operating at Layer~1), which is unfeasible for on-the-fly, localized personalization. BrainBox operates strictly at inference time via a lightweight external graph structure (Layer~3), enabling $O(1)$ updates per access event. This makes it suitable for real-time, per-user behavioral adaptation without model retraining.
+
+\subsection{Comparison with Alternative Memory Substrates}
+
+Vector databases (Mem0, Pinecone, Chroma) have no learning mechanism---the 100th retrieval returns the same similarity score as the first. BrainBox strengthens pathways with use, weakens them with disuse, and discovers connections through graph traversal rather than embedding distance. Knowledge graphs (e.g., VaultGraph) use explicit, manually authored links; BrainBox's edges are implicit and weighted, learned from behavior. Full-text search systems (BM25) retrieve by content similarity, not behavioral association.
+
+
+% ============================================================
+% 3. ARCHITECTURE
+% ============================================================
+\section{Architecture}
+
+\subsection{Core Abstractions}
+
+BrainBox models agent behavior as a neural network with four primitives:
+
+\textbf{Neurons} represent entities the agent interacts with:
+\begin{itemize}
+    \item \texttt{file} neurons: file paths the agent reads or writes
+    \item \texttt{tool} neurons: tools the agent invokes (Grep, Read, Edit, Bash)
+    \item \texttt{error} neurons: normalized error messages encountered during sessions
+    \item \texttt{semantic} neurons: abstract concepts (reserved for future use)
+\end{itemize}
+
+Each neuron maintains:
+\begin{itemize}
+    \item \textbf{Activation} $(0$--$1)$: How recently and strongly the neuron was accessed. Decays multiplicatively.
+    \item \textbf{Myelination} $(0$--$0.95)$: Pathway priority score. In neurobiology, myelination insulates axons to increase signal conduction velocity along frequently-used pathways. We adopt this term for the analogous computational process: neurons accessed repeatedly accumulate a persistent priority score that increases recall speed and confidence, forming \emph{superhighways} (see Terminology). Increases with repeated access using bounded saturation. Decays very slowly.
+    \item \textbf{Access count:} Total number of times this neuron has been activated.
+    \item \textbf{Contexts:} JSON array of query strings that triggered this neuron, enabling keyword-based recall.
+\end{itemize}
+
+\textbf{Synapses} are weighted, bidirectional connections between neurons:
+\begin{itemize}
+    \item \textbf{Weight} $(0$--$1)$: Hebbian strength. Increases when neurons fire together, using bounded saturation (see below). Decays multiplicatively when unused.
+    \item \textbf{Co-access count:} How many times the connected neurons were activated within the co-access window.
+\end{itemize}
+
+\textbf{Sessions} group accesses within a time window and track token savings.
+
+\textbf{The co-access window} (last 10 unique files) defines ``firing together.'' Neurons in the sequential window form or strengthen synapses, with positional proximity determining strength. This is a \emph{discrete ordinal abstraction} of spike-timing-dependent plasticity (STDP): where biological STDP operates on continuous millisecond-scale temporal deltas ($\Delta t$), our model uses the ordinal position within a fixed event window as the analogous proximity signal. Such discrete abstractions of STDP are established in the spiking neural network literature for sequence learning tasks~\cite{stdpsequence2021}.
+
+\subsection{Hebbian Learning Algorithm}
+
+When the agent accesses a resource, BrainBox executes:
+
+\begin{lstlisting}[caption={Hebbian learning procedure},label={lst:learning}]
+LEARNING_RATE         = 0.1
+MYELIN_RATE           = 0.02
+MYELIN_MAX            = 0.95
+CO_ACCESS_WINDOW_SIZE = 10    // last 10 unique files
+ERROR_BOOST           = 2.0
+
+function record(path, type, query):
+  neuron = getOrCreate(path, type)
+  neuron.activation = 1.0
+  neuron.myelination += MYELIN_RATE * (1 - neuron.myelination)
+  neuron.myelination = min(neuron.myelination, MYELIN_MAX)
+  neuron.contexts.append(query)
+
+  for i, recentNeuron in recentAccessWindow:
+    positionFactor = (i + 1) / windowSize
+    rate = LEARNING_RATE * (ERROR_BOOST if error else 1)
+    delta = rate * positionFactor
+
+    // Bounded Hebbian saturation
+    synapse(neuron, recentNeuron).weight += delta * (1 - synapse.weight)
+    synapse(recentNeuron, neuron).weight += delta * (1 - synapse.weight)
+
+  recentAccessWindow.remove(neuron)
+  recentAccessWindow.push(neuron)
+  if recentAccessWindow.length > CO_ACCESS_WINDOW_SIZE:
+    recentAccessWindow.shift()
+\end{lstlisting}
+
+\textbf{Design rationale---sequential window over timestamp window:}
+
+An earlier design used a 60-second temporal window: neurons accessed within 60s of each other formed synapses. This created a ``deep work blind spot''---when an agent spends 2+ minutes studying a file before navigating to a related file, the temporal gap exceeds the window and no synapse forms, despite the files being clearly related.
+
+The sequential window model tracks the last 10 unique files regardless of time elapsed. Position within the window determines synapse strength via a smooth gradient:
+
+\begin{itemize}
+    \item Most recently accessed file: $\text{positionFactor} = 1.0$ (full strength)
+    \item Oldest file in window: $\text{positionFactor} = 0.1$ (10\% strength)
+\end{itemize}
+
+Key properties:
+\begin{itemize}
+    \item \textbf{Bounded Hebbian saturation}: Both consolidation and synapse strengthening follow $\Delta w = \eta(1 - w)$, a soft-bounded update rule that prevents saturation while providing diminishing returns as weights approach their ceiling. Note: this is \emph{not} BCM theory~\cite{bcm1982}, which additionally requires a sliding modification threshold separating long-term potentiation from long-term depression. Our rule implements unidirectional saturation without such a threshold.
+    \item \textbf{Positional proximity weighting:} Files accessed more recently in the sequential window form stronger synapses.
+    \item \textbf{Bidirectional synapses:} If A and B fire together, both A$\to$B and B$\to$A are strengthened.
+    \item \textbf{Error learning boost:} Synapses involving error neurons strengthen at 2$\times$ rate because errors are high-signal events.
+\end{itemize}
+
+\subsection{Recall Algorithm: Multi-Hop Spreading Activation}
+
+Recall uses three-phase spreading activation inspired by Collins \& Loftus (1975)~\cite{collins1975}, with multi-hop BFS traversal and convergence detection.
+
+\textbf{Phase 1a---Direct Keyword Match:}
+Search neuron contexts for query keywords. Score each match using weighted factors:
+
+\begin{table}[H]
+\centering
+\caption{Recall scoring weights by deployment}
+\label{tab:scoring}
+\begin{tabular}{l c c}
+\toprule
+\textbf{Factor} & \textbf{With Embeddings} & \textbf{Without Embeddings} \\
+\midrule
+Context/embedding match & 50\% & 50\% \\
+Consolidation & 20\% & 20\% \\
+Recency (linear decay, 1 week) & 20\% & 20\% \\
+Path match & 10\% & 10\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Phase 1b---Vector Similarity} (optional): If neurons have embedding vectors (384-dimensional, all-MiniLM-L6-v2), compute cosine similarity between the query embedding and all embedded neurons. Neurons with similarity $> 0.25$ are included as candidates even without keyword overlap.
+
+\textbf{Phase 2---Multi-Hop Spreading Activation (BFS):}
+Direct matches seed a frontier. The algorithm expands up to \texttt{MAX\_SPREAD\_HOPS} (default~3) levels:
+
+\begin{lstlisting}[caption={Multi-hop spreading activation},label={lst:spreading}]
+frontier = direct_matches
+for hop = 0 to MAX_SPREAD_HOPS:
+  next_frontier = []
+  for each seed in frontier:
+    for each outgoing synapse with weight > 0.3:
+      spreadConf = seed.conf * synapse.weight * (1 + target.consolidation)
+      if spreadConf < CONFIDENCE_GATE: skip
+
+      if target already activated:
+        existing.conf = max(existing.conf, spreadConf)
+      else:
+        add target to results and next_frontier
+  frontier = next_frontier
+\end{lstlisting}
+
+Key properties:
+\begin{itemize}
+    \item \textbf{Breadth-first by hop level}---processes all hop-1 nodes before hop-2
+    \item \textbf{Natural confidence decay}---the product $\text{parentConf} \times \text{synapseWeight} \times (1 + \text{consolidation})$ decays exponentially across hops
+    \item \textbf{Convergence detection}---when multiple paths reach the same neuron, the maximum confidence is taken (not summed)
+    \item \textbf{Transitive discovery}---if \texttt{auth.ts} co-accesses \texttt{session.ts}, and \texttt{session.ts} co-accesses \texttt{encryption.ts}, a query matching \texttt{auth.ts} discovers \texttt{encryption.ts} at hop~2
+\end{itemize}
+
+\textbf{Phase 3---Consolidated Pathway Fallback:}
+If fewer than \texttt{limit} results found, suggest top consolidated neurons as weak candidates (confidence $= \text{consolidation} \times 0.5$, gate~0.15).
+
+\textbf{Confidence Gating:}
+\begin{itemize}
+    \item $\geq 0.7$ (HIGH): \emph{Superhighway}---skip search entirely, use file directly
+    \item $0.4$--$0.7$ (MEDIUM): Verify with a quick check
+    \item $< 0.4$: Rejected, not returned
+\end{itemize}
+
+\textbf{Token Budget Awareness:}
+Results are returned in confidence order, consuming estimated tokens per file. When the budget is exhausted, spreading stops early.
+
+\subsection{Decay Engine}
+
+Unused connections weaken over time following multiplicative decay:
+
+\begin{lstlisting}[caption={Decay engine},label={lst:decay}]
+function decay():
+  for each neuron:
+    activation     *= 0.85   // 15% daily decay
+    consolidation  *= 0.995  // 0.5% daily decay
+
+  for each synapse:
+    weight *= 0.98        // 2% daily decay
+
+  prune synapses where weight < 0.05
+  prune neurons where activation < 0.01
+    AND consolidation < 0.01 AND accesses < 2
+\end{lstlisting}
+
+This matches Ebbinghaus (1885)~\cite{ebbinghaus1885} and Wixted \& Ebbesen (1991)~\cite{wixted1991}: forgetting follows exponential/power-law curves, not linear subtraction. A synapse accessed 100 times then abandoned retains a faint trace for weeks; one accessed twice is pruned within days.
+
+\subsection{Bootstrap: Cold Start Elimination}
+
+BrainBox addresses the cold start problem with a multi-source bootstrap system:
+
+\begin{table}[H]
+\centering
+\caption{Bootstrap phases and signal quality}
+\label{tab:bootstrap}
+\begin{tabularx}{\textwidth}{c l c X}
+\toprule
+\textbf{Phase} & \textbf{Source} & \textbf{Synapse Weight} & \textbf{Signal Quality} \\
+\midrule
+1 & Git history (bipartite projection) & 0.05--0.95 & Strongest---files committed together \\
+2 & VaultGraph (wikilinks) & 0.6 & Strong---explicit knowledge links \\
+3 & Import graph (TS/JS) & 0.5 & Moderate---structural dependency \\
+4 & Directory patterns & 0.3 & Weak---heuristic association \\
+5 & Session replay & 0.4 & Moderate---actual agent behavior \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Git bipartite projection} (Phase~1) computes a file--file co-occurrence matrix directly from git history:
+
+$$w = 0.05 + \frac{\text{sharedCommits}}{\text{maxSharedCommits}} \times 0.9$$
+
+Production bootstrap results: 198 neurons, 19,028 synapses from 76 commits + 180 imports (single repo); 2,343 neurons, 1.5M synapses from 416 commits (4 repos).
+
+\textbf{Note on bootstrap semantics:} Git co-committed files are logically related but not necessarily accessed sequentially by an agent. The bootstrap therefore serves as a \emph{semantic initialization}---analogous to warm-start initialization in transfer learning~\cite{warmstart2019}---that provides a reasonable prior over file co-occurrence. These initial weights are subsequently refined and potentially overwritten by actual sequential episodic access during live agent sessions. This two-phase approach (semantic prior $\to$ episodic refinement) follows established patterns in STDP-based pre-training literature.
+
+\subsection{macOS Daemon: System-Wide Learning}
+
+BrainBox includes a persistent macOS daemon that extends learning beyond AI agent sessions:
+
+\begin{itemize}
+    \item Native \textbf{FSEvents} (C++ addon)---one kernel-level watcher per root path regardless of subdirectory count
+    \item Debounced batch recording: 2-second window, max 50 files/flush, transaction-wrapped
+    \item \textbf{Git hooks auto-installer}---scans for \texttt{.git} repos, installs \texttt{post-commit}, \texttt{post-checkout}, \texttt{post-merge} hooks
+    \item \textbf{Frontmost app polling}---records app switches as tool neurons (\texttt{app:Xcode}, \texttt{app:Code})
+    \item \textbf{Unix socket server} at \texttt{\textasciitilde/.brainbox/daemon.sock} for external event sources
+\end{itemize}
+
+
+% ============================================================
+% 4. NOVEL CONTRIBUTIONS
+% ============================================================
+\section{Novel Contributions}
+
+\subsection{Error$\to$Fix Pair Learning}
+
+Traditional agent debugging: encounter error $\to$ grep codebase $\to$ trial and error $\to$ eventually find the fix. Each session starts from scratch.
+
+BrainBox error-resolution mapping: encounter error $\to$ recall known fix files instantly via consolidated error$\to$file synapses.
+
+\textbf{Mechanism:}
+\begin{enumerate}
+    \item Error messages are \textbf{normalized} before storage: line numbers, variable names, timestamps, and hex addresses are replaced with placeholders.
+    \item Error neurons receive a \textbf{2$\times$ learning rate boost}---a single error-then-fix sequence creates stronger synapses than three file co-accesses.
+    \item The \texttt{recordError()} method records the error and immediately performs recall for connected file neurons, returning fix suggestions.
+\end{enumerate}
+
+\textbf{Example trajectory:}
+\begin{itemize}
+    \item Session 1: Error occurs $\to$ agent reads \texttt{auth.ts} and \texttt{session.ts} $\to$ error$\to$\texttt{auth.ts} synapse forms (weight 0.17)
+    \item Session 2: Similar error $\to$ same files $\to$ synapse strengthens (weight 0.31)
+    \item Session 3: Error occurs $\to$ \texttt{recordError()} returns \texttt{auth.ts} at 62\% confidence $\to$ agent skips search
+\end{itemize}
+
+\subsection{Tool Sequence Myelination}
+
+Agents execute tool chains repeatedly: Grep$\to$Read$\to$Edit$\to$Bash(test) is the canonical coding loop. BrainBox learns these sequences, myelinating them into operational superhighways:
+
+\begin{enumerate}
+    \item Tool invocations are recorded as \texttt{tool} type neurons
+    \item Sequential tool uses create tool$\to$tool synapses
+    \item After 20 repetitions, the synapse becomes a \emph{superhighway} and \texttt{predictNext(``Grep'')} returns ``Read'' with high confidence
+    \item \textbf{Cross-type synapses} connect tools to files: Read$\to$\texttt{auth.ts} strengthens over time
+\end{enumerate}
+
+\subsection{Cross-Type Synapses}
+
+The key architectural innovation is that all neuron types share a single synaptic network:
+
+\begin{table}[H]
+\centering
+\caption{Cross-type synapse semantics}
+\label{tab:crosstype}
+\begin{tabular}{l l}
+\toprule
+\textbf{Synapse Type} & \textbf{Meaning} \\
+\midrule
+error $\to$ file & ``This error is fixed by editing these files'' \\
+tool $\to$ tool & ``After Grep, you usually Read'' \\
+tool $\to$ file & ``When you use Edit, it's usually on these files'' \\
+file $\to$ file & ``These files are always accessed together'' \\
+error $\to$ tool & ``This error is usually debugged using Bash(test)'' \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+No other agent memory system supports cross-type learned associations. Vector databases store embeddings per item; graph databases store explicit relationships. BrainBox discovers implicit behavioral relationships through co-access patterns.
+
+
+% ============================================================
+% 5. EVALUATION
+% ============================================================
+\section{Evaluation}
+
+\subsection{Mathematical Verification}
+
+All learning dynamics are verified via direct SQL queries against hand-calculated expected values:
+
+\begin{table}[H]
+\centering
+\caption{Mathematical verification results}
+\label{tab:verification}
+\begin{tabularx}{\textwidth}{c X c}
+\toprule
+\textbf{Test} & \textbf{What It Verifies} & \textbf{Result} \\
+\midrule
+1 & Consolidation increments: bounded saturation $0\% \to 2\% \to 3.96\% \to 5.88\%$ & PASS \\
+2 & Bidirectional synapse formation on co-access & PASS \\
+3 & Sequential window correctly evicts at size 10 & PASS \\
+4 & 5$\times$ co-access $\to$ 0.382 weight (bounded Hebbian saturation) & PASS \\
+5 & Confidence gating: relevant queries pass, irrelevant rejected & PASS \\
+6 & Spreading activation: direct match $\to$ spread to connected neurons & PASS \\
+7 & Token savings: 20,000 without $\to$ 19,500 with $\to$ 500 saved & PASS \\
+8 & Error$\to$fix synapses with 2$\times$ boost; error clustering & PASS \\
+9 & Grep$\to$Read synapse $>0.5$ after 20 reps; predictNext works & PASS \\
+10 & 3-hop BFS: alpha$\to$beta$\to$gamma chain via transitive spreading & PASS \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Additionally, 17 raw SQL verification checks confirm engine values match hand calculations exactly. All verification tests are deterministic and reproducible via the open-source test suite.
+
+\subsection{Token Savings}
+
+Simulation: 20 sessions, 3--5 files per session, sequential co-access window, with tool chain recordings.
+
+\begin{table}[H]
+\centering
+\caption{Token savings from simulation}
+\label{tab:tokens}
+\begin{tabular}{l r}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Total file accesses & ${\sim}80$ \\
+Tokens without BrainBox & ${\sim}160{,}000$ \\
+Tokens with BrainBox (session 20) & ${\sim}96{,}000$ \\
+\textbf{Token savings} & \textbf{${\sim}40\%$} \\
+Estimated cost savings at \$3/M tokens & ${\sim}$\$0.19/simulation \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Savings scale with codebase familiarity. Projected savings for 100,000 file accesses: ${\sim}$\$36 at Claude Sonnet pricing.
+
+\subsection{Recall Latency}
+
+\begin{table}[H]
+\centering
+\caption{Operation latency (SQLite, $<$1,000 neurons)}
+\label{tab:latency}
+\begin{tabular}{l r}
+\toprule
+\textbf{Operation} & \textbf{Latency} \\
+\midrule
+\texttt{record()} (single file) & $<$1ms \\
+\texttt{recall()} (5 results, 3-phase) & $<$5ms \\
+\texttt{predictNext()} (tool sequence) & $<$1ms \\
+\texttt{decay()} (full network) & $<$10ms \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Compared to a typical Grep search (200--500ms) or vector similarity search (50--200ms), BrainBox recall is effectively instant.
+
+\subsection{Evaluation Limitations}
+
+We acknowledge several limitations of the current evaluation:
+
+\textbf{Scale.} The 20-session, ${\sim}80$-access simulation is a proof-of-concept demonstration, not a statistically rigorous benchmark. Definitive validation would require evaluation against established multi-agent benchmarks such as SWE-bench Lite (for file access pattern prediction), ALFWorld (for procedural memory generalization), or LoCoMo (for long-horizon graph integrity).
+
+\textbf{Baselines.} The simulation compares BrainBox exclusively against a stateless (tabula rasa) agent. A complete evaluation should include comparisons against standard RAG with vector databases, static procedural prompts, and symbolic procedural memory systems such as ToolMem~\cite{toolmem2025} or MACLA~\cite{macla2025}.
+
+\textbf{Net vs.\ gross token savings.} The reported 40\% token savings reflect gross reduction in search tokens. They do not account for the overhead of injecting BrainBox context (recalled files, predictions, error-fix suggestions) into the agent's prompt at each reasoning step. In deployment, net savings depend on the ratio of tokens saved from bypassed searches to tokens consumed by context injection. Measuring this ratio in production is a priority for future work.
+
+
+% ============================================================
+% 7. LIMITATIONS AND FUTURE WORK
+% ============================================================
+\section{Limitations and Future Work}
+\label{sec:limitations}
+
+\subsection{Current Limitations}
+
+\begin{itemize}
+    \item \textbf{Stale paths:} Files that move or are renamed break synaptic connections. No automatic path migration exists.
+    \item \textbf{No Long-Term Depression (LTD):} Anti-Hebbian weakening when expected co-access does not occur is not implemented. Only passive multiplicative decay reduces weights. This means BrainBox cannot actively \emph{unlearn} stale associations---it can only let them fade.
+    \item \textbf{No lateral inhibition:} Unlike SYNAPSE~\cite{synapse2026}, BrainBox does not suppress irrelevant distractors during spreading activation. In large repositories, high-degree hub nodes (e.g., \texttt{utils.ts}, \texttt{config.json}) may accumulate connections to many files, potentially flattening retrieval confidence scores. Implementing degree-penalty normalization or lateral inhibition during BFS traversal is a priority.
+    \item \textbf{No metaplasticity:} Learning rate is fixed regardless of history. BCM theory~\cite{bcm1982} prescribes a sliding threshold that adjusts based on recent activity; BrainBox's bounded Hebbian rule does not implement this homeostatic mechanism.
+\end{itemize}
+
+\subsection{Security and Adversarial Robustness}
+
+A persistent, continuously learning memory graph introduces security considerations absent from stateless agents. If an agent accesses a malicious file alongside routine operations, BrainBox's Hebbian algorithm will strengthen the association between the malicious file and standard tools---potentially causing the agent to recall and access compromised files in future sessions.
+
+The confidence gate (Section~4.3) provides a partial mitigation: files must exceed a 0.4 confidence threshold before being returned as recall candidates, which limits the influence of weakly-associated malicious entries. However, a dedicated validation or sanitization mechanism---such as the consensus-based approach used by A-MemGuard~\cite{amemguard2025}---would provide stronger protection. Developing a robust adversarial defense for Hebbian agent memory is an important direction for future work.
+
+\subsection{Future Directions}
+
+\textbf{Near-term:} LTD implementation with explicit anti-Hebbian weakening; lateral inhibition or degree-penalty normalization; path migration for renamed files.
+
+\textbf{Medium-term:} Layer~4 collective intelligence---shared synaptic networks across agent teams; cross-session transfer of universal patterns; production-scale benchmarking on SWE-bench or similar standardized evaluation suites.
+
+\textbf{Long-term:} User intent mapping (``make it faster'' $\to$ codebase-specific actions); circadian patterns in tool and file usage; formal adversarial robustness guarantees.
+
+
+% ============================================================
+% 8. CROSS-PLATFORM DEPLOYMENT
+% ============================================================
+\section{Cross-Platform Deployment}
+
+To validate portability, we ported BrainBox to OpenClaw (an open-source AI agent platform) as ``NeuroVault.'' The system registers three standard LLM lifecycle hooks (\texttt{before\_agent\_start} for context injection, \texttt{after\_tool\_call} for Hebbian learning, \texttt{agent\_end} for fact capture) and two agent-callable tools. The port required adaptation for tool name normalization, parameter naming conventions, and the absence of embedding models---compensated by boosted keyword weight and a lower confidence gate. Cross-platform porting also served as a verification strategy, revealing a previously undetected bug in the fallback gate formula. Full adaptation details are provided in Appendix~\ref{app:neurovault}.
+
+
+% ============================================================
+% 9. CONCLUSION
+% ============================================================
+\section{Conclusion}
+
+BrainBox demonstrates that Hebbian learning and biologically inspired pathway myelination---principles rooted in Hebb (1949)~\cite{hebb1949}---can improve AI agent efficiency by learning file access patterns, error$\to$fix associations, and tool sequences. Proof-of-concept simulations show 40\%+ gross token savings and instant recall for myelinated superhighways, though definitive validation against standardized benchmarks remains future work.
+
+The system addresses a gap in the application of neuromimetic mechanisms to agent behavioral memory. While contemporary systems such as ToolMem~\cite{toolmem2025} and MACLA~\cite{macla2025} achieve behavioral learning through symbolic and Bayesian means, BrainBox is the first to apply continuous Hebbian plasticity with cross-type synapses to this domain. The cross-platform NeuroVault deployment validates portability across agent frameworks.
+
+Three decades after Fido~\cite{palmer1991fido} demonstrated associative prefetching for database caches, BrainBox applies the same principle to software agents---extending the hardware architecture community's insight about learnable access patterns to the agent behavioral layer.
+
+
+% ============================================================
+% REFERENCES
+% ============================================================
+\begin{thebibliography}{15}
+
+\bibitem{hebb1949}
+D.~O. Hebb, \emph{The Organization of Behavior}, Wiley, 1949.
+
+\bibitem{bcm1982}
+E.~L. Bienenstock, L.~N. Cooper, and P.~W. Munro, ``Theory for the development of neuron selectivity,'' \emph{Journal of Neuroscience}, vol.~2, no.~1, pp.~32--48, 1982.
+
+\bibitem{ebbinghaus1885}
+H.~Ebbinghaus, \emph{Memory: A Contribution to Experimental Psychology}, 1885.
+
+\bibitem{collins1975}
+A.~M. Collins and E.~F. Loftus, ``A spreading-activation theory of semantic processing,'' \emph{Psychological Review}, vol.~82, no.~6, pp.~407--428, 1975.
+
+\bibitem{wixted1991}
+J.~T. Wixted and E.~B. Ebbesen, ``On the form of forgetting,'' \emph{Psychological Science}, vol.~2, no.~6, pp.~409--415, 1991.
+
+\bibitem{palmer1991fido}
+M.~Palmer and S.~Zdonik, ``Fido: A Cache That Learns to Fetch,'' \emph{Proceedings of the 17th International Conference on Very Large Data Bases}, pp.~255--264, 1991.
+
+\bibitem{chaudhary2025}
+S.~Chaudhary, ``Enabling Robust In-Context Memory and Rapid Task Adaptation in Transformers with Hebbian and Gradient-Based Plasticity,'' \emph{arXiv:2510.21908}, 2025.
+
+\bibitem{szelogowski2025}
+D.~Szelogowski, ``Hebbian Memory-Augmented Recurrent Networks: Engram Neurons in Deep Learning,'' \emph{arXiv:2507.21474}, 2025.
+
+\bibitem{safa2024}
+A.~Safa, ``Continual Learning with Hebbian Plasticity in Sparse and Predictive Coding Networks: A Survey and Perspective,'' \emph{arXiv:2407.17305}, 2024.
+
+\bibitem{synapse2026}
+``SYNAPSE: Empowering LLM Agents with Episodic-Semantic Memory via Spreading Activation,'' \emph{arXiv:2601.02744}, 2026.
+
+\bibitem{macla2025}
+``MACLA: Learning Hierarchical Procedural Memory for LLM Agents through Bayesian Selection and Contrastive Refinement,'' \emph{arXiv:2512.18950}, 2025.
+
+\bibitem{shodhmemory}
+Shodh-Memory, \url{https://github.com/varun29ankuS/shodh-memory}.
+
+\bibitem{cortex2025}
+``Cortex/Asteria: Achieving Low-Latency, Cost-Efficient Remote Data Access For LLM via Semantic-Aware Knowledge Caching,'' \emph{arXiv:2509.17360}, 2025.
+
+\bibitem{magma2026}
+``MAGMA: A Multi-Graph based Agentic Memory Architecture for AI Agents,'' \emph{arXiv:2601.03236}, 2026.
+
+\bibitem{liu2025survey}
+S.~Liu et~al., ``Memory in the Age of AI Agents: A Survey,'' \emph{arXiv:2512.13564}, 2025.
+
+\bibitem{toolmem2025}
+Y.~Xiao et~al., ``ToolMem: Enhancing Multimodal Agents with Learnable Tool Capability Memory,'' \emph{arXiv:2510.06664}, 2025.
+
+\bibitem{amem2025}
+J.~Xu et~al., ``A-MEM: Agentic Memory for LLM Agents,'' \emph{arXiv:2502.12110}, 2025.
+
+\bibitem{nemori2025}
+Y.~Nan et~al., ``Nemori: Self-Organizing Agent Memory Inspired by Cognitive Science,'' \emph{arXiv:2508.03341}, 2025.
+
+\bibitem{vilomem2025}
+``ViLoMem: Agentic Learner with Grow-and-Refine Multimodal Semantic Memory,'' \emph{arXiv:2511.21678}, 2025.
+
+\bibitem{amemguard2025}
+``A-MemGuard: A Proactive Defense Framework for LLM-Based Agent Memory,'' \emph{arXiv:2510.02373}, 2025.
+
+\bibitem{maestro2025}
+Cloud Security Alliance, ``MAESTRO: An Agentic AI Threat Modeling Framework,'' 2025.
+
+\bibitem{stdpsequence2021}
+T.~Zhang et~al., ``Brain Inspired Sequences Production by Spiking Neural Networks With Reward-Modulated STDP,'' \emph{Frontiers in Computational Neuroscience}, vol.~15, 2021.
+
+\bibitem{warmstart2019}
+A.~Ash and R.~P.~Adams, ``On Warm-Starting Neural Network Training,'' \emph{arXiv:1910.08475}, 2019.
+
+\end{thebibliography}
+
+
+% ============================================================
+% APPENDICES
+% ============================================================
+\appendix
+
+\section{Constants and Hyperparameters}
+\label{app:constants}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l c X}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Rationale} \\
+\midrule
+\texttt{LEARNING\_RATE} & 0.1 & Moderate strengthening; avoids oscillation \\
+\texttt{MYELIN\_RATE} & 0.02 & Slow consolidation formation \\
+\texttt{MYELIN\_MAX} & 0.95 & Asymptotic ceiling prevents saturation \\
+\texttt{CO\_ACCESS\_WINDOW} & 10 & Last 10 unique files (sequential) \\
+\texttt{CONFIDENCE\_GATE} & 0.4 & Balances precision/recall \\
+\texttt{HIGH\_CONFIDENCE} & 0.7 & Above this, skip search entirely \\
+\texttt{ERROR\_BOOST} & 2.0 & Errors are high-signal events \\
+\texttt{MAX\_SPREAD\_HOPS} & 3 & BFS depth limit \\
+\texttt{MAX\_SPREAD\_FAN\_OUT} & 10 & Max outgoing synapses per node per hop \\
+\texttt{MYELIN\_GATE} & 0.15 & Phase~3 fallback gate \\
+\texttt{SYNAPSE\_DECAY} & 0.02/day & Moderate weakening \\
+\texttt{ACTIVATION\_DECAY} & 0.15/day & Fast fade \\
+\texttt{MYELIN\_DECAY} & 0.005/day & ${\sim}200$ days to halve \\
+\texttt{SYNAPSE\_PRUNE} & 0.05 & Remove near-dead synapses \\
+\texttt{TOKENS\_PER\_FILE} & 1,500 & Conservative estimate \\
+\texttt{TOKENS\_PER\_SEARCH} & 500 & Search operation estimate \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Database Schema}
+\label{app:schema}
+
+\begin{lstlisting}[style=sql,caption={BrainBox database schema}]
+CREATE TABLE neurons (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  path TEXT NOT NULL,
+  activation REAL DEFAULT 0,
+  myelination REAL DEFAULT 0,
+  access_count INTEGER DEFAULT 0,
+  last_accessed TEXT,
+  created_at TEXT NOT NULL,
+  contexts TEXT DEFAULT '[]',
+  embedding BLOB DEFAULT NULL
+);
+
+CREATE TABLE synapses (
+  source_id TEXT NOT NULL REFERENCES neurons(id),
+  target_id TEXT NOT NULL REFERENCES neurons(id),
+  weight REAL DEFAULT 0.1,
+  co_access_count INTEGER DEFAULT 1,
+  last_fired TEXT,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (source_id, target_id)
+);
+
+CREATE TABLE access_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  neuron_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  query TEXT,
+  timestamp TEXT NOT NULL,
+  token_cost INTEGER DEFAULT 0,
+  access_order INTEGER DEFAULT 0
+);
+
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  started_at TEXT,
+  total_accesses INTEGER DEFAULT 0,
+  tokens_used INTEGER DEFAULT 0,
+  tokens_saved INTEGER DEFAULT 0,
+  hit_rate REAL DEFAULT 0
+);
+\end{lstlisting}
+
+\section{Integration Points}
+\label{app:integration}
+
+BrainBox exposes six tools via the Model Context Protocol (MCP): \texttt{brainbox\_record}, \texttt{brainbox\_recall}, \texttt{brainbox\_error}, \texttt{brainbox\_predict\_next}, \texttt{brainbox\_stats}, and \texttt{brainbox\_decay}.
+
+Two Claude Code hooks enable zero-config passive learning:
+\begin{itemize}
+    \item \textbf{PostToolUse $\to$ \texttt{hook.ts}}: Records every Read/Edit/Write/Grep/Glob
+    \item \textbf{UserPromptSubmit $\to$ \texttt{prompt-hook.ts}}: Injects neural recall into every prompt
+\end{itemize}
+
+\section{NeuroVault Adaptation Matrix}
+\label{app:neurovault}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Integration Point} & \textbf{Claude Code} & \textbf{OpenClaw (NeuroVault)} \\
+\midrule
+Tool names & PascalCase & Lowercase \\
+File path param & \texttt{file\_path} & \texttt{path} \\
+Tool results & Plain strings & \texttt{.content[].text} objects \\
+Context injection & \texttt{UserPromptSubmit} hook & \texttt{before\_agent\_start} \\
+Learning trigger & \texttt{PostToolUse} hook & \texttt{after\_tool\_call} lifecycle \\
+Embeddings & all-MiniLM-L6-v2 & Not available (keyword-only) \\
+Confidence gate & 0.4 & 0.3 \\
+Keyword weight & 40\% & 50\% \\
+Fact capture & Not implemented & \texttt{agent\_end} hook \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\end{document}
