@@ -136,4 +136,25 @@ function migrate(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_snippets_parent ON snippets(parent_neuron_id);
     CREATE INDEX IF NOT EXISTS idx_snippets_name ON snippets(name);
   `);
+
+  // v6 migration: session replay table for full tool call capture
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS session_replay (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        seq INTEGER NOT NULL,
+        ts TEXT NOT NULL,
+        tool_name TEXT NOT NULL,
+        tool_input TEXT,
+        tool_result TEXT,
+        exit_code INTEGER,
+        cwd TEXT,
+        duration_ms INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_replay_session ON session_replay(session_id, seq);
+      CREATE INDEX IF NOT EXISTS idx_replay_tool ON session_replay(tool_name);
+      CREATE INDEX IF NOT EXISTS idx_replay_ts ON session_replay(ts);
+    `);
+  } catch {}
 }

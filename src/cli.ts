@@ -131,6 +131,18 @@ COMMANDS:
   daemon uninstall   Remove LaunchAgent
   daemon shell-hook  Print zsh hook to add to ~/.zshrc
 
+  replay
+    List last 10 sessions with session ID, start time, tool count, unique files, errors.
+
+  replay <session_id>
+    Full session timeline: seq, time, tool name, input summary, result summary. Errors in red.
+
+  replay <session_id> --errors
+    Show only error events for that session.
+
+  replay <session_id> --tool <name>
+    Filter timeline by tool name (e.g. --tool Bash).
+
 EXAMPLES:
   brainbox record src/api/auth.ts --query "authentication"
   brainbox record src/api/session.ts --query "session management"
@@ -942,10 +954,241 @@ switch (command) {
     break;
   }
 
+  case "replay": {
+    replayCommand(args.slice(1));
+    break;
+  }
+
   default:
     usage();
 }
 } // end runCommand()
+
+// --- Replay: session timeline viewer ---
+
+function replayCommand(args: string[]) {
+  const RED   = "\x1b[31m";
+  const GREEN  = "\x1b[32m";
+  const YELLOW = "\x1b[33m";
+  const BOLD   = "\x1b[1m";
+  const RESET  = "\x1b[0m";
+
+  // Check if session_replay table exists
+  const tableCheck = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='session_replay'"
+  ).get() as { name: string } | undefined;
+
+  if (!tableCheck) {
+    console.log("No session replay data yet. BrainBox hasn't captured any sessions.");
+    return;
+  }
+
+  // Parse args
+  const sessionId = args[0] && !args[0].startsWith("--") ? args[0] : undefined;
+  const errorsOnly = args.includes("--errors");
+  const toolFlag   = (() => {
+    const idx = args.indexOf("--tool");
+    return idx !== -1 && idx + 1 < args.length ? args[idx + 1] : undefined;
+  })();
+
+  function truncate(str: string | null | undefined, max = 120): string {
+    if (!str) return "";
+    const s = str.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+    return s.length > max ? s.slice(0, max - 1) + "…" : s;
+  }
+
+  function isError(result: string | null | undefined): boolean {
+    if (!result) return false;
+    return /error|failed|traceback|exception/i.test(result);
+  }
+
+  function formatTs(ts: string): string {
+    // ts is ISO string; display as HH:MM:SS
+    try {
+      const d = new Date(ts);
+      return d.toTimeString().slice(0, 8);
+    } catch {
+      return ts.slice(11, 19) || ts;
+    }
+  }
+
+  if (!sessionId) {
+    // --- LIST MODE: show last 10 sessions ---
+    const rows = db.prepare(`
+      SELECT
+        r.session_id,
+        MIN(r.ts) AS started_at,
+        COUNT(*) AS tool_count,
+        COUNT(DISTINCT CASE
+          WHEN r.tool_input IS NOT NULL AND r.tool_input != ''
+          THEN json_extract(r.tool_input, '$.path')
+        END) AS unique_files,
+        SUM(CASE WHEN ${
+          // inline the error check as SQL
+          "r.tool_result LIKE '%error%' OR r.tool_result LIKE '%Error%' OR " +
+          "r.tool_result LIKE '%failed%' OR r.tool_result LIKE '%traceback%' OR " +
+          "r.tool_result LIKE '%exception%'"
+        } THEN 1 ELSE 0 END) AS error_count
+      FROM session_replay r
+      GROUP BY r.session_id
+      ORDER BY MIN(r.ts) DESC
+      LIMIT 10
+    `).all() as Array<{
+      session_id: string;
+      started_at: string;
+      tool_count: number;
+      unique_files: number;
+      error_count: number;
+    }>;
+
+    if (rows.length === 0) {
+      console.log("No sessions found in session_replay. Hooks may not have recorded any tool calls yet.");
+      return;
+    }
+
+    console.log(`\n${BOLD}Recent Sessions (last 10)${RESET}\n`);
+    console.log(
+      "  " +
+      "SESSION ID       ".padEnd(18) +
+      "STARTED AT".padEnd(22) +
+      "TOOLS".padEnd(8) +
+      "FILES".padEnd(8) +
+      "ERRORS"
+    );
+    console.log("  " + "─".repeat(66));
+
+    for (const row of rows) {
+      const shortId = row.session_id.length > 14
+        ? row.session_id.slice(0, 14) + "…"
+        : row.session_id.padEnd(15);
+
+      let startedStr = row.started_at || "(unknown)";
+      // Format ISO to readable
+      try {
+        const d = new Date(row.started_at);
+        startedStr = d.toISOString().replace("T", " ").slice(0, 19);
+      } catch { /* leave raw */ }
+
+      const errStr = row.error_count > 0
+        ? `${RED}${row.error_count}${RESET}`
+        : `${GREEN}0${RESET}`;
+
+      console.log(
+        `  ${shortId.padEnd(18)}${startedStr.padEnd(22)}${String(row.tool_count).padEnd(8)}${String(row.unique_files || 0).padEnd(8)}${errStr}`
+      );
+    }
+    console.log();
+    console.log(`  ${YELLOW}Tip:${RESET} brainbox replay <session_id> — view full timeline`);
+    console.log(`       brainbox replay <session_id> --errors — errors only`);
+    console.log(`       brainbox replay <session_id> --tool Bash — filter by tool\n`);
+    return;
+  }
+
+  // --- DETAIL MODE: show session timeline ---
+
+  // Resolve partial session ID (prefix match)
+  const allIds = (db.prepare(
+    "SELECT DISTINCT session_id FROM session_replay ORDER BY session_id"
+  ).all() as Array<{ session_id: string }>).map((r) => r.session_id);
+
+  const matchedId = allIds.find((id) => id === sessionId || id.startsWith(sessionId));
+  if (!matchedId) {
+    console.error(`${RED}Session not found:${RESET} ${sessionId}`);
+    console.error(`Run "brainbox replay" to list available sessions.`);
+    process.exit(1);
+  }
+
+  // Build query with optional filters
+  let sql = "SELECT seq, ts, tool_name, tool_input, tool_result, exit_code, duration_ms FROM session_replay WHERE session_id = ?";
+  const params: (string | number)[] = [matchedId];
+
+  if (toolFlag) {
+    sql += " AND tool_name = ?";
+    params.push(toolFlag);
+  }
+
+  sql += " ORDER BY seq ASC";
+
+  const events = db.prepare(sql).all(...params) as Array<{
+    seq: number;
+    ts: string;
+    tool_name: string;
+    tool_input: string | null;
+    tool_result: string | null;
+    exit_code: number | null;
+    duration_ms: number | null;
+  }>;
+
+  if (events.length === 0) {
+    console.log(`No events found for session ${matchedId}${toolFlag ? ` with tool=${toolFlag}` : ""}.`);
+    return;
+  }
+
+  // Apply --errors filter in-memory (simpler than SQL LIKE chains)
+  const filtered = errorsOnly ? events.filter((e) => isError(e.tool_result)) : events;
+
+  if (filtered.length === 0) {
+    console.log(`No error events found in session ${matchedId}.`);
+    return;
+  }
+
+  const shortSession = matchedId.length > 20 ? matchedId.slice(0, 20) + "…" : matchedId;
+  const filterDesc = errorsOnly ? " (errors only)" : toolFlag ? ` (tool: ${toolFlag})` : "";
+  console.log(`\n${BOLD}Session Timeline: ${shortSession}${filterDesc}${RESET}\n`);
+  console.log(
+    "  " +
+    "SEQ ".padEnd(6) +
+    "TIME    ".padEnd(10) +
+    "TOOL".padEnd(20) +
+    "INPUT SUMMARY".padEnd(40) +
+    "RESULT SUMMARY"
+  );
+  console.log("  " + "─".repeat(110));
+
+  for (const ev of filtered) {
+    const hasErr = isError(ev.tool_result);
+    const rowColor = hasErr ? RED : "";
+    const rowReset = hasErr ? RESET : "";
+
+    // Parse input summary: try JSON for file path, else truncate raw
+    let inputSummary = "";
+    if (ev.tool_input) {
+      try {
+        const parsed = JSON.parse(ev.tool_input) as Record<string, unknown>;
+        // Common keys in priority order
+        const key = parsed.command ?? parsed.path ?? parsed.pattern ?? parsed.query ?? parsed.content;
+        if (key != null) {
+          inputSummary = truncate(String(key), 38);
+        } else {
+          inputSummary = truncate(ev.tool_input, 38);
+        }
+      } catch {
+        inputSummary = truncate(ev.tool_input, 38);
+      }
+    }
+
+    const resultSummary = truncate(ev.tool_result, 45);
+
+    const seqStr  = String(ev.seq).padEnd(6);
+    const timeStr = formatTs(ev.ts).padEnd(10);
+    const toolStr = ev.tool_name.padEnd(20);
+    const inStr   = inputSummary.padEnd(40);
+
+    console.log(`  ${rowColor}${seqStr}${timeStr}${toolStr}${inStr}${resultSummary}${rowReset}`);
+  }
+
+  // Footer stats
+  const total  = filtered.length;
+  const errors = filtered.filter((e) => isError(e.tool_result)).length;
+  const totalMs = filtered.reduce((acc, e) => acc + (e.duration_ms || 0), 0);
+  console.log("  " + "─".repeat(110));
+  console.log(
+    `\n  ${total} events  |  ` +
+    (errors > 0 ? `${RED}${errors} errors${RESET}` : `${GREEN}0 errors${RESET}`) +
+    (totalMs > 0 ? `  |  total duration: ${totalMs}ms` : "") +
+    `\n`
+  );
+}
 
 // --- Simulation: demonstrate Hebbian learning in action ---
 
