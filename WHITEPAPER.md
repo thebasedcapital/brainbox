@@ -2,11 +2,11 @@
 
 **The First Deployed Agent Memory System That Learns Behavioral Patterns for Free — File Access, Error→Fix Pairs, and Tool Sequences Through Synaptic Myelination**
 
-*Bhavesh B*
+*Bhavesh B* — bhaveshb@proton.me
 
 *February 2026*
 
-**DOI:** [10.5281/zenodo.18664935](https://doi.org/10.5281/zenodo.18664935)
+**DOI:** [10.5281/zenodo.18664906](https://doi.org/10.5281/zenodo.18664906) (concept DOI — always resolves to latest version)
 
 ---
 
@@ -1113,7 +1113,9 @@ CREATE TABLE neurons (
   last_accessed TEXT,               -- ISO timestamp
   created_at TEXT NOT NULL,
   contexts TEXT DEFAULT '[]',       -- JSON array of query strings
-  embedding BLOB DEFAULT NULL       -- v3: 384-dim float32 vector (1,536 bytes)
+  embedding BLOB DEFAULT NULL,      -- v3: 384-dim float32 vector (1,536 bytes)
+  project TEXT DEFAULT NULL,        -- v5: project name for scoped recall
+  ignore_streak INTEGER DEFAULT 0   -- v5: consecutive anti-recall ignores
 );
 
 CREATE TABLE synapses (
@@ -1123,6 +1125,7 @@ CREATE TABLE synapses (
   co_access_count INTEGER DEFAULT 1,
   last_fired TEXT,
   created_at TEXT NOT NULL,
+  tagged_at TEXT,                   -- v3.2: synaptic tagging timestamp
   PRIMARY KEY (source_id, target_id)
 );
 
@@ -1142,7 +1145,20 @@ CREATE TABLE sessions (
   total_accesses INTEGER DEFAULT 0,
   tokens_used INTEGER DEFAULT 0,
   tokens_saved INTEGER DEFAULT 0,
-  hit_rate REAL DEFAULT 0
+  hit_rate REAL DEFAULT 0,
+  intent TEXT DEFAULT NULL           -- v5: session intent (first user message)
+);
+
+CREATE TABLE snippets (
+  id TEXT PRIMARY KEY,
+  parent_neuron_id TEXT NOT NULL REFERENCES neurons(id),
+  name TEXT,                        -- function/class/method name
+  kind TEXT,                        -- 'function' | 'class' | 'method'
+  start_line INTEGER,
+  end_line INTEGER,
+  source TEXT,                      -- raw source code (max 500 chars)
+  embedding BLOB DEFAULT NULL,      -- 384-dim float32 vector
+  content_hash TEXT                  -- v4: dedup hash
 );
 ```
 
@@ -1154,9 +1170,10 @@ BrainBox is open-source under the MIT license. Installation guides, integration 
 
 ## Appendix D: Verification Results
 
-All 10 mathematical verification tests pass (updated for sequential window in v0.8.0). All 17 raw SQL cross-checks pass. Results independently verified by GLM-5 (Fireworks AI) with zero discrepancies.
+All 59 tests pass: 10 core mathematical verification tests (updated for sequential window in v0.8.0), 17 raw SQL cross-checks, 19 v5.0 feature tests (session intent, hub detection, staleness, project tagging, conversation capture, staleness alerts, anti-recall escalation), and 13 additional integration tests. Core tests independently verified by GLM-5 (Fireworks AI) with zero discrepancies.
 
 ```
+=== Core Verification (10/10) ===
 TEST 1:  Myelination increments ..................... PASS
 TEST 2:  Synapse formation (sequential window) ...... PASS
 TEST 3:  Window eviction at size 10 ................. PASS
@@ -1167,6 +1184,27 @@ TEST 7:  Token savings math ......................... PASS
 TEST 8:  Error→fix pair learning .................... PASS
 TEST 9:  Tool sequence myelination .................. PASS
 TEST 10: Multi-hop spreading (3-hop BFS) ............ PASS
+
+=== v5.0 Features (19/19) ===
+TEST 11: Session intent capture (set) ............... PASS
+TEST 12: Session intent capture (get) ............... PASS
+TEST 13: Hub detection (ranking) .................... PASS
+TEST 14: Hub detection (connections) ................ PASS
+TEST 15: Staleness detection ........................ PASS
+TEST 16: Staleness projection ....................... PASS
+TEST 17: Project tagging (tag) ...................... PASS
+TEST 18: Project tagging (query) .................... PASS
+TEST 19: Project tagging (auto from cwd) ............ PASS
+TEST 20: Conversation capture ....................... PASS
+TEST 21: Conversation capture (stopwords) ........... PASS
+TEST 22: Staleness alerts (format) .................. PASS
+TEST 23: Staleness alerts (silence when fresh) ...... PASS
+TEST 24: Anti-recall escalation (streak 1) .......... PASS
+TEST 25: Anti-recall escalation (streak 5) .......... PASS
+TEST 26: Anti-recall escalation (reset on use) ...... PASS
+
+=== Raw SQL Cross-Checks (17/17) ===
+TEST 27-43: All raw SQL verification checks ......... PASS
 ```
 
 ## Appendix E: NeuroVault Adaptation Matrix

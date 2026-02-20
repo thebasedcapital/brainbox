@@ -275,7 +275,7 @@ function startWatcher(
   const stopFns: (() => void)[] = [];
 
   for (const dir of dirs) {
-    const stop = fsevents.watch(dir, (path: string, flags: number, id: number) => {
+    const stop = fsevents.watch(dir, (path: string, flags: number, id: string) => {
       // Extension filter
       const ext = extname(path);
       if (!extensionSet.has(ext)) return;

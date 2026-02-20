@@ -1,0 +1,2419 @@
+[
+  {
+    "scenario_id": "A1",
+    "scenario_name": "Standard Developer Workflow",
+    "runs": 5,
+    "snapshots": [
+      {
+        "session_num": 1,
+        "gross_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 0,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.05450656766657386,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.05450656766657386,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 7,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 42,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.3401444315431019,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 5,
+        "gross_savings_pct": {
+          "mean": 1.7857142857142854,
+          "std": 2.482534153247273e-16
+        },
+        "net_savings_pct": {
+          "mean": 1.5848214285714284,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 2000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 9.299605480270001,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.07482113945827572,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.12497680891756695,
+          "std": 1.5515838457795457e-17
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 10,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 90,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.42788445154666344,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 10,
+        "gross_savings_pct": {
+          "mean": 2.737226277372263,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 2.655109489051095,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 7500,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 17.207626065876365,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.08639010960833424,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.19629274821512052,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.5464068638551833,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 15,
+        "gross_savings_pct": {
+          "mean": 3.8659793814432986,
+          "std": 4.965068306494546e-16
+        },
+        "net_savings_pct": {
+          "mean": 3.8079896907216493,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 15000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 21.900822008404006,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.10813651906499508,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.2307460297944802,
+          "std": 3.1031676915590914e-17
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.5992628524269198,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 20,
+        "gross_savings_pct": {
+          "mean": 4.4534412955465585,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 4.407894736842105,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 22000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 26.135864899680836,
+          "std": 3.972054645195637e-15
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.12363830532124527,
+          "std": 1.5515838457795457e-17
+        },
+        "max_myelination": {
+          "mean": 0.26108855624352817,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.6308316313373966,
+          "std": 0
+        }
+      }
+    ],
+    "spreading": {
+      "direct_pct": {
+        "mean": 100,
+        "std": 0
+      },
+      "hop1_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "hop2_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "hop3_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_direct": {
+        "mean": 0.9647471226625495,
+        "std": 3.874565059450518e-8
+      },
+      "avg_conf_hop1": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_hop2": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_hop3": {
+        "mean": 0,
+        "std": 0
+      }
+    },
+    "precision_recall": {
+      "precision": {
+        "mean": 0.5,
+        "std": 0
+      },
+      "recall": {
+        "mean": 0.8333333333333334,
+        "std": 0
+      },
+      "f1": {
+        "mean": 0.625,
+        "std": 0
+      }
+    },
+    "tool_predictions": {
+      "top1_accuracy": {
+        "mean": 0.3333333333333333,
+        "std": 0
+      },
+      "top3_accuracy": {
+        "mean": 1,
+        "std": 0
+      }
+    },
+    "avg_execution_time_ms": 553.6
+  },
+  {
+    "scenario_id": "A2",
+    "scenario_name": "Standard Workflow with Decay",
+    "runs": 5,
+    "snapshots": [
+      {
+        "session_num": 1,
+        "gross_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 0,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.05450656766657386,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.05450656766657386,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 7,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 42,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.3401444315431019,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 5,
+        "gross_savings_pct": {
+          "mean": 1.7857142857142854,
+          "std": 2.482534153247273e-16
+        },
+        "net_savings_pct": {
+          "mean": 1.5848214285714284,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 2000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 9.21016658346472,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.07392972266012414,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.12327433559137088,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 10,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 90,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.3705584587497528,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 10,
+        "gross_savings_pct": {
+          "mean": 2.737226277372263,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 2.655109489051095,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 7500,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 16.830571022175207,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.08440629605985918,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.1910432107678603,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.37834286050926275,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 15,
+        "gross_savings_pct": {
+          "mean": 3.6082474226804124,
+          "std": 4.965068306494546e-16
+        },
+        "net_savings_pct": {
+          "mean": 3.550257731958763,
+          "std": 4.965068306494546e-16
+        },
+        "tokens_saved": {
+          "mean": 14000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 21.070682987000442,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.10401954138224265,
+          "std": 1.5515838457795457e-17
+        },
+        "max_myelination": {
+          "mean": 0.22085444860249487,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.3831062519062283,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 20,
+        "gross_savings_pct": {
+          "mean": 4.251012145748987,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 4.205465587044534,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 21000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 24.760847833193502,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.11697221342696248,
+          "std": 1.5515838457795457e-17
+        },
+        "max_myelination": {
+          "mean": 0.24601017751192486,
+          "std": 3.1031676915590914e-17
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.37416208145826396,
+          "std": 0
+        }
+      }
+    ],
+    "spreading": {
+      "direct_pct": {
+        "mean": 100,
+        "std": 0
+      },
+      "hop1_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "hop2_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "hop3_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_direct": {
+        "mean": 0.9646932751870049,
+        "std": 4.073786524657106e-9
+      },
+      "avg_conf_hop1": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_hop2": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_hop3": {
+        "mean": 0,
+        "std": 0
+      }
+    },
+    "precision_recall": {
+      "precision": {
+        "mean": 0.5,
+        "std": 0
+      },
+      "recall": {
+        "mean": 0.8333333333333334,
+        "std": 0
+      },
+      "f1": {
+        "mean": 0.625,
+        "std": 0
+      }
+    },
+    "tool_predictions": {
+      "top1_accuracy": {
+        "mean": 0.3333333333333333,
+        "std": 0
+      },
+      "top3_accuracy": {
+        "mean": 1,
+        "std": 0
+      }
+    },
+    "avg_execution_time_ms": 506.6
+  },
+  {
+    "scenario_id": "B1",
+    "scenario_name": "Large Codebase (100+ files)",
+    "runs": 5,
+    "snapshots": [
+      {
+        "session_num": 1,
+        "gross_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 0,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.05450656766657386,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.05450656766657386,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 7,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 42,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.3401444315431019,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 5,
+        "gross_savings_pct": {
+          "mean": 2.6881720430107525,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 2.567204301075269,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 5000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 12.130624282439207,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.07499548446283498,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.1742910576899702,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 10,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 90,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.49020426230102954,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 10,
+        "gross_savings_pct": {
+          "mean": 3.636363636363636,
+          "std": 4.965068306494546e-16
+        },
+        "net_savings_pct": {
+          "mean": 3.568181818181819,
+          "std": 4.965068306494546e-16
+        },
+        "tokens_saved": {
+          "mean": 12000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 12.253918107782065,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.07456151166432097,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.23280662069795915,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 16,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 240,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.4536545824939909,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 15,
+        "gross_savings_pct": {
+          "mean": 4.651162790697675,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 4.607558139534883,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 24000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 12.209474984693362,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.07041210732928163,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.28701454361238227,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 24,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 552,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.4120565812425041,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 20,
+        "gross_savings_pct": {
+          "mean": 5.177993527508091,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 5.141585760517799,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 32000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 12.379622374101515,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.07004811541528176,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.31111159699424523,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 29,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 800,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.39213564694343483,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 25,
+        "gross_savings_pct": {
+          "mean": 5.739514348785872,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 5.714679911699779,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 52000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 13.056741381585985,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.073109679127441,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.3577905152190374,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 37,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 1202,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.3949109592146698,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 30,
+        "gross_savings_pct": {
+          "mean": 6.2745098039215685,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 6.252450980392157,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 64000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 15.470138677173182,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.07871074912762362,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.3810353718439838,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 37,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 1236,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.4007747681218755,
+          "std": 6.206335383118183e-17
+        }
+      }
+    ],
+    "spreading": {
+      "direct_pct": {
+        "mean": 100,
+        "std": 0
+      },
+      "hop1_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "hop2_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "hop3_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_direct": {
+        "mean": 0.9179395488601159,
+        "std": 6.043340100414008e-9
+      },
+      "avg_conf_hop1": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_hop2": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_hop3": {
+        "mean": 0,
+        "std": 0
+      }
+    },
+    "precision_recall": {
+      "precision": {
+        "mean": 0.2564102564102564,
+        "std": 0
+      },
+      "recall": {
+        "mean": 0.909090909090909,
+        "std": 1.2412670766236366e-16
+      },
+      "f1": {
+        "mean": 0.3999999999999999,
+        "std": 0
+      }
+    },
+    "tool_predictions": {
+      "top1_accuracy": {
+        "mean": 0.3333333333333333,
+        "std": 0
+      },
+      "top3_accuracy": {
+        "mean": 0.6666666666666666,
+        "std": 0
+      }
+    },
+    "avg_execution_time_ms": 1436.6
+  },
+  {
+    "scenario_id": "C1",
+    "scenario_name": "Error Debugging",
+    "runs": 5,
+    "snapshots": [
+      {
+        "session_num": 1,
+        "gross_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 0,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.02,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.02,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 5,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 20,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.32548664474007344,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 2,
+        "gross_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 0,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.04498004179068634,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.04498004179068634,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 8,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 56,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.3372701752736508,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 5,
+        "gross_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 0,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 4.422913104941097,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.04856156823784832,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.07755951414191577,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 10,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 90,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.3980806167604974,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 10,
+        "gross_savings_pct": {
+          "mean": 1.5384615384615385,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 1.3653846153846154,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 2000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 10.696649892253633,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.0544173977145618,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.12918938818743322,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 12,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 132,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.479129903696965,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 15,
+        "gross_savings_pct": {
+          "mean": 2,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 1.8875,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 4000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 14.790574436609665,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.06631977584038141,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.16511909372118144,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 12,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 132,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.5555406926197916,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 20,
+        "gross_savings_pct": {
+          "mean": 2.7777777777777777,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 2.6944444444444446,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 7500,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 18.31638047462369,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.0820185254801725,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.1937098753982773,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 12,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 132,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.602802704536388,
+          "std": 0
+        }
+      }
+    ],
+    "spreading": {
+      "direct_pct": {
+        "mean": 100,
+        "std": 0
+      },
+      "hop1_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "hop2_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "hop3_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_direct": {
+        "mean": 0.9256590398868028,
+        "std": 1.0654541207618808e-8
+      },
+      "avg_conf_hop1": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_hop2": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_hop3": {
+        "mean": 0,
+        "std": 0
+      }
+    },
+    "precision_recall": {
+      "precision": {
+        "mean": 0.4375,
+        "std": 0
+      },
+      "recall": {
+        "mean": 0.875,
+        "std": 0
+      },
+      "f1": {
+        "mean": 0.5833333333333334,
+        "std": 0
+      }
+    },
+    "tool_predictions": {
+      "top1_accuracy": {
+        "mean": 0.5,
+        "std": 0
+      },
+      "top3_accuracy": {
+        "mean": 0.5,
+        "std": 0
+      }
+    },
+    "avg_execution_time_ms": 359.8
+  },
+  {
+    "scenario_id": "D1",
+    "scenario_name": "Cross-Project Switching",
+    "runs": 5,
+    "snapshots": [
+      {
+        "session_num": 1,
+        "gross_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 0,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.02,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.02,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 4,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 12,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.33128917469705876,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 5,
+        "gross_savings_pct": {
+          "mean": 1.3888888888888888,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 1.0763888888888888,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 1000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 12.084193162497451,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.06564852843911737,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.10014719391780565,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 5,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 20,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.4109074416179971,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 10,
+        "gross_savings_pct": {
+          "mean": 2,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 1.85,
+          "std": 2.482534153247273e-16
+        },
+        "tokens_saved": {
+          "mean": 3000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 20.273823166280664,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.10642023863362508,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.15129457134562635,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 5,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 20,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.43138673340463346,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 15,
+        "gross_savings_pct": {
+          "mean": 2.7027027027027026,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 2.6013513513513513,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 6000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 17.278671271572556,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.08978037695290184,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.18323171010461214,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 8,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 56,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.3750768779023784,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 20,
+        "gross_savings_pct": {
+          "mean": 3.3333333333333335,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 3.2583333333333337,
+          "std": 4.965068306494546e-16
+        },
+        "tokens_saved": {
+          "mean": 10000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 19.77823088150093,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.10846719933256828,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.20996715395557414,
+          "std": 3.1031676915590914e-17
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 8,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 56,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.3800960960052115,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 25,
+        "gross_savings_pct": {
+          "mean": 3.7634408602150544,
+          "std": 4.965068306494546e-16
+        },
+        "net_savings_pct": {
+          "mean": 3.702956989247312,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 14000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 17.894275294467526,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.0930366681302298,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.2293677490131624,
+          "std": 3.1031676915590914e-17
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.3645633446257309,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 30,
+        "gross_savings_pct": {
+          "mean": 4,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 3.95,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 18000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 19.29879155815123,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.10451907338768733,
+          "std": 1.5515838457795457e-17
+        },
+        "max_myelination": {
+          "mean": 0.2471437571522333,
+          "std": 3.1031676915590914e-17
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.3676263611900142,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 35,
+        "gross_savings_pct": {
+          "mean": 4.406130268199234,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 4.363026819923372,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 23000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 21.293149590125132,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.11165788827282777,
+          "std": 1.5515838457795457e-17
+        },
+        "max_myelination": {
+          "mean": 0.26048187680104107,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.36520890044679577,
+          "std": 0
+        }
+      }
+    ],
+    "spreading": {
+      "direct_pct": {
+        "mean": 100,
+        "std": 0
+      },
+      "hop1_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "hop2_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "hop3_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_direct": {
+        "mean": 0.977917334239663,
+        "std": 8.18265840625751e-9
+      },
+      "avg_conf_hop1": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_hop2": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_hop3": {
+        "mean": 0,
+        "std": 0
+      }
+    },
+    "precision_recall": {
+      "precision": {
+        "mean": 0.3888888888888889,
+        "std": 0
+      },
+      "recall": {
+        "mean": 1,
+        "std": 0
+      },
+      "f1": {
+        "mean": 0.56,
+        "std": 0
+      }
+    },
+    "tool_predictions": {
+      "top1_accuracy": {
+        "mean": 0.5,
+        "std": 0
+      },
+      "top3_accuracy": {
+        "mean": 0.5,
+        "std": 0
+      }
+    },
+    "avg_execution_time_ms": 616.6
+  },
+  {
+    "scenario_id": "E1",
+    "scenario_name": "Long-Running Agent (100 sessions)",
+    "runs": 5,
+    "snapshots": [
+      {
+        "session_num": 1,
+        "gross_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 0,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.033844406452705034,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.033844406452705034,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 5,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 20,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.3384486053214497,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 5,
+        "gross_savings_pct": {
+          "mean": 1.5625,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 1.38671875,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 2000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 9.429189716226997,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.07441181311285615,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.12372098425716185,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.3904398293220883,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 10,
+        "gross_savings_pct": {
+          "mean": 2.6717557251908395,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 2.5858778625954195,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 7000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 15.636064990207961,
+          "std": 1.9860273225978185e-15
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.08260365038034578,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.17830256298545993,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.425491454382333,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 20,
+        "gross_savings_pct": {
+          "mean": 4.247104247104247,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 4.203667953667954,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 22000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 24.607077074083286,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.12210920416191033,
+          "std": 1.5515838457795457e-17
+        },
+        "max_myelination": {
+          "mean": 0.24521881589862488,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.42297735057461033,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 30,
+        "gross_savings_pct": {
+          "mean": 5.232558139534884,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 5.203488372093023,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 40500,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 30.818175515908415,
+          "std": 3.972054645195637e-15
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.1471445982550248,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.2854680075613608,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.42226207774417795,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 40,
+        "gross_savings_pct": {
+          "mean": 5.922330097087379,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 5.900485436893204,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 61000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 35.332936639,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.16582583715551125,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.3170263217153586,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.42180125167084315,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 50,
+        "gross_savings_pct": {
+          "mean": 6.4453125,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 6.427734374999998,
+          "std": 9.930136612989092e-16
+        },
+        "tokens_saved": {
+          "mean": 82500,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 38.348682561693174,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.18087149414741438,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.344975276708498,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.4264749619097423,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 60,
+        "gross_savings_pct": {
+          "mean": 7.10594315245478,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 7.091408268733849,
+          "std": 9.930136612989092e-16
+        },
+        "tokens_saved": {
+          "mean": 110000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 41.193052655157025,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.19396062490474486,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.3708746201819574,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.42199292798168725,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 70,
+        "gross_savings_pct": {
+          "mean": 7.488986784140968,
+          "std": 9.930136612989092e-16
+        },
+        "net_savings_pct": {
+          "mean": 7.476596916299559,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 136000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 43.44162267963721,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.20482914741746602,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.39385001667595876,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.4213338491954409,
+          "std": 6.206335383118183e-17
+        }
+      },
+      {
+        "session_num": 80,
+        "gross_savings_pct": {
+          "mean": 7.865440464666021,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 7.854549854791868,
+          "std": 9.930136612989092e-16
+        },
+        "tokens_saved": {
+          "mean": 162500,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 44.82252526565198,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.2132440565316685,
+          "std": 0
+        },
+        "max_myelination": {
+          "mean": 0.4129912993669513,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.42392197432044576,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 90,
+        "gross_savings_pct": {
+          "mean": 8.13953488372093,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 8.129844961240309,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 189000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 46.18317299678279,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.22033340668442483,
+          "std": 3.1031676915590914e-17
+        },
+        "max_myelination": {
+          "mean": 0.43000338160734924,
+          "std": 6.206335383118183e-17
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.42311876418733724,
+          "std": 0
+        }
+      },
+      {
+        "session_num": 100,
+        "gross_savings_pct": {
+          "mean": 8.398133748055987,
+          "std": 0
+        },
+        "net_savings_pct": {
+          "mean": 8.38938569206843,
+          "std": 0
+        },
+        "tokens_saved": {
+          "mean": 216000,
+          "std": 0
+        },
+        "recall_served_pct": {
+          "mean": 45.901647069021514,
+          "std": 0
+        },
+        "high_confidence_pct": {
+          "mean": 0,
+          "std": 0
+        },
+        "avg_myelination": {
+          "mean": 0.22501959077144465,
+          "std": 3.1031676915590914e-17
+        },
+        "max_myelination": {
+          "mean": 0.4440095713593264,
+          "std": 0
+        },
+        "superhighway_count": {
+          "mean": 0,
+          "std": 0
+        },
+        "neuron_count": {
+          "mean": 11,
+          "std": 0
+        },
+        "synapse_count": {
+          "mean": 110,
+          "std": 0
+        },
+        "avg_synapse_weight": {
+          "mean": 0.4247337474414315,
+          "std": 0
+        }
+      }
+    ],
+    "spreading": {
+      "direct_pct": {
+        "mean": 100,
+        "std": 0
+      },
+      "hop1_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "hop2_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "hop3_pct": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_direct": {
+        "mean": 0.9002734146434621,
+        "std": 4.254863587695903e-8
+      },
+      "avg_conf_hop1": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_hop2": {
+        "mean": 0,
+        "std": 0
+      },
+      "avg_conf_hop3": {
+        "mean": 0,
+        "std": 0
+      }
+    },
+    "precision_recall": {
+      "precision": {
+        "mean": 0.5333333333333333,
+        "std": 0
+      },
+      "recall": {
+        "mean": 0.888888888888889,
+        "std": 1.2412670766236366e-16
+      },
+      "f1": {
+        "mean": 0.6666666666666667,
+        "std": 0
+      }
+    },
+    "tool_predictions": {
+      "top1_accuracy": {
+        "mean": 0.3333333333333333,
+        "std": 0
+      },
+      "top3_accuracy": {
+        "mean": 1,
+        "std": 0
+      }
+    },
+    "avg_execution_time_ms": 6087.6
+  }
+]

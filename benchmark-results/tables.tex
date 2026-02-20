@@ -1,0 +1,537 @@
+% === Scenario A1: Standard Developer Workflow ===
+
+
+\begin{table}[H]
+\centering
+\caption{Token savings by session (Scenario A1: Standard Developer Workflow, N=5)}
+\label{tab:tokens-a1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Gross Savings} & \textbf{Net Savings} & \textbf{Tokens Saved} \\
+\midrule
+1 & 0.0\% & 0.0\% & 0 \\
+5 & 1.8 {\scriptsize$\pm$ 0.0}\% & 1.6\% & 2000 \\
+10 & 2.7\% & 2.7\% & 7500 \\
+15 & 3.9 {\scriptsize$\pm$ 0.0}\% & 3.8\% & 15000 \\
+20 & 4.5\% & 4.4\% & 22000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Myelination growth (Scenario A1, N=5)}
+\label{tab:myelin-a1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Avg Myelination} & \textbf{Max Myelination} & \textbf{Superhighways} \\
+\midrule
+1 & 0.055 & 0.055 & 0 \\
+5 & 0.075 & 0.125 {\scriptsize$\pm$ 0.000} & 0 \\
+10 & 0.086 & 0.196 & 0 \\
+15 & 0.108 & 0.231 {\scriptsize$\pm$ 0.000} & 0 \\
+20 & 0.124 {\scriptsize$\pm$ 0.000} & 0.261 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Network growth (Scenario A1, N=5)}
+\label{tab:network-a1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Neurons} & \textbf{Synapses} & \textbf{Avg Weight} \\
+\midrule
+1 & 7 & 42 & 0.340 \\
+5 & 10 & 90 & 0.428 \\
+10 & 11 & 110 & 0.546 \\
+15 & 11 & 110 & 0.599 \\
+20 & 11 & 110 & 0.631 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Spreading activation depth distribution (Scenario A1, N=5)}
+\label{tab:spreading-a1}
+\small
+\begin{tabular}{l c c}
+\toprule
+\textbf{Depth} & \textbf{\% of Results} & \textbf{Mean Confidence} \\
+\midrule
+Direct & 100.0\% & 0.965 {\scriptsize$\pm$ 0.000} \\
+Hop-1 & 0.0\% & 0.000 \\
+Hop-2 & 0.0\% & 0.000 \\
+Hop-3 & 0.0\% & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% Precision/Recall (Scenario A1):
+% Precision: 0.500, Recall: 0.833, F1: 0.625
+
+% Synapse weight analysis for SNAP saturation proof
+% See JSON output for weight_by_coacccess breakdown
+
+% === Scenario A2: Standard Workflow with Decay ===
+
+
+\begin{table}[H]
+\centering
+\caption{Token savings by session (Scenario A2: Standard Workflow with Decay, N=5)}
+\label{tab:tokens-a2}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Gross Savings} & \textbf{Net Savings} & \textbf{Tokens Saved} \\
+\midrule
+1 & 0.0\% & 0.0\% & 0 \\
+5 & 1.8 {\scriptsize$\pm$ 0.0}\% & 1.6\% & 2000 \\
+10 & 2.7\% & 2.7\% & 7500 \\
+15 & 3.6 {\scriptsize$\pm$ 0.0}\% & 3.6 {\scriptsize$\pm$ 0.0}\% & 14000 \\
+20 & 4.3\% & 4.2\% & 21000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Myelination growth (Scenario A2, N=5)}
+\label{tab:myelin-a2}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Avg Myelination} & \textbf{Max Myelination} & \textbf{Superhighways} \\
+\midrule
+1 & 0.055 & 0.055 & 0 \\
+5 & 0.074 & 0.123 & 0 \\
+10 & 0.084 & 0.191 & 0 \\
+15 & 0.104 {\scriptsize$\pm$ 0.000} & 0.221 & 0 \\
+20 & 0.117 {\scriptsize$\pm$ 0.000} & 0.246 {\scriptsize$\pm$ 0.000} & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Network growth (Scenario A2, N=5)}
+\label{tab:network-a2}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Neurons} & \textbf{Synapses} & \textbf{Avg Weight} \\
+\midrule
+1 & 7 & 42 & 0.340 \\
+5 & 10 & 90 & 0.371 \\
+10 & 11 & 110 & 0.378 \\
+15 & 11 & 110 & 0.383 \\
+20 & 11 & 110 & 0.374 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Spreading activation depth distribution (Scenario A2, N=5)}
+\label{tab:spreading-a2}
+\small
+\begin{tabular}{l c c}
+\toprule
+\textbf{Depth} & \textbf{\% of Results} & \textbf{Mean Confidence} \\
+\midrule
+Direct & 100.0\% & 0.965 {\scriptsize$\pm$ 0.000} \\
+Hop-1 & 0.0\% & 0.000 \\
+Hop-2 & 0.0\% & 0.000 \\
+Hop-3 & 0.0\% & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% Precision/Recall (Scenario A2):
+% Precision: 0.500, Recall: 0.833, F1: 0.625
+
+% Synapse weight analysis for SNAP saturation proof
+% See JSON output for weight_by_coacccess breakdown
+
+% === Scenario B1: Large Codebase (100+ files) ===
+
+
+\begin{table}[H]
+\centering
+\caption{Token savings by session (Scenario B1: Large Codebase (100+ files), N=5)}
+\label{tab:tokens-b1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Gross Savings} & \textbf{Net Savings} & \textbf{Tokens Saved} \\
+\midrule
+1 & 0.0\% & 0.0\% & 0 \\
+5 & 2.7\% & 2.6\% & 5000 \\
+10 & 3.6 {\scriptsize$\pm$ 0.0}\% & 3.6 {\scriptsize$\pm$ 0.0}\% & 12000 \\
+15 & 4.7\% & 4.6\% & 24000 \\
+20 & 5.2\% & 5.1\% & 32000 \\
+25 & 5.7\% & 5.7\% & 52000 \\
+30 & 6.3\% & 6.3\% & 64000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Myelination growth (Scenario B1, N=5)}
+\label{tab:myelin-b1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Avg Myelination} & \textbf{Max Myelination} & \textbf{Superhighways} \\
+\midrule
+1 & 0.055 & 0.055 & 0 \\
+5 & 0.075 & 0.174 & 0 \\
+10 & 0.075 & 0.233 & 0 \\
+15 & 0.070 & 0.287 & 0 \\
+20 & 0.070 & 0.311 & 0 \\
+25 & 0.073 & 0.358 & 0 \\
+30 & 0.079 & 0.381 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Network growth (Scenario B1, N=5)}
+\label{tab:network-b1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Neurons} & \textbf{Synapses} & \textbf{Avg Weight} \\
+\midrule
+1 & 7 & 42 & 0.340 \\
+5 & 10 & 90 & 0.490 \\
+10 & 16 & 240 & 0.454 \\
+15 & 24 & 552 & 0.412 \\
+20 & 29 & 800 & 0.392 \\
+25 & 37 & 1202 & 0.395 \\
+30 & 37 & 1236 & 0.401 {\scriptsize$\pm$ 0.000} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Spreading activation depth distribution (Scenario B1, N=5)}
+\label{tab:spreading-b1}
+\small
+\begin{tabular}{l c c}
+\toprule
+\textbf{Depth} & \textbf{\% of Results} & \textbf{Mean Confidence} \\
+\midrule
+Direct & 100.0\% & 0.918 {\scriptsize$\pm$ 0.000} \\
+Hop-1 & 0.0\% & 0.000 \\
+Hop-2 & 0.0\% & 0.000 \\
+Hop-3 & 0.0\% & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% Precision/Recall (Scenario B1):
+% Precision: 0.256, Recall: 0.909 {\scriptsize$\pm$ 0.000}, F1: 0.400
+
+% Synapse weight analysis for SNAP saturation proof
+% See JSON output for weight_by_coacccess breakdown
+
+% === Scenario C1: Error Debugging ===
+
+
+\begin{table}[H]
+\centering
+\caption{Token savings by session (Scenario C1: Error Debugging, N=5)}
+\label{tab:tokens-c1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Gross Savings} & \textbf{Net Savings} & \textbf{Tokens Saved} \\
+\midrule
+1 & 0.0\% & 0.0\% & 0 \\
+2 & 0.0\% & 0.0\% & 0 \\
+5 & 0.0\% & 0.0\% & 0 \\
+10 & 1.5\% & 1.4\% & 2000 \\
+15 & 2.0\% & 1.9\% & 4000 \\
+20 & 2.8\% & 2.7\% & 7500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Myelination growth (Scenario C1, N=5)}
+\label{tab:myelin-c1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Avg Myelination} & \textbf{Max Myelination} & \textbf{Superhighways} \\
+\midrule
+1 & 0.020 & 0.020 & 0 \\
+2 & 0.045 & 0.045 & 0 \\
+5 & 0.049 & 0.078 & 0 \\
+10 & 0.054 & 0.129 & 0 \\
+15 & 0.066 & 0.165 & 0 \\
+20 & 0.082 & 0.194 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Network growth (Scenario C1, N=5)}
+\label{tab:network-c1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Neurons} & \textbf{Synapses} & \textbf{Avg Weight} \\
+\midrule
+1 & 5 & 20 & 0.325 \\
+2 & 8 & 56 & 0.337 \\
+5 & 10 & 90 & 0.398 \\
+10 & 12 & 132 & 0.479 \\
+15 & 12 & 132 & 0.556 \\
+20 & 12 & 132 & 0.603 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Spreading activation depth distribution (Scenario C1, N=5)}
+\label{tab:spreading-c1}
+\small
+\begin{tabular}{l c c}
+\toprule
+\textbf{Depth} & \textbf{\% of Results} & \textbf{Mean Confidence} \\
+\midrule
+Direct & 100.0\% & 0.926 {\scriptsize$\pm$ 0.000} \\
+Hop-1 & 0.0\% & 0.000 \\
+Hop-2 & 0.0\% & 0.000 \\
+Hop-3 & 0.0\% & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% Precision/Recall (Scenario C1):
+% Precision: 0.438, Recall: 0.875, F1: 0.583
+
+% Synapse weight analysis for SNAP saturation proof
+% See JSON output for weight_by_coacccess breakdown
+
+% === Scenario D1: Cross-Project Switching ===
+
+
+\begin{table}[H]
+\centering
+\caption{Token savings by session (Scenario D1: Cross-Project Switching, N=5)}
+\label{tab:tokens-d1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Gross Savings} & \textbf{Net Savings} & \textbf{Tokens Saved} \\
+\midrule
+1 & 0.0\% & 0.0\% & 0 \\
+5 & 1.4\% & 1.1\% & 1000 \\
+10 & 2.0\% & 1.9 {\scriptsize$\pm$ 0.0}\% & 3000 \\
+15 & 2.7\% & 2.6\% & 6000 \\
+20 & 3.3\% & 3.3 {\scriptsize$\pm$ 0.0}\% & 10000 \\
+25 & 3.8 {\scriptsize$\pm$ 0.0}\% & 3.7\% & 14000 \\
+30 & 4.0\% & 4.0\% & 18000 \\
+35 & 4.4\% & 4.4\% & 23000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Myelination growth (Scenario D1, N=5)}
+\label{tab:myelin-d1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Avg Myelination} & \textbf{Max Myelination} & \textbf{Superhighways} \\
+\midrule
+1 & 0.020 & 0.020 & 0 \\
+5 & 0.066 & 0.100 & 0 \\
+10 & 0.106 & 0.151 & 0 \\
+15 & 0.090 & 0.183 & 0 \\
+20 & 0.108 & 0.210 {\scriptsize$\pm$ 0.000} & 0 \\
+25 & 0.093 & 0.229 {\scriptsize$\pm$ 0.000} & 0 \\
+30 & 0.105 {\scriptsize$\pm$ 0.000} & 0.247 {\scriptsize$\pm$ 0.000} & 0 \\
+35 & 0.112 {\scriptsize$\pm$ 0.000} & 0.260 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Network growth (Scenario D1, N=5)}
+\label{tab:network-d1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Neurons} & \textbf{Synapses} & \textbf{Avg Weight} \\
+\midrule
+1 & 4 & 12 & 0.331 \\
+5 & 5 & 20 & 0.411 \\
+10 & 5 & 20 & 0.431 \\
+15 & 8 & 56 & 0.375 \\
+20 & 8 & 56 & 0.380 \\
+25 & 11 & 110 & 0.365 \\
+30 & 11 & 110 & 0.368 \\
+35 & 11 & 110 & 0.365 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Spreading activation depth distribution (Scenario D1, N=5)}
+\label{tab:spreading-d1}
+\small
+\begin{tabular}{l c c}
+\toprule
+\textbf{Depth} & \textbf{\% of Results} & \textbf{Mean Confidence} \\
+\midrule
+Direct & 100.0\% & 0.978 {\scriptsize$\pm$ 0.000} \\
+Hop-1 & 0.0\% & 0.000 \\
+Hop-2 & 0.0\% & 0.000 \\
+Hop-3 & 0.0\% & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% Precision/Recall (Scenario D1):
+% Precision: 0.389, Recall: 1.000, F1: 0.560
+
+% Synapse weight analysis for SNAP saturation proof
+% See JSON output for weight_by_coacccess breakdown
+
+% === Scenario E1: Long-Running Agent (100 sessions) ===
+
+
+\begin{table}[H]
+\centering
+\caption{Token savings by session (Scenario E1: Long-Running Agent (100 sessions), N=5)}
+\label{tab:tokens-e1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Gross Savings} & \textbf{Net Savings} & \textbf{Tokens Saved} \\
+\midrule
+1 & 0.0\% & 0.0\% & 0 \\
+5 & 1.6\% & 1.4\% & 2000 \\
+10 & 2.7\% & 2.6\% & 7000 \\
+20 & 4.2\% & 4.2\% & 22000 \\
+30 & 5.2\% & 5.2\% & 40500 \\
+40 & 5.9\% & 5.9\% & 61000 \\
+50 & 6.4\% & 6.4 {\scriptsize$\pm$ 0.0}\% & 82500 \\
+60 & 7.1\% & 7.1 {\scriptsize$\pm$ 0.0}\% & 110000 \\
+70 & 7.5 {\scriptsize$\pm$ 0.0}\% & 7.5\% & 136000 \\
+80 & 7.9\% & 7.9 {\scriptsize$\pm$ 0.0}\% & 162500 \\
+90 & 8.1\% & 8.1\% & 189000 \\
+100 & 8.4\% & 8.4\% & 216000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Myelination growth (Scenario E1, N=5)}
+\label{tab:myelin-e1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Avg Myelination} & \textbf{Max Myelination} & \textbf{Superhighways} \\
+\midrule
+1 & 0.034 & 0.034 & 0 \\
+5 & 0.074 & 0.124 & 0 \\
+10 & 0.083 & 0.178 & 0 \\
+20 & 0.122 {\scriptsize$\pm$ 0.000} & 0.245 & 0 \\
+30 & 0.147 & 0.285 & 0 \\
+40 & 0.166 & 0.317 & 0 \\
+50 & 0.181 & 0.345 & 0 \\
+60 & 0.194 & 0.371 & 0 \\
+70 & 0.205 & 0.394 & 0 \\
+80 & 0.213 & 0.413 & 0 \\
+90 & 0.220 {\scriptsize$\pm$ 0.000} & 0.430 {\scriptsize$\pm$ 0.000} & 0 \\
+100 & 0.225 {\scriptsize$\pm$ 0.000} & 0.444 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Network growth (Scenario E1, N=5)}
+\label{tab:network-e1}
+\small
+\begin{tabular}{r c c c}
+\toprule
+\textbf{Session} & \textbf{Neurons} & \textbf{Synapses} & \textbf{Avg Weight} \\
+\midrule
+1 & 5 & 20 & 0.338 \\
+5 & 11 & 110 & 0.390 \\
+10 & 11 & 110 & 0.425 \\
+20 & 11 & 110 & 0.423 \\
+30 & 11 & 110 & 0.422 \\
+40 & 11 & 110 & 0.422 \\
+50 & 11 & 110 & 0.426 \\
+60 & 11 & 110 & 0.422 \\
+70 & 11 & 110 & 0.421 {\scriptsize$\pm$ 0.000} \\
+80 & 11 & 110 & 0.424 \\
+90 & 11 & 110 & 0.423 \\
+100 & 11 & 110 & 0.425 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Spreading activation depth distribution (Scenario E1, N=5)}
+\label{tab:spreading-e1}
+\small
+\begin{tabular}{l c c}
+\toprule
+\textbf{Depth} & \textbf{\% of Results} & \textbf{Mean Confidence} \\
+\midrule
+Direct & 100.0\% & 0.900 {\scriptsize$\pm$ 0.000} \\
+Hop-1 & 0.0\% & 0.000 \\
+Hop-2 & 0.0\% & 0.000 \\
+Hop-3 & 0.0\% & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% Precision/Recall (Scenario E1):
+% Precision: 0.533, Recall: 0.889 {\scriptsize$\pm$ 0.000}, F1: 0.667
+
+% Synapse weight analysis for SNAP saturation proof
+% See JSON output for weight_by_coacccess breakdown
+
+\begin{table}[H]
+\centering
+\caption{Cross-scenario comparison (final checkpoint, N=5 runs each)}
+\label{tab:cross-scenario}
+\small
+\begin{tabular}{l c c c c c}
+\toprule
+\textbf{Scenario} & \textbf{Sessions} & \textbf{Gross Savings} & \textbf{Net Savings} & \textbf{Precision} & \textbf{F1} \\
+\midrule
+A1: Standard Developer Workfl & 20 & 4.5\% & 4.4\% & 0.50 & 0.63 \\
+A2: Standard Workflow with De & 20 & 4.3\% & 4.2\% & 0.50 & 0.63 \\
+B1: Large Codebase (100+ file & 30 & 6.3\% & 6.3\% & 0.26 & 0.40 \\
+C1: Error Debugging & 20 & 2.8\% & 2.7\% & 0.44 & 0.58 \\
+D1: Cross-Project Switching & 35 & 4.4\% & 4.4\% & 0.39 & 0.56 \\
+E1: Long-Running Agent (100 s & 100 & 8.4\% & 8.4\% & 0.53 & 0.67 \\
+\bottomrule
+\end{tabular}
+\end{table}

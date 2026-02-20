@@ -1,0 +1,21 @@
+{
+  "name": "pi-brainbox",
+  "version": "0.1.0",
+  "description": "Hebbian memory system for Pi coding agent — learns file access patterns, predicts what you'll need next",
+  "main": "src/index.ts",
+  "pi": {
+    "extensions": ["src/index.ts"]
+  },
+  "keywords": ["pi-package", "brainbox", "hebbian", "memory", "coding-agent"],
+  "author": "thebasedcapital",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "@sinclair/typebox": "^0.34.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "typescript": "^5.7.0",
+    "@mariozechner/pi-coding-agent": "*"
+  }
+}

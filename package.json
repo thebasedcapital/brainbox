@@ -1,6 +1,6 @@
 {
   "name": "brainbox-hebbian",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Hebbian memory system for AI agents — learns access patterns, builds neural pathways, saves tokens",
   "type": "module",
   "main": "dist/index.js",
