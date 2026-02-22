@@ -4,9 +4,18 @@
   <img src="assets/brainbox-hero.png" alt="BrainBox — AI with muscle memory" width="800" />
 </p>
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/brainbox-hebbian"><img src="https://img.shields.io/npm/v/brainbox-hebbian.svg" alt="npm version" /></a>
+  <a href="https://github.com/thebasedcapital/brainbox/stargazers"><img src="https://img.shields.io/github/stars/thebasedcapital/brainbox?style=social" alt="GitHub stars" /></a>
+  <a href="https://github.com/thebasedcapital/brainbox/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" /></a>
+</p>
+
 Hebbian memory for AI coding agents. Learns which files you access together, which errors lead to which fixes, and which tool chains you use most — then recalls them instantly.
 
 **Not a vector database. Not RAG. Procedural memory.**
+
+> If BrainBox saved you tokens, [give it a star](https://github.com/thebasedcapital/brainbox) — it helps others find it.
+> Built by [@thebasedcapital](https://x.com/thebasedcapital)
 
 ```
 Session 1:  agent greps for auth.ts, reads it, edits it (2000 tokens)
