@@ -1,0 +1,20 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.thebasedcapital/brainbox",
+  "description": "Hebbian memory system for AI agents. Learns file access patterns, builds neural pathways through spreading activation, predicts next tools and files, saves tokens.",
+  "repository": {
+    "url": "https://github.com/thebasedcapital/brainbox",
+    "source": "github"
+  },
+  "version": "0.1.6",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "brainbox-hebbian",
+      "version": "0.1.6",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
