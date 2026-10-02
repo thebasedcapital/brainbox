@@ -10,3 +10,4 @@ dist/
 *.out
 *.log
 BRAINBOX-SESSION.md
+.DS_Store
