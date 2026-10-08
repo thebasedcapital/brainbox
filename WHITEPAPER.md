@@ -149,7 +149,7 @@ Each neuron maintains:
 - **Access count:** Total number of times this neuron has been activated.
 - **Contexts:** JSON array of query strings that triggered this neuron, enabling keyword-based recall.
 
-**Synapses** are weighted, bidirectional connections between neurons:
+**Synapses** are directed weighted connections. Co-access learning applies asymmetric STDP credit (default reverse factor 0.5); explicit seed/reconciliation paths preserve direction-specific weights.
 - **Weight** (0–1): Hebbian strength. Increases when neurons fire together, using BCM diminishing returns. Decays multiplicatively when unused.
 - **Co-access count:** How many times the connected neurons were activated within the co-access window.
 
@@ -208,7 +208,7 @@ Key properties:
 - **Positional proximity weighting:** Files accessed more recently in the sequential window form stronger synapses. Unlike temporal proximity, this captures deep work patterns where an agent spends minutes on related files.
 - **Window eviction:** Accessing 26+ unique files naturally pushes the oldest out, providing automatic scope limiting without arbitrary time cutoffs.
 - **Re-access deduplication:** Re-accessing a file moves it to the most recent position without duplicating it in the window.
-- **Bidirectional synapses:** If A and B fire together, both A→B and B→A are strengthened.
+- **Asymmetric STDP:** Sequential co-access strengthens both directed edges, but the later→earlier edge receives the reverse-factor-scaled update (default `stdpReverseFactor` 0.5), while the earlier→later edge receives the full update. Error-involved learning retains its configured boost.
 - **Error learning boost:** Synapses involving error neurons strengthen at 2x rate because errors are high-signal events in debugging workflows.
 
 ### 3.3 Recall Algorithm: Multi-Hop Spreading Activation
@@ -219,26 +219,15 @@ Recall uses three-phase spreading activation inspired by Collins & Loftus (1975)
 Search neuron contexts for query keywords. Tool neurons (`type = "tool"`) are excluded from all result phases — they participate only as bridges during spreading activation.
 
 **Phase 1b — Vector Similarity (optional, requires embeddings):**
-If neurons have embedding vectors (384-dimensional, all-MiniLM-L6-v2), compute cosine similarity between the query embedding and all embedded neurons. Neurons with similarity > 0.25 are included as candidates even without keyword overlap. This enables semantic recall: "socket connection" → `websocket.ts`, "sign in password" → `login.ts`.
+If neurons have embedding vectors under the active profile — default jina-code (`jinaai/jina-embeddings-v2-base-code`, q8, 768d); `BRAINBOX_EMBED_MODEL` supports `minilm|jina-code|gemma|gemma-q4`, and all-MiniLM-L6-v2 remains a named optional profile (see § [v0.2: Research-driven upgrades — Hybrid code retrieval](#v02-research-driven-upgrades)) — compute cosine similarity between the query embedding and all embedded neurons. Neurons with similarity > 0.25 are included as candidates even without keyword overlap. This enables semantic recall: "socket connection" → `websocket.ts`, "sign in password" → `login.ts`.
 
-Embeddings are computed lazily via `embedNeuron()` (path + contexts → single text → 384-dim vector), stored as BLOBs in the neurons table (1,536 bytes per neuron). The `embed` CLI command batch-embeds all neurons (~2,276 neurons in 12s on Apple Silicon).
+Embeddings are computed lazily via `embedNeuron()` (path + contexts → single text → one vector sized by the active profile: 384 dims for `minilm`, 768 for `jina-code`/`gemma`), stored as BLOBs in the neurons table. The `embed` CLI command batch-embeds all neurons (~2,276 neurons in 12s on Apple Silicon).
 
-**Confidence Scoring — Multiplicative Formula (v1.0.0):**
+**Confidence Scoring — context-gated, then rank fusion (current):**
 
-The original additive formula (`50% context + 20% myelination + 20% recency + 10% path`) allowed high-myelination neurons with weak semantic match to outrank relevant results. A file with context score 0.2 and myelination 0.95 scored higher than a perfect match at 0.8 with zero myelination.
+Direct confidence is context-gated and combines capped myelination, base-level (or fallback linear) recency, path keyword matching, and filename-stem handling. The final candidate ordering is rank fusion across enabled channels; see [§ v0.2: Research-driven upgrades — Ranking](#v02-research-driven-upgrades) for the current base-level, recurrence and fusion definitions.
 
-The v1.0.0 formula makes context a **gate** — if semantic similarity is zero, the result is zero regardless of how frequently the file was accessed:
-
-```
-contextScore = cosine_similarity(query_embedding, neuron_embedding)    // 0-1
-myelinBonus  = min(myelination, 0.5) * 0.3     // soft cap at 0.5
-recencyBonus = max(0, 1 - age_hours/168) * 0.2  // linear decay, 1 week
-pathBonus    = keyword_match_ratio * 0.2         // path contains query words
-
-confidence = contextScore × (1 + myelinBonus + recencyBonus + pathBonus)
-```
-
-This is, to our knowledge, a novel contribution — standard approaches in ACT-R, SYNAPSE, and MAGMA all use additive scoring with different weights. Framing myelination and recency as multiplicative bonuses rather than additive terms ensures that behavioral history *amplifies* relevance but cannot *substitute* for it.
+Historically, v1.0.0 computed `confidence = contextScore × (1 + myelinBonus + recencyBonus + pathBonus)` with a linear one-week recency decay and a 0.2 path bonus — that equation is a historical design note, not the current implementation.
 
 **Myelination soft cap:** Myelination is capped at 0.5 in the confidence formula (not in the stored value). A superhighway at 95% myelination contributes the same confidence boost as one at 50%. This prevents tool-adjacent files from inflating their scores purely through association frequency.
 
@@ -449,7 +438,7 @@ All learning dynamics are verified in isolated in-memory SQLite databases with s
 | Test | What It Verifies | Result |
 |------|-----------------|--------|
 | 1. Myelination increments | Sigmoid-like: 0% → 2% → 3.96% → 5.88% (not linear) | PASS |
-| 2. Synapse formation | Bidirectional synapses form on co-access within sequential window | PASS |
+| 2. Synapse formation | Directional synapses form in the sequential window; default STDP scales the reverse (later→earlier) credit by 0.5 | PASS |
 | 3. Window eviction | Sequential window correctly evicts at size 10 | PASS |
 | 4. Synapse strengthening | 5x co-access → 0.382 weight (BCM diminishing returns) | PASS |
 | 5. Confidence gating | Relevant queries pass 0.4 gate; irrelevant ones rejected | PASS |
@@ -476,7 +465,7 @@ Additionally, 17 raw SQL verification checks confirm engine values match hand ca
 | + Lateral inhibition only | 2/15 (13%) | No improvement |
 | **All three fixes** | **10/15 (67%)** | **5x improvement over baseline** |
 
-**Remaining misses (5/15):** All embedding quality issues — MiniLM-L6-v2 returns similar cosine scores (0.4-0.6) for semantically distinct queries. Example: "runClaude session loop" returns `session_hook_forwarder.cjs` (0.53) instead of `runClaude.ts` (0.42). Both contain "session" in their path/context. Upgrading the embedding model would likely resolve these.
+**Remaining misses (5/15) — legacy benchmark:** All embedding quality issues in that historical evaluation — the embedding profile used in that historical evaluation (all-MiniLM-L6-v2) returns similar cosine scores (0.4-0.6) for semantically distinct queries. Example: "runClaude session loop" returns `session_hook_forwarder.cjs` (0.53) instead of `runClaude.ts` (0.42). Both contain "session" in their path/context. Upgrading the embedding model would likely resolve these.
 
 **Key finding:** The fan effect alone accounts for 70% of the total improvement (2→9 out of 2→10). This validates Anderson's (1983) ACT-R theory — inverse degree normalization is the single most important mechanism for preventing hub domination in spreading activation networks.
 
@@ -623,7 +612,7 @@ Mem0 is the 800-pound gorilla of agent memory (47k+ GitHub stars). Here is a dir
 |-----------|------|----------|--------|
 | Learning cost | ~500 tokens per memory | 0 tokens, <1ms SQLite | **BrainBox** (infinitely cheaper) |
 | Retrieval latency | 50-300ms | <5ms | **BrainBox** (10-60x faster) |
-| Strengthening | None — flat relevance | Hebbian — gets stronger with use | **BrainBox** |
+| Strengthening | None — static relevance scores (historical baseline) | Learned channels strengthen with use — Hebbian co-access plus rank fusion over lexical, recency, frequency and base-level channels | **BrainBox** |
 | Decay | Manual/TTL deletion | Automatic Ebbinghaus curves | **BrainBox** (biologically grounded) |
 | Transitive discovery | Embedding similarity only | Multi-hop graph traversal | **BrainBox** (finds indirect associations) |
 | File co-access patterns | Cannot learn | Core capability | **BrainBox** |
@@ -723,7 +712,7 @@ BrainBox achieves all fifteen L3 behavioral capabilities — no competitor offer
 - **Stale paths:** Files that move or are renamed break synaptic connections. No automatic path migration exists.
 - ~~**Finite hop depth:**~~ While spreading activation is limited to 3 hops, this is configurable and confidence decay is self-limiting — most useful results are within 2 hops.
 - **No LTD:** Long-term depression (anti-Hebbian weakening when expected co-access doesn't occur) is not implemented. Only passive decay reduces weights.
-- ~~**Keyword confidence:**~~ **RESOLVED in v0.7.0:** Embedding-based confidence via all-MiniLM-L6-v2 (384-dim). NeuroVault deployment validates keyword-only fallback with adjusted weights.
+- ~~**Keyword confidence:**~~ **RESOLVED:** Embedding-based confidence. The default profile is jina-code (`jinaai/jina-embeddings-v2-base-code`, q8, 768d); `BRAINBOX_EMBED_MODEL` supports `minilm|jina-code|gemma|gemma-q4`. See § [v0.2: Research-driven upgrades — Hybrid code retrieval](#v02-research-driven-upgrades) for hook deadline, cache and Gemma terms. NeuroVault deployment validates keyword-only fallback with adjusted weights.
 - **No metaplasticity:** Learning rate is fixed regardless of history. BCM theory prescribes a sliding threshold that adjusts based on recent activity.
 - **No conversational learning:** BrainBox observes tool-call behavior exclusively. It cannot extract facts, preferences, or entities from conversation content — capabilities where L2 systems (Mem0, Zep, SuperMemory) excel. This is an intentional architectural boundary: conversational extraction requires LLM calls, which would violate the zero-cost learning principle. NeuroVault's regex-based fact capture (Section 8.4) partially addresses this for explicit trigger statements ("remember X," "I prefer Y") but does not match LLM-based extraction coverage for implicit facts, entity relationships, or temporal reasoning. BrainBox and L2 systems are architecturally complementary and can run simultaneously without conflict.
 - ~~**Deep work blind spot:**~~ **RESOLVED in v0.8.0:** Sequential window co-access model replaces 60-second temporal window. Files accessed in sequence form synapses regardless of time elapsed.
@@ -996,9 +985,9 @@ After analyzing Supermemory's hook-based memory architecture (Section 2.3) and A
 
 ### 11.6 Anti-Recall Escalation
 
-**Problem:** The v4.0 anti-recall (Section 10.3 roadmap) applies a flat 10% decay regardless of how many times a file has been ignored. A chronically irrelevant suggestion receives the same treatment as a one-time miss.
+**Problem:** Earlier anti-recall applied a flat 10% decay regardless of how many times a file had been ignored. Current anti-recall attributes ignored injections to their source edge where available and escalates decay by consecutive ignore streak, with a 0.1 weight floor; see [§ v0.2: Research-driven upgrades — Ranking](#v02-research-driven-upgrades).
 
-**Solution:** `applyAntiRecallEscalated()` tracks consecutive ignore streaks per neuron via the `ignore_streak` column. The effective decay escalates: `1 - (1 - 0.1)^streak`. After 1 ignore: 10%. After 3: 27%. After 5: 41%. The floor of 0.1 prevents permanent forgetting. A single use resets the streak to 0 and recovers the synapse — matching retrieval-induced forgetting dynamics (Anderson, Bjork & Bjork, 1994). The adapter hook now uses the escalated version instead of flat anti-recall.
+**Solution:** `applyAntiRecallEscalated()` tracks consecutive ignore streaks per neuron via the `ignore_streak` column. The effective decay is `1-(1-0.1)^streak`; opened files reset the streak, and affected weights are floored at 0.1. A single use resets the streak to 0 and recovers the synapse — matching retrieval-induced forgetting dynamics (Anderson, Bjork & Bjork, 1994). The adapter hook now uses the escalated version instead of flat anti-recall.
 
 **Schema:** `ALTER TABLE neurons ADD COLUMN ignore_streak INTEGER DEFAULT 0`
 
@@ -1022,7 +1011,7 @@ ALTER TABLE neurons ADD COLUMN ignore_streak INTEGER DEFAULT 0;
 
 ### 11.8 Evaluation
 
-All 59 tests pass (40 existing + 19 new) in sandbox `:memory:` databases:
+Test harness: `src/testkit.ts` auto-discovers `src/tests/*.test.ts`; run `npx tsx src/test.ts "<filter>"` to select tests. Do not state a test total without a fresh run. The feature coverage below ran in sandbox `:memory:` databases:
 
 | Feature | Tests | Status |
 |---------|-------|--------|
@@ -1170,7 +1159,7 @@ BrainBox is open-source under the MIT license. Installation guides, integration 
 
 ## Appendix D: Verification Results
 
-All 59 tests pass: 10 core mathematical verification tests (updated for sequential window in v0.8.0), 17 raw SQL cross-checks, 19 v5.0 feature tests (session intent, hub detection, staleness, project tagging, conversation capture, staleness alerts, anti-recall escalation), and 13 additional integration tests. Core tests independently verified by GLM-5 (Fireworks AI) with zero discrepancies.
+Test harness: `src/testkit.ts` auto-discovers `src/tests/*.test.ts`; run `npx tsx src/test.ts "<filter>"` to select tests. Do not state a test total without a fresh run. Core tests independently verified by GLM-5 (Fireworks AI) with zero discrepancies.
 
 ```
 === Core Verification (10/10) ===
@@ -1218,8 +1207,87 @@ Key differences when deploying BrainBox to a non-Claude Code agent platform:
 | Tool results | Plain strings | `.content[].text` objects |
 | Context injection | `UserPromptSubmit` hook → stdout | `before_agent_start` → `prependContext` |
 | Learning trigger | `PostToolUse` hook | `after_tool_call` lifecycle hook |
-| Embeddings | all-MiniLM-L6-v2 (384d) | Not available — keyword-only |
+| Embeddings | BrainBox core default: jina-code (768d; selectable profile via `BRAINBOX_EMBED_MODEL`) | Availability/configuration is deployment-specific |
 | Confidence gate | 0.4 | 0.3 |
 | Keyword weight | 40% | 50% |
 | Fact capture | Not implemented | `agent_end` hook → semantic neurons |
+
+---
+
+## v0.2: Research-driven upgrades
+
+BrainBox v0.2 replaces the paper's single hand-described confidence ranking with independently ablatable ranking channels, records whether injected recall was used, adds hybrid code-snippet retrieval and structural priors, compiles repeated work into evidence-backed procedures, and provides chronological replay evaluation. The formulas below describe the implemented behavior.
+
+### Ranking
+
+`EngineOptions` exposes the ranking and learning mechanisms for ablation. Defaults enable base-level activation (`baseLevelActivation`, decay `baseLevelDecay = 0.5`), temporal candidates (`temporalCandidates`), lexical FTS (`lexicalFts`), asymmetric STDP (`stdpReverseFactor = 0.5`), tool n-grams (`toolNgrams`), targeted anti-recall (`targetedAntiRecall`), embeddings (`embeddings`) and rank fusion (`rankFusion`). Degree-normalized spread (`degreeNormalizedSpread`) is an option but defaults off. Main rank-fusion channel weights default to lexical 4 (`lexicalWeight`), recency 1 (`recencyWeight`; 30 via `sessionRecencyWeight` when a topic switch away from the session's recent files is detected), frequency 2 (`frequencyWeight`), base level 0.5 (`baseLevelWeight`), recurrence 0.2 (`recurrenceWeight`) and Hebbian 4 (`hebbianWeight`); tool ranking weights are n-gram 1 (`toolNgramWeight`), frequency 0.5 (`toolFrequencyWeight`) and recency 0 (`toolRecencyWeight`). These are ranking controls, not a claim that all confidence values use one shared score.
+
+**ACT-R base-level activation.** For neuron *i*, over its most recent 50 recorded access times, the engine computes
+
+`B_i = ln( Σ_j max(1/60, Δt_ij)^(-d) )`,
+
+where `Δt_ij` is elapsed time in hours and `d = baseLevelDecay` (default 0.5). Its bounded score is `σ(B_i) = 1/(1+exp(-B_i))`. If there are no access-log observations, a seeded neuron's `last_accessed` timestamp supplies a single fallback observation. With base-level activation disabled, the fallback score is a linear one-week recency decay.
+
+**Temporal candidate blend.** Recent file accesses seed recurrence candidates. For a candidate *i*, recurrence is `min(1, recurrence_i + 0.1 ln(1 + repeats_i))`; popularity is `ln(1 + access_count_i) / maxPopularity / sqrt(max(1, degree_i))`, with `maxPopularity` computed over returned candidates and floored at 1. The candidate confidence is
+
+`T_i = min(0.65, 0.7·recurrence_i + 0.1·popularity_i + 0.2·σ(B_i))`.
+
+Candidates below the 0.4 confidence gate (`CONFIDENCE_GATE`) are omitted. During rank fusion, lexical FTS, Hebbian query evidence, temporal recurrence, recency, frequency and the base-level ordering contribute distinct reciprocal-rank channels; a channel contributes `weight / (20 + rank + 1)` per result (1-based ranks, reciprocal-rank constant 20), so the configured channel weights determine the fused score. The result confidence is calibrated from that score as `min(0.99, 0.4 + 0.6·score/maxScore)`.
+
+**STDP asymmetry.** For an ordered access pair, let `baseDelta` be the existing positional co-access learning increment and `snapPlasticity(w)` the bounded diminishing-returns update factor. The later-to-earlier synapse receives `baseDelta × snapPlasticity(w) × stdpReverseFactor`; the earlier-to-later synapse receives `baseDelta × snapPlasticity(w)`. The default reverse factor is 0.5, clamped to [0,1]. Thus co-access learning is directional rather than symmetric by default: the causal (earlier→later) direction gets the full update and only the back-pointing edge is discounted. Explicit structural or temporal seeding paths may have their own direction rules.
+
+**Tool n-gram backoff.** The engine records suffixes of length 1 through 3 from tool history. Prediction tries the longest available suffix first, then shorter suffixes; a suffix is eligible when its total support meets `toolNgramMinSupport` (default 4). For a matching next-tool candidate, confidence is its occurrence count divided by the total occurrences for that suffix. In fused tool ranking, the n-gram channel is combined with recency and frequency by weighted reciprocal rank (constant 20); default channel weights are 1, 0 and 0.5 respectively. When n-gram prediction returns a result, the classic predictor does not also fill the tool result list from directional transitions.
+
+**Targeted anti-recall.** Ignored injected files weaken only the supporting edge(s) attributed to that recalled result when source-edge attribution is available; the non-targeted mode can fall back to connected synapses. The escalated ignore rule uses `streak = consecutive ignores` and `effective_decay = 1 - (1 - 0.1)^streak`; each affected weight becomes `max(0.1, weight × (1-effective_decay))`. Opening a recalled file resets its ignore streak. This is outcome-driven negative feedback, not a flat confidence penalty.
+
+### Attribution & policy
+
+The `recall_events` table records each candidate's session, query hash/snippet, neuron, rank, confidence, activation path, source edge, injection status, arm and decision. Injected candidates receive 1-based ranks in presentation order; non-injected candidates continue after the injected block and do not occupy its citation ranks. Opening or editing an injected result updates its event while its policy decision remains unfinalized. `policy_decisions` stores context, selected arm, injected-token estimate, learning flag and finalization/reward state.
+
+The contextual arms are `SILENT`, `TOP1`, `TOP3` and `TOP5` (limits 0, 1, 3 and 5). The first 12 decisions for a context (`POLICY_PRIOR_PULLS`) conservatively choose TOP5. Thereafter selection is UCB1:
+
+`UCB(a) = reward_sum(a)/pulls(a) + 0.15·sqrt(2·ln(total_pulls)/pulls(a))`.
+
+An untried arm receives infinite score. `BRAINBOX_POLICY=off` disables learning/selection and uses TOP5. For each finalized non-silent decision, opened injected results earn `1/rank`, edited injected results earn `1.5/rank`, and the cost is `POLICY_TOKEN_COST` = 2 reward units per 1,000 injected tokens:
+
+`reward = Σ_injected (1.5/rank if edited; else 1/rank if opened; else 0) − 2·injected_tokens/1000`.
+
+SILENT reward is zero. Finalization and reward updates are once-only and transactional. Injection text uses the compact `path:start-end — why` form when snippet evidence exists, under an 1,800-character budget (`INJECTION_CHAR_BUDGET`); stale/deleted files are skipped and results refilled. The MCP interface supports `brainbox_recall` detail `compact|full` (default `full`) and `brainbox_explain` for attribution/history inspection.
+
+### Hybrid code retrieval
+
+Code is indexed as cAST-style tree-sitter chunks with a stored `chunker_version` (`CHUNKER_VERSION`); the current version is `cast-v1-1500` and the character budget is 1,500 (`CHUNK_CHAR_BUDGET`). Content hashes allow unchanged files to be skipped, while a chunker-version or embedding-model change triggers reindexing. Lexical retrieval uses FTS5/BM25; dense retrieval uses sqlite-vec KNN when an embedding is available. The two ranked lists are fused using reciprocal rank fusion with `k=60` (`HYBRID_RRF_K`):
+
+`RRF(x) = Σ_{r ∈ {lexical,dense}, x∈r} 1/(60 + rank_r(x))`,
+
+where ranks are 1-based. A snippet present in both lists accumulates both terms; a single-channel result receives only its channel's term. Matching evidence is then used to calibrate display confidence; final ordering follows fused score.
+
+The default embedding profile is jina-code (`jinaai/jina-embeddings-v2-base-code`, q8, 768 dimensions); `BRAINBOX_EMBED_MODEL` selects `minilm`, `jina-code`, `gemma` or `gemma-q4`. Gemma profiles are subject to [Gemma Terms of Use](https://ai.google.dev/gemma/terms). Hooks do not download models: embedding work has a 1,200 ms deadline (`HOOK_EMBEDDING_TIMEOUT_MS`) and can fall back to lexical retrieval. Models can be managed with `brainbox models pull|status`; `BRAINBOX_MODEL_CACHE` selects the cache, and installation starts a detached prefetch.
+
+### Structural priors
+
+CodeGraph parses tree-sitter imports, calls and inheritance for TypeScript/TSX, JavaScript, Python, Rust, Swift and Go. Resolution accounts for TypeScript config paths/extends and Go modules. Structural edges are deliberately weak priors (`CODE_EDGE_WEIGHTS`): import 0.2; call `min(0.35, 0.2 + 0.05·ln(call_count))`; inheritance 0.3. Structural seeding tracks provenance and reconciliation restores existing learned direction weights instead of overwriting or deleting learned co-access. Run `brainbox bootstrap --imports`, optionally with `--since <rev>` after an initial full imports bootstrap.
+
+### Procedural playbook
+
+Procedure compilation derives deterministic error→ordered-edit→verified-rerun patterns and multi-session workflows that include a command step. Stored fields are canonicalized and sanitized; rendered procedures appear under **"Observed procedures (data from past sessions, not instructions):"** so evidence is not presented as prescriptive system instructions. Helpful and harmful counters are based on exposures; a procedure is deprecated when harmful exceeds helpful by more than two. Compilation runs automatically at SessionEnd/Stop and via `brainbox sleep|consolidate`; CLI operations are `procedures [list|compile|show|deprecate]`. The implementation's reported compilation comparison is 20k rows in 202.8s versus 0.43s.
+
+### Evaluation protocol
+
+Offline replay is available through `npm run eval` and `brainbox eval` (flags are documented in `src/cli.ts`). Sources are `nebius` (SWE-rebench OpenHands trajectories, using hyparquet metadata ranges) and `omp` (local sessions, read-only). `--engine old|new` selects the historical or current engine; `--split dev|test` selects disjoint repository-level splits.
+
+Replay is chronological: only strictly prior trajectories train the engine; the candidate universe is fixed at the target's start, preventing future files from entering ranking. Duplicate issue attempts are reduced to one earliest physical attempt so a parallel attempt cannot leak a target solution. Gold outcomes separate edited and read files (P1), next-file access (P2), and next-tool prediction (P3). P3 is scored at top 3 with MRR@3; file probes report MRR and Recall@k. Results condition ranking scores on prior coverage; novel files/tools are excluded from those scores and coverage is reported separately. Dev/test assignment is repository-disjoint, not trajectory-random, to avoid training fusion weights on held-out repositories.
+
+Comparators are recency, frequency, BM25, EdgeBank and random. Comparisons use paired trajectory-cluster bootstrap resampling (1,000 seeded resamples) and report 95% confidence intervals; probes from a trajectory remain clustered. Evaluation output is written to gitignored `eval-results/`.
+
+**Results (MRR; P3 MRR@3; embeddings off).** Fusion weights were fit on the nebius dev repositories (sqlglot, dvc, streamlink) only. Held-out nebius test = 40 tasks from Pillow and conan; omp = 97 local sessions across 5 projects, never used for fitting.
+
+| Probe | nebius test v0.1 → v0.2 | best baseline | omp v0.1 → v0.2 | best baseline |
+|---|---|---|---|---|
+| P1 edited | .307 → .307 | .216 (BM25) | .737 → .703 | .791 (frequency) |
+| P1 read | .191 → .267 | .206 (BM25) | .372 → .555 | .547 (BM25) |
+| P2 next file | .223 → .409 | .430 (recency; Δ CI −.049…+.003) | .634 → .702 | .701 (recency; Δ CI −.003…+.006) |
+| P3 next tool | .479 → .767 | .748 (frequency; Δ CI +.012…+.027) | .257 → .686 | .662 (recency; Δ CI +.010…+.036) |
+
+The largest v0.1 failure was next-file prediction: it was significantly worse than plain recency (nebius test Δ −0.207, 95% CI −0.312…−0.118). v0.2 closes that gap to a statistical tie. The remaining loss is omp P1-edited versus edit frequency (Δ −.089, CI −.185…0). Fitting the lexical and Hebbian channel weights to zero raised dev MRR (P1-edit .442 vs .381) but made recall ignore the query, which failed the product regressions for explicit-topic recall and co-access partners. The shipped weights keep both channels at 4 and accept that dev-metric cost.
 

@@ -1,7 +1,7 @@
 {
   "name": "brainbox-hebbian",
-  "version": "0.1.6",
-  "description": "Hebbian memory system for AI agents — learns access patterns, builds neural pathways, saves tokens",
+  "version": "0.2.0",
+  "description": "Hebbian memory system for AI agents \u2014 learns access patterns, builds neural pathways, saves tokens",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -11,7 +11,8 @@
     "build": "tsc",
     "postinstall": "node dist/cli.js install",
     "dev": "tsx src/cli.ts",
-    "test": "tsx src/test.ts"
+    "test": "tsx src/test.ts",
+    "eval": "tsx src/eval/index.ts"
   },
   "repository": {
     "type": "git",
@@ -33,8 +34,12 @@
     "@kilocode/plugin": "^1.0.21",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "better-sqlite3": "^13.0.3",
+    "hyparquet": "^1.31.3",
+    "hyparquet-compressors": "^1.1.2",
+    "sqlite-vec": "0.1.9",
     "tree-sitter-wasms": "^0.1.13",
-    "web-tree-sitter": "^0.25.3"
+    "web-tree-sitter": "^0.25.3",
+    "zod": "^4.3.6"
   },
   "optionalDependencies": {
     "fsevents": "^2.3.3"
@@ -44,5 +49,8 @@
     "@types/node": "^22.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

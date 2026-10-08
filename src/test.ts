@@ -67,10 +67,9 @@ describe("Synapse formation (sequential window)", () => {
     const ba = syns.find(s => s.source_id.includes("fileB") && s.target_id.includes("fileA"));
     ok(!!ab, "A→B synapse missing");
     ok(!!ba, "B→A synapse missing");
-    // v3.2: New synapses get tag-captured to 0.3 minimum (TAG_CAPTURE_WEIGHT)
-    // Initial SNAP weight ~0.098, but capture boosts to MAX(0.098, 0.3) = 0.3
-    eq(ab!.weight, 0.3, 0.01, "A→B weight (tag-captured): ");
-    eq(ba!.weight, 0.3, 0.01, "B→A weight (tag-captured): ");
+    // Directional STDP also scales reverse tag capture; bidirectionality no longer implies equal weights.
+    ok(ab!.weight > 0 && ba!.weight > 0, "both directions retain a usable learned edge");
+    ok(ab!.weight >= ba!.weight, "earlier→later must receive at least as much credit as reverse");
     close();
   });
 

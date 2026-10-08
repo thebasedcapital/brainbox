@@ -6,8 +6,10 @@ import {
   deserializeEmbedding,
   isEmbeddingAvailable,
   EMBEDDING_DIM,
+  EMBEDDING_MODEL_ID,
 } from "./embeddings.js";
-import { searchSnippets, type SnippetMatch } from "./snippets.js";
+import type { SnippetMatch } from "./snippets.js";
+import { searchSnippets } from "./snippets.js";
 
 // --- Constants ---
 
@@ -160,6 +162,63 @@ const STOPWORDS = new Set([
 
 // --- Types ---
 
+/** Individually ablatable, local-only ranking and learning mechanisms. */
+export interface EngineOptions {
+  baseLevelActivation: boolean;
+  baseLevelDecay: number;
+  temporalCandidates: boolean;
+  lexicalFts: boolean;
+  stdpReverseFactor: number;
+  toolNgrams: boolean;
+  targetedAntiRecall: boolean;
+  degreeNormalizedSpread: boolean;
+  embeddings: boolean;
+  rankFusion: boolean;
+  recencyWeight: number;
+  frequencyWeight: number;
+  lexicalWeight: number;
+  /** Fusion weight for the code-snippet evidence channel; defaults to match lexicalWeight. */
+  snippetWeight: number;
+  baseLevelWeight: number;
+  recurrenceWeight: number;
+  hebbianWeight: number;
+  sessionRecencyWeight: number;
+  toolNgramWeight: number;
+  toolRecencyWeight: number;
+  toolFrequencyWeight: number;
+  toolNgramMinSupport: number;
+  /** Development-only channel snapshots; production avoids fitting-only work. */
+  captureRankingChannels: boolean;
+  /** Deterministic replay clock; omitted in ordinary hook processes. */
+  referenceTimeMs?: number;
+}
+
+export const DEFAULT_ENGINE_OPTIONS: Readonly<EngineOptions> = Object.freeze({
+  baseLevelActivation: true,
+  baseLevelDecay: 0.5,
+  temporalCandidates: true,
+  lexicalFts: true,
+  stdpReverseFactor: 0.5,
+  toolNgrams: true,
+  targetedAntiRecall: true,
+  degreeNormalizedSpread: false,
+  embeddings: true,
+  rankFusion: true,
+  recencyWeight: 1,
+  frequencyWeight: 2,
+  lexicalWeight: 4,
+  snippetWeight: 4,
+  baseLevelWeight: 0.5,
+  recurrenceWeight: 0.2,
+  hebbianWeight: 4,
+  sessionRecencyWeight: 30,
+  toolNgramWeight: 1,
+  toolRecencyWeight: 0,
+  toolFrequencyWeight: 0.5,
+  toolNgramMinSupport: 4,
+  captureRankingChannels: false,
+});
+
 export interface Neuron {
   id: string;
   type: "file" | "tool" | "error" | "semantic";
@@ -173,6 +232,7 @@ export interface Neuron {
   embedding: Buffer | null;
   project: string | null;       // v5: project tag for filtering
   ignore_streak: number;        // v5: consecutive anti-recall ignores
+  embedding_model?: string | null;
 }
 
 /** v5: Session summary with intent */
@@ -215,6 +275,7 @@ export interface RecallResult {
   activation_path: string;  // how we got here: 'direct' | 'spread' | 'context' | 'snippet' | 'episodic'
   estimated_tokens_saved: number;
   snippets?: SnippetMatch[];  // v4.0: matching code snippets within this file
+  source_edge?: { from: string; to: string };
 }
 
 export interface RecallOptions {
@@ -222,6 +283,8 @@ export interface RecallOptions {
   token_budget?: number;    // max tokens to "spend" on recalled files
   limit?: number;           // max results
   type?: Neuron["type"];    // filter by neuron type
+  /** Optional fixed candidate universe for leakage-safe offline evaluation. */
+  candidatePaths?: ReadonlySet<string>;
 }
 
 export interface TokenReport {
@@ -360,6 +423,11 @@ export class HebbianEngine {
   private sessionId: string;
   private recentAccesses: string[] = []; // ordered unique neuron IDs (most recent last)
   private sessionAccessCount: number = 0; // ordinal access counter for directionality
+  private readonly options: EngineOptions;
+  private simulatedTimeMs?: number;
+  private readonly recalledEdges = new Map<string, { from: string; to: string }[]>();
+  private lastRankingChannels: Record<string, readonly string[]> = {};
+  private lastRankingSupport: Record<string, number> = {};
 
   /** Clear the co-access window. Call between logical groups (e.g. git commits) during bootstrap. */
   clearCoAccessWindow(): void {
@@ -378,6 +446,7 @@ export class HebbianEngine {
       id, type, path, activation: 0.5, myelination: 0, now,
       contexts: JSON.stringify(contexts),
     });
+    this.indexPath(id, path);
   }
 
   /**
@@ -402,11 +471,12 @@ export class HebbianEngine {
    * Seed a synapse directly with a specific weight (for bootstrap — bypasses co-access window).
    * Weight is set directly, not added incrementally.
    */
-  seedSynapse(pathA: string, pathB: string, weight: number, coAccessCount: number = 1): void {
+  seedSynapse(pathA: string, pathB: string, weight: number, coAccessCount: number = 1, reverseWeight: number = weight): void {
     const idA = this.neuronId(pathA, "file");
     const idB = this.neuronId(pathB, "file");
     const now = new Date().toISOString();
     const clampedWeight = Math.min(Math.max(weight, 0), 1);
+    const clampedReverse = Math.min(Math.max(reverseWeight, 0), 1);
 
     // Bidirectional
     this.db.prepare(`
@@ -423,7 +493,7 @@ export class HebbianEngine {
       ON CONFLICT(source_id, target_id) DO UPDATE SET
         weight = MAX(synapses.weight, ?),
         co_access_count = synapses.co_access_count + ?
-    `).run(idB, idA, clampedWeight, coAccessCount, now, now, clampedWeight, coAccessCount);
+    `).run(idB, idA, clampedReverse, coAccessCount, now, now, clampedReverse, coAccessCount);
   }
   private toolChain: string[] = []; // Track tool sequence in current session
 
@@ -434,9 +504,13 @@ export class HebbianEngine {
   // Prepared statements
   private stmts: Record<string, Database.Statement>;
 
-  constructor(db: Database.Database, sessionId?: string) {
+  constructor(db: Database.Database, sessionId?: string, opts?: Partial<EngineOptions>) {
     this.db = db;
     this.sessionId = sessionId || `session-${Date.now()}`;
+    this.options = { ...DEFAULT_ENGINE_OPTIONS, ...opts };
+    this.simulatedTimeMs = opts?.referenceTimeMs;
+    this.options.stdpReverseFactor = Math.max(0, Math.min(1, this.options.stdpReverseFactor));
+    this.options.baseLevelDecay = Math.max(0.01, this.options.baseLevelDecay);
     this.stmts = this.prepareStatements();
 
     // Create session record
@@ -449,9 +523,12 @@ export class HebbianEngine {
     // Load last N unique files in access order (most recent last)
     const recentRows = this.db.prepare(`
       SELECT neuron_id FROM access_log
-      WHERE timestamp > datetime('now', '-1 hour')
-      ORDER BY timestamp ASC, access_order ASC
-    `).all() as { neuron_id: string }[];
+      WHERE session_id = ?
+      GROUP BY neuron_id
+      ORDER BY MAX(id) DESC
+      LIMIT ?
+    `).all(this.sessionId, CO_ACCESS_WINDOW_SIZE) as { neuron_id: string }[];
+    recentRows.reverse();
     // Rebuild unique sequential window from history
     for (const row of recentRows) {
       const idx = this.recentAccesses.indexOf(row.neuron_id);
@@ -462,11 +539,82 @@ export class HebbianEngine {
     if (this.recentAccesses.length > CO_ACCESS_WINDOW_SIZE) {
       this.recentAccesses = this.recentAccesses.slice(-CO_ACCESS_WINDOW_SIZE);
     }
+    // The aggregate SQL always emits a numeric n; better-sqlite3 does not infer result columns.
+    const accessCount = this.db.prepare(
+      "SELECT COALESCE(MAX(access_order), 0) AS n FROM access_log WHERE session_id = ?"
+    ).get(this.sessionId) as { n: number };
+    this.sessionAccessCount = accessCount.n;
+    this.toolChain = (this.db.prepare(`
+      SELECT n.path FROM access_log a JOIN neurons n ON n.id = a.neuron_id
+      WHERE a.session_id = ? AND n.type = 'tool' ORDER BY a.id DESC LIMIT 10
+    `).all(this.sessionId) as { path: string }[]).reverse().map(r => r.path);
   }
 
   private prepareStatements() {
     return {
       getNeuron: this.db.prepare(`SELECT * FROM neurons WHERE id = ?`),
+      accessTimes: this.db.prepare(`
+        SELECT timestamp FROM access_log WHERE neuron_id = ?
+        ORDER BY timestamp DESC LIMIT 50
+      `),
+      fusionRecency: this.db.prepare(`
+        SELECT n.*,
+          (SELECT MAX(id) FROM access_log WHERE neuron_id=n.id) AS last_order
+        FROM neurons n WHERE n.type=COALESCE(@type,n.type)
+          AND (@type='tool' OR n.type!='tool')
+          AND (@paths IS NULL OR n.path IN (SELECT value FROM json_each(@paths)))
+        ORDER BY n.last_accessed DESC, last_order DESC, n.path LIMIT 100
+      `),
+      fusionFrequency: this.db.prepare(`
+        SELECT * FROM neurons WHERE type=COALESCE(@type,type)
+          AND (@type='tool' OR type!='tool')
+          AND (@paths IS NULL OR path IN (SELECT value FROM json_each(@paths)))
+        ORDER BY access_count DESC,path LIMIT 100
+      `),
+      searchLexical: this.db.prepare(`
+        SELECT n.* FROM neuron_fts JOIN neurons n ON n.rowid = neuron_fts.rowid
+        WHERE neuron_fts MATCH @query AND n.type != 'tool'
+          AND (@type IS NULL OR n.type = @type)
+          AND (@paths IS NULL OR n.path IN (SELECT value FROM json_each(@paths)))
+        ORDER BY bm25(neuron_fts, 2.0, 1.0) LIMIT @limit
+      `),
+      hasSessionLexical: this.db.prepare(`
+        SELECT 1 FROM neuron_fts JOIN neurons n ON n.rowid=neuron_fts.rowid
+        WHERE neuron_fts MATCH @query AND n.id IN (SELECT value FROM json_each(@seeds))
+        LIMIT 1
+      `),
+      searchPathSubstrings: this.db.prepare(`
+        SELECT n.* FROM neuron_path_fts JOIN neurons n ON n.rowid=neuron_path_fts.rowid
+        WHERE neuron_path_fts MATCH @query AND n.type != 'tool'
+          AND (@type IS NULL OR n.type=@type)
+          AND (@paths IS NULL OR n.path IN (SELECT value FROM json_each(@paths)))
+        ORDER BY bm25(neuron_path_fts) LIMIT @limit
+      `),
+      synapseDegree: this.db.prepare("SELECT COUNT(*) AS n FROM synapses WHERE source_id = ?"),
+      spreadSynapses: this.db.prepare(`
+        SELECT * FROM synapses WHERE source_id = ? ORDER BY weight DESC LIMIT ${MAX_SPREAD_FAN_OUT}
+      `),
+      spreadDegree: this.db.prepare(`
+        SELECT COUNT(*) AS n FROM (SELECT 1 FROM synapses WHERE source_id = ? LIMIT ${FAN_DEGREE_CAP})
+      `),
+      updatePathTokens: this.db.prepare("UPDATE neurons SET path_tokens = ? WHERE id = ? AND path_tokens != ?"),
+      upsertToolNgram: this.db.prepare(`
+        INSERT INTO tool_ngrams (suffix, next_id, occurrences) VALUES (?, ?, 1)
+        ON CONFLICT(suffix, next_id) DO UPDATE SET occurrences = occurrences + 1
+      `),
+      predictToolNgram: this.db.prepare(`
+        SELECT n.*, g.occurrences, SUM(g.occurrences) OVER () AS total
+        FROM tool_ngrams g JOIN neurons n ON n.id = g.next_id
+        WHERE g.suffix = @suffix AND (@paths IS NULL OR n.path IN (SELECT value FROM json_each(@paths)))
+        ORDER BY g.occurrences DESC, n.id LIMIT @limit
+      `),
+      directionalPrediction: this.db.prepare(`
+        SELECT n.*, MIN(s.weight * (1 + n.myelination), 0.99) AS confidence
+        FROM synapses s JOIN neurons n ON n.id=s.target_id
+        WHERE s.source_id=@source AND s.weight>=0.3 AND n.type=@type
+          AND (@paths IS NULL OR n.path IN (SELECT value FROM json_each(@paths)))
+        ORDER BY confidence DESC, s.weight DESC, s.rowid LIMIT @limit
+      `),
       getNeuronByPath: this.db.prepare(
         `SELECT * FROM neurons WHERE path = ? AND type = ?`
       ),
@@ -513,6 +661,7 @@ export class HebbianEngine {
       topByMyelination: this.db.prepare(`
         SELECT * FROM neurons
         WHERE type = COALESCE(@type, type)
+          AND (@paths IS NULL OR path IN (SELECT value FROM json_each(@paths)))
         ORDER BY myelination DESC
         LIMIT @limit
       `),
@@ -525,6 +674,7 @@ export class HebbianEngine {
       searchByContext: this.db.prepare(`
         SELECT * FROM neurons
         WHERE contexts LIKE @pattern
+          AND (@paths IS NULL OR path IN (SELECT value FROM json_each(@paths)))
         ORDER BY myelination DESC
         LIMIT @limit
       `),
@@ -599,18 +749,18 @@ export class HebbianEngine {
         LIMIT 20
       `),
       updateEmbedding: this.db.prepare(
-        `UPDATE neurons SET embedding = @embedding WHERE id = @id`
+        `UPDATE neurons SET embedding = @embedding, embedding_model = @model WHERE id = @id`
       ),
       neuronsWithoutEmbedding: this.db.prepare(
-        `SELECT * FROM neurons WHERE embedding IS NULL`
+        `SELECT * FROM neurons WHERE embedding IS NULL OR embedding_model IS NULL OR embedding_model != '${EMBEDDING_MODEL_ID}'`
       ),
       neuronsWithEmbedding: this.db.prepare(
-        `SELECT * FROM neurons WHERE embedding IS NOT NULL`
+        `SELECT * FROM neurons WHERE embedding IS NOT NULL AND embedding_model = '${EMBEDDING_MODEL_ID}'`
       ),
       embeddingCoverage: this.db.prepare(`
         SELECT
           COUNT(*) as total,
-          SUM(CASE WHEN embedding IS NOT NULL THEN 1 ELSE 0 END) as embedded
+          SUM(CASE WHEN embedding IS NOT NULL AND embedding_model = '${EMBEDDING_MODEL_ID}' THEN 1 ELSE 0 END) as embedded
         FROM neurons
       `),
       // v3.2: Homeostasis — global averages
@@ -644,7 +794,7 @@ export class HebbianEngine {
         SELECT source_id, target_id, weight FROM synapses
         WHERE (source_id = @neuronId OR target_id = @neuronId)
           AND tagged_at IS NOT NULL
-          AND tagged_at > datetime('now', '-${TAG_CAPTURE_WINDOW_MINUTES} minutes')
+          AND tagged_at > @cutoff
       `),
       // v3.2: Synaptic tagging — capture (boost weight, clear tag)
       captureSynapse: this.db.prepare(`
@@ -700,9 +850,10 @@ export class HebbianEngine {
     query?: string,
     simulatedTimeMs?: number  // for simulation: override timestamp
   ): Neuron {
-    const now = new Date().toISOString();
+    const effectiveMs = simulatedTimeMs ?? this.simulatedTimeMs ?? Date.now();
+    if (simulatedTimeMs !== undefined) this.simulatedTimeMs = simulatedTimeMs;
+    const now = new Date(effectiveMs).toISOString();
     const id = this.neuronId(path, type);
-    const effectiveMs = simulatedTimeMs ?? Date.now();
 
     // Get existing neuron or create
     const existing = this.stmts.getNeuron.get(id) as Neuron | undefined;
@@ -736,6 +887,7 @@ export class HebbianEngine {
         contexts: JSON.stringify(contexts),
       });
     }
+    this.indexPath(id, path);
 
     // Log the access
     this.sessionAccessCount++;
@@ -764,9 +916,10 @@ export class HebbianEngine {
       let rate = involvesError ? LEARNING_RATE * ERROR_LEARNING_BOOST : LEARNING_RATE;
 
       // Hub penalty: files with many connections get reduced learning rate (like TF-IDF)
-      const currentSynCount = (this.stmts.getSynapses.all(id) as Synapse[]).length;
-      const recentSynCount = (this.stmts.getSynapses.all(recentId) as Synapse[]).length;
-      if (currentSynCount > HUB_PENALTY_THRESHOLD || recentSynCount > HUB_PENALTY_THRESHOLD) {
+      // COUNT(*) always returns one numeric row; Statement's library type erases its SQL schema.
+      const currentDegree = this.stmts.synapseDegree.get(id) as { n: number };
+      const recentDegree = this.stmts.synapseDegree.get(recentId) as { n: number };
+      if (currentDegree.n > HUB_PENALTY_THRESHOLD || recentDegree.n > HUB_PENALTY_THRESHOLD) {
         rate *= HUB_PENALTY_FACTOR;
       }
 
@@ -775,7 +928,8 @@ export class HebbianEngine {
       // v3.0 SNAP: Apply sigmoidal plasticity — strong synapses resist further strengthening
       const fwdWeight = (this.stmts.getSynapseWeight.get(id, recentId) as { weight: number } | undefined)?.weight ?? 0;
       const revWeight = (this.stmts.getSynapseWeight.get(recentId, id) as { weight: number } | undefined)?.weight ?? 0;
-      const fwdDelta = baseDelta * this.snapPlasticity(fwdWeight);
+      // Earlier → later gets the full update; later → earlier gets reduced STDP credit.
+      const fwdDelta = baseDelta * this.snapPlasticity(fwdWeight) * this.options.stdpReverseFactor;
       const revDelta = baseDelta * this.snapPlasticity(revWeight);
 
       this.stmts.upsertSynapse.run({
@@ -804,14 +958,17 @@ export class HebbianEngine {
 
     // v3.2: Synaptic capture — check if this access confirms any tagged synapses
     // If a tagged synapse connects to this neuron and is within the capture window, boost it
-    const tagged = this.stmts.getTaggedSynapses.all({ neuronId: id }) as {
+    const tagged = this.stmts.getTaggedSynapses.all({
+      neuronId: id, cutoff: new Date(effectiveMs - TAG_CAPTURE_WINDOW_MINUTES * 60_000).toISOString(),
+    }) as {
       source_id: string; target_id: string; weight: number;
     }[];
     for (const syn of tagged) {
       // captureSynapse uses MAX(weight, @weight) — preserves if already strong, boosts if weak
       // Also clears tagged_at = NULL
       this.stmts.captureSynapse.run({
-        source: syn.source_id, target: syn.target_id, weight: TAG_CAPTURE_WEIGHT,
+        source: syn.source_id, target: syn.target_id,
+        weight: TAG_CAPTURE_WEIGHT * (syn.source_id === id ? this.options.stdpReverseFactor : 1),
       });
     }
 
@@ -825,6 +982,9 @@ export class HebbianEngine {
 
     // Track tool chain for sequence prediction
     if (type === "tool") {
+      for (let n = 1; n <= Math.min(3, this.toolChain.length); n++) {
+        this.stmts.upsertToolNgram.run(JSON.stringify(this.toolChain.slice(-n)), id);
+      }
       this.toolChain.push(path);
       if (this.toolChain.length > 10) this.toolChain.shift();
     }
@@ -994,8 +1154,10 @@ export class HebbianEngine {
    * Predict the next likely tool based on learned tool sequences.
    * Also predicts likely files to be accessed with that tool.
    */
-  predictNext(
-    currentTool?: string
+  private predictHebbian(
+    currentTool?: string,
+    candidateTools?: ReadonlySet<string>,
+    limit: number = 3
   ): { nextTools: RecallResult[]; likelyFiles: RecallResult[] } {
     const toolContext =
       currentTool || this.toolChain[this.toolChain.length - 1];
@@ -1005,46 +1167,246 @@ export class HebbianEngine {
     }
 
     const currentNeuronId = this.neuronId(toolContext, "tool");
-    const synapses = this.stmts.getSynapses.all(currentNeuronId) as Synapse[];
+    const candidateToolsJson = candidateTools ? JSON.stringify([...candidateTools]) : null;
 
     const nextTools: RecallResult[] = [];
+    if (this.options.toolNgrams) {
+      const chain = [...this.toolChain];
+      if (chain[chain.length - 1] !== toolContext) chain.push(toolContext);
+      for (let n = Math.min(3, chain.length); n >= 1; n--) {
+        const matches = this.stmts.predictToolNgram.all({
+          limit,
+          suffix: JSON.stringify(chain.slice(-n)), paths: candidateToolsJson,
+        }) as (Neuron & { occurrences: number; total: number })[];
+        if (matches.length === 0) continue;
+        if (matches[0].total < this.options.toolNgramMinSupport) continue;
+        for (const row of matches) {
+          nextTools.push({
+            neuron: this.parseNeuron(row), confidence: row.occurrences / row.total,
+            activation_path: `tool ${n}-gram after ${chain.slice(-n).join(" → ")}`,
+            estimated_tokens_saved: TOKENS_PER_SEARCH,
+          });
+        }
+        break;
+      }
+    }
     const likelyFiles: RecallResult[] = [];
-
-    for (const syn of synapses) {
-      if (syn.weight < 0.3) continue;
-
-      const target = this.stmts.getNeuron.get(syn.target_id) as
-        | Neuron
-        | undefined;
-      if (!target) continue;
-
-      const confidence = Math.min(
-        syn.weight * (1 + target.myelination),
-        0.99
-      );
-
-      const result: RecallResult = {
-        neuron: this.parseNeuron(target),
-        confidence,
-        activation_path: `sequence after ${toolContext}`,
-        estimated_tokens_saved:
-          target.type === "file" ? TOKENS_PER_FILE_READ : TOKENS_PER_SEARCH,
-      };
-
-      if (target.type === "tool") {
-        nextTools.push(result);
-      } else if (target.type === "file") {
-        likelyFiles.push(result);
+    for (const type of ["file", "tool"] as const) {
+      if (type === "tool" && nextTools.length > 0) continue;
+      const matches = this.stmts.directionalPrediction.all({
+        source: currentNeuronId, type, paths: type === "tool" ? candidateToolsJson : null,
+        limit: type === "tool" ? limit : 5,
+      }) as (Neuron & { confidence: number })[];
+      for (const target of matches) {
+        const result: RecallResult = {
+          neuron: this.parseNeuron(target), confidence: target.confidence,
+          activation_path: `sequence after ${toolContext}`,
+          source_edge: { from: currentNeuronId, to: target.id },
+          estimated_tokens_saved: type === "file" ? TOKENS_PER_FILE_READ : TOKENS_PER_SEARCH,
+        };
+        if (type === "tool") nextTools.push(result);
+        else likelyFiles.push(result);
       }
     }
 
-    nextTools.sort((a, b) => b.confidence - a.confidence);
-    likelyFiles.sort((a, b) => b.confidence - a.confidence);
+    return { nextTools, likelyFiles };
+  }
 
-    return {
-      nextTools: nextTools.slice(0, 3),
-      likelyFiles: likelyFiles.slice(0, 5),
+  /** Offline fitting sees only pre-target channel ranks, never future accesses or labels. */
+  getLastRankingChannels(): Readonly<Record<string, readonly string[]>> {
+    return this.lastRankingChannels;
+  }
+
+  /**
+   * Fraction of the distinct query terms present verbatim (unstemmed) in the
+   * neuron's raw text — its path plus recorded contexts. A term that matches only
+   * through the porter stemmer (e.g. activation vs activity) does not count.
+   */
+  private queryTermCoverage(neuron: Neuron, terms: readonly string[]): number {
+    if (terms.length === 0) return 1;
+    const contexts = typeof neuron.contexts === "string" ? neuron.contexts : neuron.contexts.join(" ");
+    const raw = `${neuron.path}\n${contexts}`.toLowerCase();
+    const matched = terms.filter(term => raw.includes(term)).length;
+    return matched / terms.length;
+  }
+
+  getLastRankingChannelSupport(): Readonly<Record<string, number>> {
+    return this.lastRankingSupport;
+  }
+
+  predictNext(currentTool?: string, candidateTools?: ReadonlySet<string>): { nextTools: RecallResult[]; likelyFiles: RecallResult[] } {
+    if (!this.options.rankFusion) return this.predictHebbian(currentTool, candidateTools);
+    const paths = candidateTools ? JSON.stringify([...candidateTools]) : null;
+    const recency = this.stmts.fusionRecency.all({ type: "tool", paths }) as Neuron[];
+    const frequency = this.stmts.fusionFrequency.all({ type: "tool", paths }) as Neuron[];
+    const classic = this.predictHebbian(currentTool, candidateTools, 100);
+    const channels: Record<string, Neuron[]> = {
+      recency, frequency, ngram: classic.nextTools.map(result => result.neuron),
     };
+    this.lastRankingSupport = {};
+    const toolContext = currentTool ?? this.toolChain[this.toolChain.length - 1];
+    if (toolContext && this.options.toolNgrams && this.options.captureRankingChannels) {
+      const chain = [...this.toolChain];
+      if (chain[chain.length - 1] !== toolContext) chain.push(toolContext);
+      for (let n = 1; n <= Math.min(3, chain.length); n++) {
+        const matches = this.stmts.predictToolNgram.all({
+          suffix: JSON.stringify(chain.slice(-n)), paths, limit: 100,
+        }) as (Neuron & { total: number })[];
+        channels[`ngram${n}`] = matches;
+        this.lastRankingSupport[`ngram${n}`] = matches[0]?.total ?? 0;
+      }
+      channels.transition = this.stmts.directionalPrediction.all({
+        source: this.neuronId(toolContext, "tool"), type: "tool", paths, limit: 100,
+      }) as Neuron[];
+    }
+    this.lastRankingChannels = this.options.captureRankingChannels
+      ? Object.fromEntries(Object.entries(channels).map(([name, neurons]) => [name, neurons.map(neuron => neuron.path)]))
+      : {};
+    const weights = {
+      recency: this.options.toolRecencyWeight,
+      frequency: this.options.toolFrequencyWeight,
+      ngram: this.options.toolNgramWeight,
+    };
+    const candidates = new Map<string, { neuron: Neuron; score: number }>();
+    for (const [name, weight] of Object.entries(weights)) {
+      if (weight <= 0) continue;
+      for (const [rank, neuron] of channels[name].entries()) {
+        const candidate = candidates.get(neuron.id) ?? { neuron, score: 0 };
+        candidate.score += weight / (20 + rank + 1);
+        candidates.set(neuron.id, candidate);
+      }
+    }
+    const maximum = Object.values(weights).reduce((sum, weight) => sum + Math.max(0, weight) / 21, 0);
+    const classicById = new Map(classic.nextTools.map(result => [result.neuron.id, result]));
+    const nextTools = [...candidates.values()].sort((a, b) => b.score - a.score || a.neuron.path.localeCompare(b.neuron.path))
+      .slice(0, 3).map(candidate => ({
+        neuron: this.parseNeuron(candidate.neuron),
+        confidence: Math.min(0.99, candidate.score / Math.max(maximum, Number.EPSILON)),
+        activation_path: classicById.get(candidate.neuron.id)?.activation_path ?? "tool rank fusion",
+        estimated_tokens_saved: TOKENS_PER_SEARCH,
+      }));
+    return { nextTools, likelyFiles: classic.likelyFiles };
+  }
+
+  async recall(opts: RecallOptions): Promise<RecallResult[]> {
+    let finalResults: RecallResult[];
+    if (!this.options.rankFusion) {
+      finalResults = await this.recallHebbian(opts);
+      this.lastRankingChannels = { hebbian: finalResults.map(result => result.neuron.path) };
+    } else {
+      const { query, type, limit = 5, token_budget = 10000 } = opts;
+      const paths = opts.candidatePaths ? JSON.stringify([...opts.candidatePaths]) : null;
+      const queryEmbedding = this.options.embeddings ? await embedText(query) : null;
+      const hebbian = await this.recallHebbian({ ...opts, limit: 100, token_budget: Number.MAX_SAFE_INTEGER }, queryEmbedding);
+      const terms = query.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+      const coverageTerms = [...new Set(terms.filter(term => term.length > 2))];
+      const expression = coverageTerms.map(term => `"${term}"*`).join(" OR ");
+      const lexical = this.options.lexicalFts && expression ? this.stmts.searchLexical.all({
+        query: expression, type: type ?? null, paths, limit: 100,
+      }) as Neuron[] : [];
+      // Code snippets are first-class fusion evidence, weighted like lexical matches.
+      const snippetFiles: Neuron[] = [];
+      if (this.options.snippetWeight > 0 && (!type || type === "file")) {
+        try {
+          const seenParents = new Set<string>();
+          for (const match of searchSnippets(this.db, query, queryEmbedding, 20)) {
+            if (opts.candidatePaths && !opts.candidatePaths.has(match.snippet.path)) continue;
+            if (seenParents.has(match.snippet.parent_neuron_id)) continue;
+            seenParents.add(match.snippet.parent_neuron_id);
+            const parent = this.stmts.getNeuron.get(match.snippet.parent_neuron_id) as Neuron | undefined;
+            if (parent) snippetFiles.push(parent);
+          }
+        } catch {
+          // Snippet search unavailable (no snippets table, etc.) — skip the channel.
+        }
+      }
+      const recurrence = this.options.temporalCandidates ? this.temporalCandidates(type, 100, paths) : [];
+      // Query-blind myelination/popularity belongs in the prior channels, not in
+      // the query-conditioned Hebbian channel. Retain genuine semantic matches,
+      // lexical matches, snippet matches and the edges reached from those seeds.
+      const queryEvidence = hebbian.filter(result =>
+        result.activation_path.startsWith("direct") || result.activation_path.startsWith("spread(") ||
+        result.activation_path.startsWith("fingerprint:") || result.activation_path.includes("snippet"));
+      const channels: Record<string, Neuron[]> = {
+        lexical,
+        snippet: snippetFiles,
+        hebbian: queryEvidence.map(result => result.neuron),
+        recurrence: recurrence.map(result => result.neuron),
+        recency: this.stmts.fusionRecency.all({ type: type ?? null, paths }) as Neuron[],
+        frequency: this.stmts.fusionFrequency.all({ type: type ?? null, paths }) as Neuron[],
+      };
+      const candidates = new Map<string, { neuron: Neuron; score: number }>();
+      for (const neurons of Object.values(channels)) {
+        for (const neuron of neurons) {
+          if (!candidates.has(neuron.id)) candidates.set(neuron.id, { neuron, score: 0 });
+        }
+      }
+      channels["base-level"] = this.options.baseLevelActivation && (this.options.baseLevelWeight > 0 || this.options.captureRankingChannels)
+        ? [...candidates.values()].map(candidate => ({
+          neuron: candidate.neuron, activation: this.baseLevelActivation(candidate.neuron.id),
+        })).sort((a, b) => b.activation - a.activation || a.neuron.path.localeCompare(b.neuron.path)).map(item => item.neuron)
+        : [];
+      this.lastRankingChannels = this.options.captureRankingChannels
+        ? Object.fromEntries(Object.entries(channels).map(([name, neurons]) => [name, neurons.map(neuron => neuron.path)]))
+        : {};
+      // An explicit topic switch must not be drowned out by the preceding task's recent files.
+      const sessionContext = this.recentAccesses.length > 0 && !!expression && !!this.stmts.hasSessionLexical.get({
+        query: expression, seeds: JSON.stringify(this.recentAccesses),
+      });
+      this.lastRankingSupport = { "session-context": sessionContext ? 1 : 0 };
+      const weights: Record<string, number> = {
+        recency: sessionContext ? this.options.sessionRecencyWeight : this.options.recencyWeight,
+        frequency: this.options.frequencyWeight,
+        lexical: this.options.lexicalWeight,
+        snippet: this.options.snippetWeight,
+        "base-level": this.options.baseLevelWeight,
+        recurrence: this.options.recurrenceWeight,
+        hebbian: this.options.hebbianWeight,
+      };
+      for (const [name, weight] of Object.entries(weights)) {
+        if (weight <= 0) continue;
+        for (const [rank, neuron] of channels[name].entries()) {
+          const candidate = candidates.get(neuron.id);
+          if (!candidate) continue;
+          // Lexical evidence is scaled by distinct-query-term coverage (matched
+          // verbatim against the raw text, not the porter stem) so a file matching
+          // one term only via stemming cannot outrank a file matching most terms.
+          const scaled = name === "lexical" ? weight * this.queryTermCoverage(neuron, coverageTerms) : weight;
+          candidate.score += scaled / (20 + rank + 1);
+        }
+      }
+      const metadata = new Map([...recurrence, ...hebbian].map(result => [result.neuron.id, result]));
+      for (const neuron of snippetFiles) {
+        if (!metadata.has(neuron.id)) metadata.set(neuron.id, {
+          neuron, confidence: 0, activation_path: "snippet",
+          estimated_tokens_saved: TOKENS_PER_SEARCH + TOKENS_PER_FILE_READ,
+        });
+      }
+      const maximum = Object.values(weights).reduce((sum, weight) => sum + Math.max(0, weight) / 21, 0);
+      const supported = lexical.length > 0 || snippetFiles.length > 0 || hebbian.length > 0 || recurrence.length > 0;
+      const ranked = supported ? [...candidates.values()].filter(candidate => candidate.score > 0)
+        .sort((a, b) => b.score - a.score || a.neuron.path.localeCompare(b.neuron.path)) : [];
+      finalResults = [];
+      let remaining = token_budget;
+      for (const candidate of ranked) {
+        if (finalResults.length === limit) break;
+        const cost = candidate.neuron.type === "file" ? TOKENS_PER_FILE_READ : TOKENS_PER_SEARCH;
+        if (cost > remaining) continue;
+        const existing = metadata.get(candidate.neuron.id);
+        finalResults.push({
+          ...(existing ?? {}),
+          neuron: this.parseNeuron(candidate.neuron),
+          confidence: Math.min(0.99, 0.4 + 0.6 * candidate.score / Math.max(maximum, Number.EPSILON)),
+          activation_path: existing?.activation_path ?? "temporal rank fusion",
+          estimated_tokens_saved: existing?.estimated_tokens_saved ?? TOKENS_PER_SEARCH,
+        });
+        remaining -= cost;
+      }
+    }
+    for (const result of finalResults) {
+      if (result.neuron.type === "file") this.trackRecalled(result.neuron.id, result.source_edge);
+    }
+    return finalResults;
   }
 
   /** Get the current session's tool chain. */
@@ -1054,13 +1416,17 @@ export class HebbianEngine {
 
   // --- Core: Recall — spreading activation with confidence gating ---
 
-  async recall(opts: RecallOptions): Promise<RecallResult[]> {
+  private async recallHebbian(opts: RecallOptions, precomputedQueryEmbedding?: Float32Array | null): Promise<RecallResult[]> {
     const { query, token_budget = 10000, limit = 5, type } = opts;
     const results: RecallResult[] = [];
     let tokenBudgetRemaining = token_budget;
+    const candidatePathsJson = opts.candidatePaths ? JSON.stringify([...opts.candidatePaths]) : null;
 
-    // Pre-compute query embedding (null if embeddings unavailable)
-    const queryEmbedding = await embedText(query);
+    // Pre-compute query embedding (null if embeddings unavailable); the rank-fusion
+    // caller shares its embedding so the local model runs once per recall.
+    const queryEmbedding = precomputedQueryEmbedding !== undefined
+      ? precomputedQueryEmbedding
+      : this.options.embeddings ? await embedText(query) : null;
 
     // --- Phase 0: Error fingerprint fast path (v2.3) ---
     // If query looks like an error, try O(1) fingerprint lookup before any search.
@@ -1077,6 +1443,7 @@ export class HebbianEngine {
           if (!target) continue;
           if (type && target.type !== type) continue;
           if (target.type === "tool") continue;
+          if (opts.candidatePaths && !opts.candidatePaths.has(target.path)) continue;
 
           const confidence = Math.min(syn.weight * (1 + target.myelination), 0.99);
           if (confidence < CONFIDENCE_GATE) continue;
@@ -1088,6 +1455,7 @@ export class HebbianEngine {
             neuron: this.parseNeuron(target),
             confidence,
             activation_path: `fingerprint: ${fingerprint}`,
+            source_edge: { from: fpId, to: syn.target_id },
             estimated_tokens_saved: TOKENS_PER_SEARCH + TOKENS_PER_FILE_READ,
           });
           tokenBudgetRemaining -= tokenCost;
@@ -1095,20 +1463,38 @@ export class HebbianEngine {
       }
     }
 
-    // --- Phase 1a: Direct match by context keywords ---
+    // Indexed lexical candidates: path components/camelCase and stemmed contexts.
     const keywords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
     const directMatches: Neuron[] = [];
-
-    for (const keyword of keywords) {
-      const matches = this.stmts.searchByContext.all({
-        pattern: `%${keyword}%`,
-        limit: 10,
-      }) as Neuron[];
-      for (const m of matches) {
-        // Tool exclusion: tools are bridges, never results (v1.0)
-        if (m.type === "tool") continue;
-        if (!directMatches.find((d) => d.id === m.id)) {
-          directMatches.push(m);
+    const lexicalRanks = new Map<string, number>();
+    if (this.options.lexicalFts) {
+      const terms = query.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+      const expression = [...new Set(terms.filter(t => t.length > 2))].map(t => `"${t}"*`).join(" OR ");
+      if (expression) {
+        const matches = this.stmts.searchLexical.all({
+          query: expression, type: type ?? null, paths: candidatePathsJson, limit: 100,
+        }) as Neuron[];
+        for (const [rank, neuron] of matches.entries()) {
+          directMatches.push(neuron);
+          lexicalRanks.set(neuron.id, rank);
+        }
+        const pathExpression = [...new Set(terms.filter(t => t.length >= 4))].map(t => `"${t}"`).join(" OR ");
+        if (pathExpression) {
+          const pathMatches = this.stmts.searchPathSubstrings.all({
+            query: pathExpression, type: type ?? null, paths: candidatePathsJson, limit: 100,
+          }) as Neuron[];
+          for (const neuron of pathMatches) {
+            if (!directMatches.some(existing => existing.id === neuron.id)) directMatches.push(neuron);
+          }
+        }
+      }
+    } else {
+      for (const keyword of keywords) {
+        const matches = this.stmts.searchByContext.all({
+          pattern: `%${keyword}%`, paths: candidatePathsJson, limit: 10,
+        }) as Neuron[];
+        for (const neuron of matches) {
+          if (neuron.type !== "tool" && !directMatches.some(d => d.id === neuron.id)) directMatches.push(neuron);
         }
       }
     }
@@ -1116,7 +1502,7 @@ export class HebbianEngine {
     // --- Phase 1b: Vector similarity scan + filename stem match (v2.1) ---
     // Scans all embedded neurons: admit candidates by embedding similarity OR filename match
     const queryKeywords = query.toLowerCase().split(/\s+/).filter(w => w.length >= 4);
-    if (queryEmbedding || queryKeywords.length > 0) {
+    if (queryEmbedding || (!this.options.lexicalFts && queryKeywords.length > 0)) {
       const embeddedNeurons = this.stmts.neuronsWithEmbedding.all() as Neuron[];
       for (const neuron of embeddedNeurons) {
         if (directMatches.find((d) => d.id === neuron.id)) continue; // already found by keywords
@@ -1146,25 +1532,35 @@ export class HebbianEngine {
     // Score direct matches, sort by confidence, THEN apply token budget (v2.1)
     // Previously budget was applied in discovery order — high-confidence files found
     // late in Phase 1b could be starved by lower-confidence early matches.
-    const scoredMatches: { neuron: Neuron; confidence: number }[] = [];
+    const scoredMatches: RecallResult[] = [];
     for (const neuron of directMatches) {
       if (type && neuron.type !== type) continue;
-      const confidence = this.computeConfidence(neuron, query, "direct", queryEmbedding);
+      if (opts.candidatePaths && !opts.candidatePaths.has(neuron.path)) continue;
+      const rank = lexicalRanks.get(neuron.id);
+      const confidence = Math.max(this.computeConfidence(neuron, query, "direct", queryEmbedding),
+        rank === undefined ? 0 : 0.45 / (1 + rank * 0.01));
       if (confidence < CONFIDENCE_GATE) continue;
-      scoredMatches.push({ neuron, confidence });
+      scoredMatches.push({
+        neuron, confidence, activation_path: "direct",
+        estimated_tokens_saved: TOKENS_PER_SEARCH,
+      });
+    }
+    // Session recurrence competes before budget allocation, not only after lexical slots are filled.
+    if (this.options.temporalCandidates) {
+      for (const candidate of this.temporalCandidates(type, Math.max(20, limit * 4), candidatePathsJson)) {
+        const existing = scoredMatches.find(match => match.neuron.id === candidate.neuron.id);
+        if (!existing) scoredMatches.push(candidate);
+        else if (candidate.confidence > existing.confidence) Object.assign(existing, candidate);
+      }
     }
     scoredMatches.sort((a, b) => b.confidence - a.confidence);
 
-    for (const { neuron, confidence } of scoredMatches) {
+    for (const candidate of scoredMatches) {
+      const { neuron } = candidate;
       const tokenCost = neuron.type === "file" ? TOKENS_PER_FILE_READ : TOKENS_PER_SEARCH;
       if (tokenCost > tokenBudgetRemaining) continue;
 
-      results.push({
-        neuron: this.parseNeuron(neuron),
-        confidence,
-        activation_path: "direct",
-        estimated_tokens_saved: TOKENS_PER_SEARCH,
-      });
+      results.push({ ...candidate, neuron: this.parseNeuron(neuron) });
       tokenBudgetRemaining -= tokenCost;
     }
 
@@ -1178,19 +1574,29 @@ export class HebbianEngine {
         confidence: r.confidence,
         chain: r.neuron.path,
       }));
+    if (this.options.temporalCandidates) {
+      for (const id of this.recentAccesses) {
+        if (!frontier.some(seed => seed.neuronId === id)) {
+          const seed = this.stmts.getNeuron.get(id) as Neuron | undefined;
+          if (seed?.type === "file") frontier.push({ neuronId: id, confidence: 0.65, chain: `session ${seed.path}` });
+        }
+      }
+    }
 
     for (let hop = 0; hop < MAX_SPREAD_HOPS && frontier.length > 0 && tokenBudgetRemaining > 0; hop++) {
       const nextFrontier: typeof frontier = [];
 
       for (const seed of frontier) {
-        // Cap fan-out to top-K strongest synapses (already sorted DESC by weight)
-        const allSynapses = this.stmts.getSynapses.all(seed.neuronId) as Synapse[];
-        const synapses = allSynapses.slice(0, MAX_SPREAD_FAN_OUT);
+        // Bound the indexed read itself, not a JavaScript slice of every incident edge.
+        const synapses = this.stmts.spreadSynapses.all(seed.neuronId) as Synapse[];
 
         // Fan effect (Anderson 1983, ACT-R): divide activation by sqrt(out_degree)
         // Hub neurons with many synapses dilute their signal proportionally
-        const outDegree = allSynapses.length;
-        const fanFactor = 1 / Math.sqrt(Math.min(outDegree, FAN_DEGREE_CAP));
+        // The degree cap is applied inside SQLite; the aggregate always returns a numeric n.
+        const degree = this.stmts.spreadDegree.get(seed.neuronId) as { n: number };
+        const outDegree = degree.n;
+        const fanFactor = 1 / Math.pow(Math.max(1, Math.min(outDegree, FAN_DEGREE_CAP)),
+          this.options.degreeNormalizedSpread ? 1 : 0.5);
 
         for (const syn of synapses) {
           if (syn.weight < 0.3) continue; // only strong connections
@@ -1198,6 +1604,7 @@ export class HebbianEngine {
           const target = this.stmts.getNeuron.get(syn.target_id) as Neuron | undefined;
           if (!target) continue;
           if (type && target.type !== type) continue;
+          if (opts.candidatePaths && !opts.candidatePaths.has(target.path)) continue;
 
           // Tool exclusion: tools are bridges (traverse synapses) but never appear in results (v1.0)
           if (target.type === "tool") continue;
@@ -1214,6 +1621,8 @@ export class HebbianEngine {
             const existing = results.find((r) => r.neuron.id === syn.target_id);
             if (existing && spreadConfidence > existing.confidence) {
               existing.confidence = Math.min(spreadConfidence, 0.99);
+              existing.source_edge = { from: seed.neuronId, to: syn.target_id };
+              existing.activation_path = `spread(${hop + 1}) via ${seed.chain}`;
             }
             continue;
           }
@@ -1226,6 +1635,7 @@ export class HebbianEngine {
             neuron: this.parseNeuron(target),
             confidence: Math.min(spreadConfidence, 0.99),
             activation_path: pathLabel,
+            source_edge: { from: seed.neuronId, to: syn.target_id },
             estimated_tokens_saved: TOKENS_PER_SEARCH + TOKENS_PER_FILE_READ,
           });
           activated.add(syn.target_id);
@@ -1244,10 +1654,11 @@ export class HebbianEngine {
     }
 
     // --- Phase 3: Top myelinated neurons as fallback (temporal priming) ---
-    if (results.length < limit) {
+    if (!this.options.temporalCandidates && results.length < limit) {
       const MYELIN_GATE = 0.15; // Lower gate: superhighways earned trust through repeated use
       const topMyelinated = this.stmts.topByMyelination.all({
         type: type || null,
+        paths: candidatePathsJson,
         limit: limit - results.length,
       }) as Neuron[];
 
@@ -1269,7 +1680,7 @@ export class HebbianEngine {
     }
 
     // v3.3: Merge episodic recall results — query access_log for recent working context
-    const episodicResults = this.recallEpisodic(opts.query, Math.min(limit, 3));
+    const episodicResults = this.recallEpisodic(opts.query, Math.min(limit, 3), candidatePathsJson);
     for (const ep of episodicResults) {
       const existingIdx = results.findIndex(r => r.neuron.id === ep.neuron.id);
       if (existingIdx >= 0) {
@@ -1283,14 +1694,14 @@ export class HebbianEngine {
     }
 
     // v4.0: Merge snippet neuron results (System 2 — semantic code search)
-    // Always run snippets when embeddings available — hub myelination makes 0.7 gating too aggressive.
-    // Snippet search is fast (<50ms for <50k snippets), so always-on is fine.
-    if (queryEmbedding) {
+    // FTS5 remains available when embeddings are off; sqlite-vec supplies dense candidates.
+    if (!type || type === "file") {
         try {
-          const snippetMatches = searchSnippets(this.db, queryEmbedding, 20);
+          const snippetMatches = searchSnippets(this.db, query, queryEmbedding, 20);
           // Aggregate snippet matches to parent file neurons
           const fileSnippets = new Map<string, SnippetMatch[]>();
           for (const sm of snippetMatches) {
+            if (opts.candidatePaths && !opts.candidatePaths.has(sm.snippet.path)) continue;
             const list = fileSnippets.get(sm.snippet.parent_neuron_id) || [];
             list.push(sm);
             fileSnippets.set(sm.snippet.parent_neuron_id, list);
@@ -1310,6 +1721,7 @@ export class HebbianEngine {
               // Snippet-only discovery — file not found by Hebbian
               const parentNeuron = this.stmts.getNeuron.get(parentId) as Neuron | undefined;
               if (parentNeuron && parentNeuron.type === "file") {
+                if (TOKENS_PER_FILE_READ > tokenBudgetRemaining) continue;
                 results.push({
                   neuron: this.parseNeuron(parentNeuron),
                   confidence: bestConf,
@@ -1317,6 +1729,7 @@ export class HebbianEngine {
                   estimated_tokens_saved: TOKENS_PER_SEARCH + TOKENS_PER_FILE_READ,
                   snippets: matches,
                 });
+                tokenBudgetRemaining -= TOKENS_PER_FILE_READ;
               }
             }
           }
@@ -1329,17 +1742,97 @@ export class HebbianEngine {
     results.sort((a, b) => b.confidence - a.confidence);
     const finalResults = results.slice(0, limit);
 
-    // Track recalled files for anti-recall session tracking
-    for (const r of finalResults) {
-      if (r.neuron.type === "file") {
-        this.recalledThisSession.add(r.neuron.id);
-      }
-    }
-
     return finalResults;
   }
 
   // --- Confidence computation ---
+
+  private nowMs(): number {
+    return this.simulatedTimeMs ?? Date.now();
+  }
+
+  private indexPath(id: string, path: string): void {
+    const tokens = path.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+      .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2").replace(/[/._-]+/g, " ");
+    this.stmts.updatePathTokens.run(tokens, id, tokens);
+  }
+
+  /** ACT-R base level in hours, last 50 observations; sigmoid gives a bounded score. */
+  baseLevelActivation(neuronId: string, nowMs: number = this.nowMs()): number {
+    const times = this.stmts.accessTimes.all(neuronId) as { timestamp: string }[];
+    let mass = 0;
+    for (const { timestamp } of times) {
+      const elapsed = (nowMs - Date.parse(timestamp)) / 3_600_000;
+      if (Number.isFinite(elapsed)) mass += Math.pow(Math.max(1 / 60, elapsed), -this.options.baseLevelDecay);
+    }
+    return mass > 0 ? Math.log(mass) : -Infinity;
+  }
+
+  private baseLevelScore(neuron: Neuron): number {
+    if (!this.options.baseLevelActivation) {
+      return neuron.last_accessed
+        ? Math.max(0, 1 - (this.nowMs() - Date.parse(neuron.last_accessed)) / (168 * 3_600_000))
+        : 0;
+    }
+    let level = this.baseLevelActivation(neuron.id);
+    // Bootstrap neurons have no access_log: use their single seed observation.
+    if (!Number.isFinite(level) && neuron.last_accessed) {
+      level = -this.options.baseLevelDecay * Math.log(Math.max(1 / 60,
+        (this.nowMs() - Date.parse(neuron.last_accessed)) / 3_600_000));
+    }
+    return 1 / (1 + Math.exp(-level));
+  }
+
+  private temporalCandidates(type: Neuron["type"] | undefined, limit: number, candidatePathsJson: string | null): RecallResult[] {
+    const seeds = this.recentAccesses.filter(id => id.startsWith("file:"));
+    if (seeds.length === 0) return [];
+    const placeholders = seeds.map(() => "?").join(",");
+    const rows = this.db.prepare(`
+      WITH edges AS (
+        SELECT s.*, ROW_NUMBER() OVER (
+          PARTITION BY target_id ORDER BY weight DESC, co_access_count DESC, source_id
+        ) AS edge_rank
+        FROM synapses s WHERE source_id IN (${placeholders}) AND weight >= 0.1
+      )
+      SELECT n.*, s.weight AS recurrence, s.co_access_count AS repeats,
+        (SELECT COUNT(*) FROM synapses d WHERE d.source_id=n.id) AS degree,
+        s.source_id AS producing_source
+      FROM edges s JOIN neurons n ON n.id=s.target_id
+      WHERE s.edge_rank=1 AND n.type != 'tool' AND (? IS NULL OR n.type=?)
+        AND (? IS NULL OR n.path IN (SELECT value FROM json_each(?)))
+      ORDER BY recurrence DESC, repeats DESC LIMIT ?
+    `).all(...seeds, type ?? null, type ?? null, candidatePathsJson, candidatePathsJson, limit) as (Neuron & {
+      recurrence: number; repeats: number; degree: number; producing_source: string;
+    })[];
+    const maxPopularity = Math.max(1, ...rows.map(n => Math.log1p(n.access_count)));
+    const scored: RecallResult[] = [];
+    for (const neuron of rows) {
+      if (seeds.includes(neuron.id)) continue;
+      const recurrence = Math.min(1, neuron.recurrence + 0.1 * Math.log1p(neuron.repeats));
+      const popularity = Math.log1p(neuron.access_count) / maxPopularity / Math.sqrt(Math.max(1, neuron.degree));
+      const confidence = Math.min(0.65, 0.7 * recurrence + 0.1 * popularity + 0.2 * this.baseLevelScore(neuron));
+      if (confidence < CONFIDENCE_GATE) continue;
+      scored.push({
+        neuron: this.parseNeuron(neuron), confidence, activation_path: "temporal session recurrence",
+        source_edge: { from: neuron.producing_source, to: neuron.id },
+        estimated_tokens_saved: TOKENS_PER_SEARCH,
+      });
+    }
+    return scored.sort((a, b) => b.confidence - a.confidence);
+  }
+
+  private antiRecallSynapses(neuronId: string): Synapse[] {
+    const edges = this.options.targetedAntiRecall ? this.recalledEdges.get(neuronId) : undefined;
+    if (edges?.length) {
+      const statement = this.db.prepare("SELECT * FROM synapses WHERE source_id = ? AND target_id = ?");
+      return edges.flatMap(edge => {
+        const synapse = statement.get(edge.from, edge.to) as Synapse | undefined;
+        return synapse ? [synapse] : [];
+      });
+    }
+    return this.db.prepare("SELECT * FROM synapses WHERE source_id = ? OR target_id = ?")
+      .all(neuronId, neuronId) as Synapse[];
+  }
 
   private computeConfidence(
     neuron: Neuron,
@@ -1356,7 +1849,7 @@ export class HebbianEngine {
 
     // Context score: embedding similarity or keyword fallback
     let contextScore = 0;
-    if (queryEmbedding && neuron.embedding) {
+    if (queryEmbedding && neuron.embedding && neuron.embedding_model === EMBEDDING_MODEL_ID) {
       // Embedding-based: cosine similarity between query and neuron embeddings
       const neuronEmb = deserializeEmbedding(
         neuron.embedding instanceof Buffer ? neuron.embedding : Buffer.from(neuron.embedding)
@@ -1373,13 +1866,11 @@ export class HebbianEngine {
     // Myelination bonus (capped to prevent superhighway domination)
     const myelinBonus = Math.min(neuron.myelination, MYELIN_CAP_IN_CONFIDENCE) * 0.3;
 
-    // Recency bonus: recently accessed neurons are more relevant
-    let recencyBonus = 0;
-    if (neuron.last_accessed) {
-      const ageMs = Date.now() - new Date(neuron.last_accessed).getTime();
-      const ageHours = ageMs / 3_600_000;
-      recencyBonus = Math.max(0, 1 - ageHours / 168) * 0.2; // decays over 1 week
-    }
+    const recencyBonus = this.options.baseLevelActivation
+      ? 0.2 * this.baseLevelScore(neuron)
+      : (neuron.last_accessed
+        ? Math.max(0, 1 - ((this.nowMs() - Date.parse(neuron.last_accessed)) / 3_600_000) / 168) * 0.2
+        : 0);
 
     // Path bonus: file path contains query keywords (v2.1: stronger filename matching)
     const keywords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
@@ -1838,7 +2329,7 @@ export class HebbianEngine {
    * Finds sessions where similar queries were used, returns co-accessed files.
    * Complements semantic recall() with recent working context.
    */
-  recallEpisodic(query: string, limit: number = 5): RecallResult[] {
+  recallEpisodic(query: string, limit: number = 5, candidatePathsJson: string | null = null): RecallResult[] {
     const keywords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
     if (keywords.length === 0) return [];
 
@@ -1849,9 +2340,9 @@ export class HebbianEngine {
     const matchingSessions = this.db.prepare(`
       SELECT DISTINCT session_id FROM access_log
       WHERE (${placeholders})
-        AND timestamp > datetime('now', '-7 days')
+        AND timestamp > ?
       ORDER BY timestamp DESC LIMIT 10
-    `).all(...params) as { session_id: string }[];
+    `).all(...params, new Date(this.nowMs() - 7 * 86_400_000).toISOString()) as { session_id: string }[];
 
     if (matchingSessions.length === 0) return [];
 
@@ -1863,10 +2354,11 @@ export class HebbianEngine {
       SELECT neuron_id, COUNT(*) as cnt, MAX(timestamp) as last_ts
       FROM access_log
       WHERE session_id IN (${sessionPlaceholders})
+        AND (? IS NULL OR neuron_id IN (SELECT id FROM neurons WHERE path IN (SELECT value FROM json_each(?))))
       GROUP BY neuron_id
       ORDER BY cnt DESC
       LIMIT ?
-    `).all(...sessionIds, limit * 2) as { neuron_id: string; cnt: number; last_ts: string }[];
+    `).all(...sessionIds, candidatePathsJson, candidatePathsJson, limit * 2) as { neuron_id: string; cnt: number; last_ts: string }[];
 
     // Step 3: Map to RecallResult
     const results: RecallResult[] = [];
@@ -1875,7 +2367,7 @@ export class HebbianEngine {
       if (!neuron || neuron.type !== 'file') continue;
 
       // Episodic confidence: frequency in matching sessions × recency
-      const ageHours = (Date.now() - new Date(sn.last_ts).getTime()) / (1000 * 3600);
+      const ageHours = (this.nowMs() - new Date(sn.last_ts).getTime()) / (1000 * 3600);
       const recencyFactor = Math.max(0, 1 - ageHours / 168); // 0-1 over 7 days
       const freqFactor = Math.min(sn.cnt / 5, 1); // normalize, cap at 5 accesses
       const confidence = Math.min(freqFactor * (0.5 + recencyFactor * 0.5), 1.0);
@@ -1901,8 +2393,15 @@ export class HebbianEngine {
    * Track that a file was recalled (suggested to agent).
    * Called by prompt hook when injecting recall results.
    */
-  trackRecalled(neuronId: string): void {
+  trackRecalled(neuronId: string, sourceEdge?: { from: string; to: string }): void {
     this.recalledThisSession.add(neuronId);
+    if (sourceEdge) {
+      const edges = this.recalledEdges.get(neuronId) ?? [];
+      if (!edges.some(e => e.from === sourceEdge.from && e.to === sourceEdge.to)) {
+        edges.push(sourceEdge);
+        this.recalledEdges.set(neuronId, edges);
+      }
+    }
   }
 
   /**
@@ -1932,10 +2431,7 @@ export class HebbianEngine {
     let weakened = 0;
 
     for (const ignoredId of ignored) {
-      // Weaken all synapses where this file is source or target
-      const synapses = this.db.prepare(
-        "SELECT source_id, target_id, weight FROM synapses WHERE source_id = ? OR target_id = ?"
-      ).all(ignoredId, ignoredId) as Synapse[];
+      const synapses = this.antiRecallSynapses(ignoredId);
 
       for (const syn of synapses) {
         const newWeight = Math.max(
@@ -1957,11 +2453,11 @@ export class HebbianEngine {
   /**
    * Get anti-recall session state (for debugging/introspection).
    */
-  getAntiRecallState(): { recalled: string[]; opened: string[]; ignored: string[] } {
+  getAntiRecallState(): { recalled: string[]; opened: string[]; ignored: string[]; source_edges: Record<string, { from: string; to: string }[]> } {
     const recalled = [...this.recalledThisSession];
     const opened = [...this.openedThisSession];
     const ignored = recalled.filter(id => !this.openedThisSession.has(id));
-    return { recalled, opened, ignored };
+    return { recalled, opened, ignored, source_edges: Object.fromEntries(this.recalledEdges) };
   }
 
   // --- Token budget reporting ---
@@ -2041,12 +2537,13 @@ export class HebbianEngine {
     const text = [neuron.path, ...contexts].join(" ");
     if (text.trim().length < 3) return false;
 
-    const embedding = await embedText(text);
+    const embedding = await embedText(text, "document");
     if (!embedding) return false;
 
     this.stmts.updateEmbedding.run({
       id: neuronId,
       embedding: serializeEmbedding(embedding),
+      model: EMBEDDING_MODEL_ID,
     });
     return true;
   }
@@ -2347,10 +2844,7 @@ export class HebbianEngine {
       // Escalating decay: 1 - (1 - 0.1)^streak
       const effectiveDecay = 1 - Math.pow(1 - ANTI_RECALL_BASE_DECAY, streak);
 
-      // Weaken all synapses
-      const synapses = this.db.prepare(
-        "SELECT source_id, target_id, weight FROM synapses WHERE source_id = ? OR target_id = ?"
-      ).all(ignoredId, ignoredId) as Synapse[];
+      const synapses = this.antiRecallSynapses(ignoredId);
 
       for (const syn of synapses) {
         const newWeight = Math.max(

@@ -11,3 +11,5 @@ dist/
 *.log
 BRAINBOX-SESSION.md
 .DS_Store
+eval-results/
+.brainbox/eval-cache/

@@ -48,3 +48,10 @@ assets/
 MACOS-DAEMON-VISION.md
 RESEARCH-HOOKS.md
 brainbox-mind.md
+
+# Tests and local eval output
+src/tests/
+src/testkit.ts
+dist/tests/
+dist/testkit*
+eval-results/

@@ -2,16 +2,18 @@
 import { openDb } from "./db.js";
 import { HebbianEngine } from "./hebbian.js";
 import { bootstrap, printResult, type BootstrapOptions } from "./bootstrap.js";
-import { isEmbeddingAvailable } from "./embeddings.js";
+import { isEmbeddingAvailable, EMBEDDING_MODEL, EMBEDDING_MODEL_ID, embeddingModelStatus, pullEmbeddingModel } from "./embeddings.js";
 import { extractSnippets, extractAndStoreSnippets, prepareSnippetStatements, getSupportedLang } from "./snippets.js";
 import { existsSync, writeFileSync, mkdirSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { execSync, fork } from "node:child_process";
+import { compileProcedures, listProcedures, getProcedure, deprecateProcedure } from "./procedures.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
 
-const db = openDb();
+// Replay and model management do not read or migrate the user's memory database.
+const db = openDb(command === "eval" || command === "models" ? ":memory:" : undefined);
 const engine = new HebbianEngine(db);
 
 // Main async wrapper for commands that need await
@@ -25,7 +27,7 @@ function usage() {
 brainbox — Hebbian memory for AI agents
 
 COMMANDS:
-  record <path> [--type file|tool|error] [--query "..."]
+  record <path> [--type file|tool|error|semantic] [--query "..."]
     Record an access event. Strengthens neuron, builds synapses.
 
   error "<error message>" [--query "what you were doing"]
@@ -90,25 +92,29 @@ COMMANDS:
     --auto:     try all sources (git, vault, imports, patterns, sessions)
     --vault:    seed from VaultGraph wikilink graph
     --patterns: seed from directory/filename patterns (auth.ts <-> auth.test.ts)
-    --imports:  seed from JS/TS import graph
+    --imports:  seed typed import/call/inheritance graph; --since <git-rev> scans changed files only
     --sessions: seed from Claude Code session history (~/.claude/projects/)
     Git history is always attempted; skipped gracefully if unavailable.
 
   embed [--force]
-    Batch-embed all neurons using Xenova/all-MiniLM-L6-v2 (384 dims).
-    --force: re-embed all neurons (default: only embed missing).
-    Requires: npm install @huggingface/transformers
+    Embed neurons with the active model (default jina-code q8, 768 dims; BRAINBOX_EMBED_MODEL=minilm|jina-code|gemma|gemma-q4).
+    Embeds neurons that are missing a vector or carry another model's vector.
+    --force: re-embed every neuron.
 
-  embed [--force]
-    Embed all neurons using Xenova/all-MiniLM-L6-v2 (384 dims).
-    --force: re-embed all neurons (not just missing).
-    Requires: npm install @huggingface/transformers
+  models [pull|status]
+    pull:   download the active embedding model into the local cache (hooks never download; they fall back to lexical recall).
+    status: show the active profile, dims and whether it is cached (cache dir: BRAINBOX_MODEL_CACHE).
 
   extract-snippets [--force] [--no-embed]
-    Extract function/class/method snippets from all file neurons using tree-sitter.
-    --force: re-extract all (default: skip files with existing snippets).
-    --no-embed: skip embedding (faster, but snippet search won't work).
-    Supports: TypeScript, JavaScript, Python, Rust, Swift.
+    Index code chunks (tree-sitter AST chunks, FTS5 + sqlite-vec) for all file neurons.
+    Incremental: files whose content, chunker version and embedding model are unchanged are skipped.
+    --force: re-extract every file regardless of content hash.
+    --no-embed: lexical (BM25) index only — faster; search still works without vectors.
+    Supports: TypeScript/TSX, JavaScript, Python, Rust, Swift, Go.
+
+  eval [--source nebius|omp] [--repos N] [--repos-offset N] [--max-tasks-per-repo N] [--limit-trajectories N] [--split dev|test] [--engine old|new] [--embeddings on|off] [--probe p1,p2,p3] [--seed N] [--engine-opts '{}'] [--json]
+    Offline chronological replay of real agent trajectories (SWE-rebench OpenHands or local omp sessions);
+    reports MRR/Recall@k/nDCG vs recency, frequency, BM25, EdgeBank and random baselines with paired bootstrap CIs.
 
   simulate
     Run a simulation showing Hebbian learning in action.
@@ -130,6 +136,20 @@ COMMANDS:
   daemon install     Install macOS LaunchAgent (auto-start on login)
   daemon uninstall   Remove LaunchAgent
   daemon shell-hook  Print zsh hook to add to ~/.zshrc
+
+  procedures [list|compile|show <id>|deprecate <id>]  Inspect and refine the learned procedural playbook.
+
+  consolidate | sleep
+    Sleep consolidation: replay episodic memory into synapses and compile procedures.
+
+  homeostasis
+    Rescale network myelination/weights toward target averages.
+
+  recall-episodic <query>
+    Recall recently worked-on files from the session access log.
+
+  commits <query>
+    Search learned commit co-change history.
 
   replay
     List last 10 sessions with session ID, start time, tool count, unique files, errors.
@@ -189,6 +209,12 @@ function formatMyelin(m: number): string {
 
 async function runCommand() {
 switch (command) {
+  case "eval": {
+    // Keep parquet evaluation dependencies out of short-lived production hook/CLI startup.
+    const { runEval } = await import("./eval/index.js");
+    await runEval(args.slice(1));
+    break;
+  }
   case "record": {
     const path = args[1];
     if (!path) {
@@ -260,7 +286,7 @@ switch (command) {
   case "recall": {
     const query = args[1];
     if (!query) {
-      console.error("Usage: brainbox recall <query> [--budget 10000] [--limit 5]");
+      console.error("Usage: brainbox recall <query> [--budget 10000] [--limit 5] [--type file|tool|error|semantic]");
       process.exit(1);
     }
     const opts = parseArgs(args.slice(2));
@@ -349,6 +375,19 @@ switch (command) {
     console.log(`\n  Embeddings:`);
     console.log(`    Coverage: ${emb.embedded}/${emb.total} neurons (${emb.pct.toFixed(0)}%)`);
     console.log(`    Status:   ${emb.pct >= 90 ? "good" : emb.pct > 0 ? "partial — run 'brainbox embed'" : "none — run 'brainbox embed'"}`);
+    const staleNeurons = db.prepare(`SELECT COUNT(*) AS count FROM neurons
+      WHERE embedding IS NOT NULL AND (embedding_model IS NULL OR embedding_model != ?)`)
+      .get(EMBEDDING_MODEL_ID);
+    const staleSnippets = db.prepare(`SELECT COUNT(*) AS count FROM snippets
+      WHERE embedding IS NOT NULL AND (model_id IS NULL OR model_id != ?)`)
+      .get(EMBEDDING_MODEL_ID);
+    if (!staleNeurons || typeof staleNeurons !== "object" || !("count" in staleNeurons) || typeof staleNeurons.count !== "number" ||
+        !staleSnippets || typeof staleSnippets !== "object" || !("count" in staleSnippets) || typeof staleSnippets.count !== "number") {
+      throw new Error("Embedding mismatch counts missing");
+    }
+    console.log(`    Active model: ${EMBEDDING_MODEL_ID}`);
+    console.log(`    Other-model neuron embeddings: ${staleNeurons.count} — re-index: brainbox embed`);
+    console.log(`    Other-model snippet embeddings: ${staleSnippets.count} — re-index: brainbox extract-snippets --force`);
 
     try {
       const snippetStmts = prepareSnippetStatements(db);
@@ -360,6 +399,37 @@ switch (command) {
         console.log(`    Embedded: ${withEmb}/${cnt} (${Math.round(withEmb / cnt * 100)}%)`);
       }
     } catch { /* snippets table may not exist yet */ }
+    break;
+  }
+
+  case "models": {
+    const action = args[1] ?? "status";
+    if (action !== "pull" && action !== "status") {
+      console.error("Usage: brainbox models [pull|status]");
+      process.exitCode = 1;
+      break;
+    }
+    console.log(`Model: ${EMBEDDING_MODEL.id}`);
+    console.log(`Profile: ${process.env.BRAINBOX_EMBED_MODEL || "jina-code"} (${EMBEDDING_MODEL.quantization}, ${EMBEDDING_MODEL.dims} dims)`);
+    console.log(`Fingerprint: ${EMBEDDING_MODEL_ID}`);
+    if (action === "pull") {
+      try {
+        const result = await pullEmbeddingModel();
+        console.log(`Ready: ${(result.bytes / 1024 / 1024).toFixed(1)} MiB in ${(result.elapsedMs / 1000).toFixed(2)}s`);
+      } catch (error: unknown) {
+        console.error(`Model pull failed: ${error instanceof Error ? error.message : String(error)}`);
+        process.exitCode = 1;
+      }
+    } else {
+      const status = embeddingModelStatus();
+      console.log(`Cached: ${status.cached ? "yes" : "no"}`);
+      console.log(`Size: ${(status.bytes / 1024 / 1024).toFixed(1)} MiB`);
+      console.log(`Cache: ${status.cacheDir}`);
+      if (status.missing.length) {
+        console.log(`Missing: ${status.missing.join(", ")}`);
+        console.log("Download: brainbox models pull");
+      }
+    }
     break;
   }
 
@@ -456,8 +526,38 @@ switch (command) {
     break;
   }
 
+  case "procedures": {
+    const action = args[1] || "list";
+    if (action === "compile") {
+      console.log(JSON.stringify(compileProcedures(db), null, 2));
+    } else if (action === "list") {
+      const procedures = listProcedures(db, args.includes("--all"));
+      if (!procedures.length) console.log("No learned procedures. Run brainbox procedures compile after recording sessions.");
+      for (const procedure of procedures) {
+        console.log(`${procedure.id} ${procedure.kind} support=${procedure.support} +${procedure.helpful}/-${procedure.harmful}${procedure.deprecated ? " deprecated" : ""}`);
+        console.log(`  ${procedure.trigger_text}: ${procedure.steps.join(" → ")}`);
+      }
+    } else if ((action === "show" || action === "deprecate") && args[2]) {
+      const procedure = getProcedure(db, args[2]);
+      if (!procedure) {
+        console.error(`Unknown procedure: ${args[2]}`);
+        process.exitCode = 1;
+      } else if (action === "show") {
+        console.log(JSON.stringify(procedure, null, 2));
+      } else {
+        deprecateProcedure(db, procedure.id);
+        console.log(`Deprecated procedure ${procedure.id}`);
+      }
+    } else {
+      console.error("Usage: brainbox procedures [list [--all]|compile|show <id>|deprecate <id>]");
+      process.exitCode = 1;
+    }
+    break;
+  }
+
   case "consolidate":
   case "sleep": {
+    console.log(`   Procedure compilation:  ${JSON.stringify(compileProcedures(db))}`);
     const result = engine.consolidate();
     console.log(`\x1b[35m🌙\x1b[0m Sleep consolidation complete`);
     console.log(`   Sessions replayed:      ${result.sessions_replayed}`);
@@ -550,16 +650,15 @@ switch (command) {
   case "embed": {
     if (!isEmbeddingAvailable()) {
       console.error("@huggingface/transformers is not installed.");
-      console.error("Run: cd ~/happy-cli-new/brainbox && npm install @huggingface/transformers");
+      console.error("Run: npm install @huggingface/transformers (inside the brainbox package)");
       process.exit(1);
     }
 
-    const opts = parseArgs(args.slice(1));
     const force = args.includes("--force");
 
     console.log(`\n🧬 BrainBox Embedding\n`);
-    console.log(`  Model: Xenova/all-MiniLM-L6-v2 (384 dims)`);
-    console.log(`  Mode: ${force ? "re-embed all" : "embed missing only"}\n`);
+    console.log(`  Model: ${EMBEDDING_MODEL.id} (${EMBEDDING_MODEL.quantization}, ${EMBEDDING_MODEL.dims} dims)`);
+    console.log(`  Mode: ${force ? "re-embed all" : "embed missing or other-model embeddings"}\n`);
 
     if (force) {
       // Clear all embeddings to force re-embed
@@ -712,6 +811,7 @@ switch (command) {
       sessions: args.includes("--sessions") || isAuto,
       auto: isAuto,
       dryRun: args.includes("--dry-run"),
+      since: opts.since,
     };
 
     console.log(`\n🧬 BrainBox Bootstrap\n`);
@@ -720,11 +820,12 @@ switch (command) {
     console.log(`  Max commits: ${bsOpts.maxCommits}`);
     if (bsOpts.vault) console.log(`  Vault:       ${bsOpts.vault}`);
     console.log(`  Imports:     ${bsOpts.imports ? "yes" : "no"}`);
+    if (bsOpts.since) console.log(`  Since:       ${bsOpts.since}`);
     console.log(`  Patterns:    ${bsOpts.patterns ? "yes" : "no"}`);
     console.log(`  Sessions:    ${bsOpts.sessions ? "yes" : "no"}`);
     console.log(`  Dry run:     ${bsOpts.dryRun ? "yes" : "no"}\n`);
 
-    const result = bootstrap(bsOpts);
+    const result = await bootstrap(bsOpts);
     printResult(result, bsOpts.dryRun);
 
     // Phase 7: Extract snippets from source files (v4.0)
@@ -770,25 +871,17 @@ switch (command) {
     let scanned = 0, extracted = 0, embedded = 0, skipped = 0, errors = 0;
 
     for (const neuron of fileNeurons) {
-      const lang = getSupportedLang(neuron.path);
-      if (!lang) { skipped++; continue; }
-      if (!existsSync(neuron.path)) { skipped++; continue; }
-
-      // Skip if already has snippets (unless --force)
-      if (!force) {
-        const existing = stmts.getSnippetsForNeuron.all({ parentNeuronId: neuron.id }) as any[];
-        if (existing.length > 0) { skipped++; continue; }
-      }
-
+      if (!getSupportedLang(neuron.path)) { skipped++; continue; }
+      // Missing files still go through extraction so their stale chunks are removed.
       scanned++;
       try {
-        const count = await extractAndStoreSnippets(db, neuron.path, neuron.id, embed);
+        const count = await extractAndStoreSnippets(db, neuron.path, neuron.id, embed, force);
         if (count > 0) {
           extracted += count;
           if (embed) embedded += count;
           process.stdout.write(`  ${neuron.path}: ${count} snippets\n`);
         }
-      } catch (err) {
+      } catch {
         errors++;
       }
     }
@@ -797,7 +890,7 @@ switch (command) {
     console.log(`\n  Scanned: ${scanned} files`);
     console.log(`  Extracted: ${extracted} snippets`);
     if (embed) console.log(`  Embedded: ${embedded} snippets`);
-    console.log(`  Skipped: ${skipped} (no lang support, missing, or existing)`);
+    console.log(`  Skipped: ${skipped} (no language support)`);
     if (errors > 0) console.log(`  Errors: ${errors}`);
     console.log(`  Total snippets in DB: ${totalSnippets}`);
     break;
