@@ -7,16 +7,19 @@
  * Sources (in order of signal strength):
  *   Git history:    files changed together in commits form co-access synapses
  *   VaultGraph:     markdown files linked via [[wikilinks]] form strong synapses
- *   Import graph:   TypeScript/JavaScript import relationships
+ *   Code graph:     tree-sitter import, call, and inheritance relationships
  *   Dir patterns:   same-name files across directories (auth.ts ↔ auth.test.ts)
  */
 
 import { execSync } from "child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "fs";
-import { join, resolve, dirname, relative, basename } from "path";
+import { join, resolve, relative, basename } from "path";
 import { openDb } from "./db.js";
 import { HebbianEngine } from "./hebbian.js";
 import { indexCommits } from "./commit-learning.js";
+import type Database from "better-sqlite3";
+import type { CodeEdge } from "./codegraph.js";
+import { scanCodeGraph, seedCodeEdges } from "./codegraph.js";
 
 // --- Types ---
 
@@ -36,6 +39,7 @@ export interface BootstrapOptions {
   sessions: boolean;
   auto: boolean;
   dryRun: boolean;
+  since?: string;
 }
 
 interface BootstrapResult {
@@ -43,6 +47,8 @@ interface BootstrapResult {
   filesRecorded: number;
   synapsesExpected: number;
   importEdges: number;
+  callEdges: number;
+  inheritEdges: number;
   vaultEdges: number;
   patternEdges: number;
   sessionEdges: number;
@@ -144,58 +150,8 @@ export function parseGitLog(repoPath: string, maxCommits: number): GitCommit[] {
   return commits;
 }
 
-// --- Import graph scanning ---
+// --- Source file discovery (directory-pattern seeding) ---
 
-const IMPORT_REGEX = /(?:import\s+.*?\s+from\s+['"](.+?)['"]|require\s*\(\s*['"](.+?)['"]\s*\))/g;
-
-function extractImports(filePath: string): string[] {
-  let content: string;
-  try {
-    content = readFileSync(filePath, "utf-8");
-  } catch {
-    return [];
-  }
-
-  const imports: string[] = [];
-  let match: RegExpExecArray | null;
-  const re = new RegExp(IMPORT_REGEX.source, "g");
-  while ((match = re.exec(content)) !== null) {
-    const importPath = match[1] || match[2];
-    // Only resolve relative imports (skip npm packages)
-    if (importPath && (importPath.startsWith(".") || importPath.startsWith("/"))) {
-      imports.push(importPath);
-    }
-  }
-  return imports;
-}
-
-function resolveImportPath(importPath: string, fromFile: string): string | null {
-  const dir = dirname(fromFile);
-  const extensions = [".ts", ".tsx", ".js", ".jsx", ""];
-  const base = resolve(dir, importPath);
-
-  // Direct match
-  for (const ext of extensions) {
-    const candidate = base + ext;
-    if (existsSync(candidate)) return candidate;
-  }
-
-  // Handle .js → .ts remapping (common in ESM TypeScript projects)
-  if (importPath.endsWith(".js")) {
-    const tsBase = resolve(dir, importPath.replace(/\.js$/, ""));
-    for (const ext of [".ts", ".tsx"]) {
-      const candidate = tsBase + ext;
-      if (existsSync(candidate)) return candidate;
-    }
-  }
-
-  // Try index files
-  for (const ext of [".ts", ".tsx", ".js", ".jsx"]) {
-    const candidate = join(base, `index${ext}`);
-    if (existsSync(candidate)) return candidate;
-  }
-  return null;
-}
 
 function findSourceFiles(dir: string, extensions: string[]): string[] {
   const results: string[] = [];
@@ -234,22 +190,6 @@ export interface ImportEdge {
   to: string;
 }
 
-export function scanImportGraph(repoPath: string): ImportEdge[] {
-  const sourceFiles = findSourceFiles(repoPath, [".ts", ".tsx", ".js", ".jsx"]);
-  const edges: ImportEdge[] = [];
-
-  for (const file of sourceFiles) {
-    const imports = extractImports(file);
-    for (const imp of imports) {
-      const resolved = resolveImportPath(imp, file);
-      if (resolved) {
-        edges.push({ from: file, to: resolved });
-      }
-    }
-  }
-
-  return edges;
-}
 
 // --- VaultGraph scanning ---
 
@@ -479,13 +419,24 @@ export function parseClaudeSessions(projectDir?: string): {
 
 // --- Bootstrap execution ---
 
-export function bootstrap(opts: BootstrapOptions): BootstrapResult {
+export async function bootstrap(opts: BootstrapOptions): Promise<BootstrapResult> {
+  const db = openDb(opts.dryRun && !opts.since ? ":memory:" : undefined);
+  try {
+    return await runBootstrap(opts, db);
+  } finally {
+    db.close();
+  }
+}
+
+async function runBootstrap(opts: BootstrapOptions, db: Database.Database): Promise<BootstrapResult> {
   const repoPath = resolve(opts.repo);
   const result: BootstrapResult = {
     commits: 0,
     filesRecorded: 0,
     synapsesExpected: 0,
     importEdges: 0,
+    callEdges: 0,
+    inheritEdges: 0,
     vaultEdges: 0,
     patternEdges: 0,
     sessionEdges: 0,
@@ -536,14 +487,17 @@ export function bootstrap(opts: BootstrapOptions): BootstrapResult {
     result.synapsesExpected += vaultEdges.length * 2;
   }
 
-  let importEdgesList: ImportEdge[] = [];
+  let importEdgesList: CodeEdge[] = [];
   if (opts.imports) {
-    console.log("Phase 3: Import graph...");
-    importEdgesList = scanImportGraph(repoPath);
-    result.importEdges = importEdgesList.length;
-    console.log(importEdgesList.length === 0
-      ? "  Skipped — no JS/TS imports found"
-      : `  Found ${importEdgesList.length} import relationships`);
+    console.log("Phase 3: Structural code graph (tree-sitter)...");
+    const graph = await scanCodeGraph(repoPath, { db, since: opts.since, persist: !opts.dryRun });
+    importEdgesList = graph.edges;
+    result.importEdges = graph.edges.filter(edge => edge.kind === "import").length;
+    result.callEdges = graph.edges.filter(edge => edge.kind === "call").length;
+    result.inheritEdges = graph.edges.filter(edge => edge.kind === "inherit").length;
+    console.log(`  Scanned ${graph.scanned} files; skipped ${graph.skipped} unchanged files`);
+    console.log(`  Edges: ${result.importEdges} import, ${result.callEdges} call, ${result.inheritEdges} inherit`);
+    if (graph.unavailable.length) console.log(`  Unavailable grammars: ${graph.unavailable.join(", ")}`);
     for (const e of importEdgesList) {
       result.uniqueFiles.add(e.from);
       result.uniqueFiles.add(e.to);
@@ -588,7 +542,6 @@ export function bootstrap(opts: BootstrapOptions): BootstrapResult {
   if (opts.dryRun) return result;
 
   // --- Real run: seed neurons and synapses directly ---
-  const db = openDb();
   const engine = new HebbianEngine(db, `bootstrap-${Date.now()}`);
 
   // Use a transaction for performance
@@ -614,12 +567,8 @@ export function bootstrap(opts: BootstrapOptions): BootstrapResult {
       engine.seedSynapse(edge.from, edge.to, 0.6); // strong: explicit links
     }
 
-    // Phase 3: Import graph
-    for (const edge of importEdgesList) {
-      engine.seedNeuron(edge.from, "file", "import");
-      engine.seedNeuron(edge.to, "file", "import");
-      engine.seedSynapse(edge.from, edge.to, 0.5); // moderate: structural
-    }
+    // Phase 3: Bounded structural priors; recorded seed snapshots preserve learned edges.
+    seedCodeEdges(engine, importEdgesList, db);
 
     // Phase 4: Directory patterns
     for (const edge of patternEdgesList) {
@@ -654,7 +603,6 @@ export function bootstrap(opts: BootstrapOptions): BootstrapResult {
     console.log(`Phase 6: Created ${commitCount} commit neurons`);
   }
 
-  db.close();
 
   return result;
 }
@@ -667,6 +615,8 @@ export function printResult(result: BootstrapResult, dryRun: boolean) {
   console.log(`  Git commits:          ${result.commits}${result.skippedGit ? " (skipped — not a git repo)" : ""}`);
   if (result.vaultEdges > 0)   console.log(`  Vault links:          ${result.vaultEdges}`);
   if (result.importEdges > 0)  console.log(`  Import edges:         ${result.importEdges}`);
+  if (result.callEdges > 0)    console.log(`  Call edges:           ${result.callEdges}`);
+  if (result.inheritEdges > 0) console.log(`  Inheritance edges:    ${result.inheritEdges}`);
   if (result.patternEdges > 0) console.log(`  Pattern edges:        ${result.patternEdges}`);
   if (result.sessionEdges > 0) console.log(`  Session pairs:        ${result.sessionEdges}`);
   console.log(`  ---`);
