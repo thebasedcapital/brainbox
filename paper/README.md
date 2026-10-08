@@ -1,6 +1,6 @@
 # BrainBox research-paper draft
 
-The manuscript is **BrainBox: Local Behavioral Memory for Coding Agents**, version 2 (8 October 2026). It is written to be deposited as a new version under concept DOI 10.5281/zenodo.18664906; until that happens, the DOI still resolves to the February version.
+The manuscript is **BrainBox: Local Behavioral Memory for Coding Agents**, version 2 (8 October 2026), with version DOI 10.5281/zenodo.23250505, reserved on Zenodo as a new version under concept DOI 10.5281/zenodo.18664906. The DOI resolves only once that version is published; until then the concept DOI still points to the February version.
 
 ## Files
 

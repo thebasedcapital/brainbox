@@ -14,7 +14,7 @@ abstract: |
 
 **Bhavesh B**, independent researcher · bhaveshb@proton.me · ORCID [0009-0007-9680-3842](https://orcid.org/0009-0007-9680-3842)
 
-**Version 2.** This version supersedes the February 2026 version deposited under concept DOI [10.5281/zenodo.18664906](https://doi.org/10.5281/zenodo.18664906); Section 7 lists what changed. Code: [thebasedcapital/brainbox](https://github.com/thebasedcapital/brainbox) on GitHub (MIT). Text: CC BY 4.0.
+**Version 2** · DOI [10.5281/zenodo.23250505](https://doi.org/10.5281/zenodo.23250505). This version supersedes the February 2026 version; all versions share the concept DOI [10.5281/zenodo.18664906](https://doi.org/10.5281/zenodo.18664906), and Section 7 lists what changed. Code: [thebasedcapital/brainbox](https://github.com/thebasedcapital/brainbox) on GitHub (MIT). Text: CC BY 4.0.
 
 **Keywords:** coding agents · behavioral memory · Hebbian learning · spreading activation · tool prediction · rank fusion · offline replay
 
