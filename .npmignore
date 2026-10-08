@@ -55,3 +55,7 @@ src/testkit.ts
 dist/tests/
 dist/testkit*
 eval-results/
+
+# README visual generators + QA snapshots
+scripts/
+.visuals-qa/

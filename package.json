@@ -1,7 +1,7 @@
 {
   "name": "brainbox-hebbian",
   "version": "0.2.0",
-  "description": "Hebbian memory system for AI agents \u2014 learns access patterns, builds neural pathways, saves tokens",
+  "description": "Hebbian memory system for AI agents — learns access patterns, builds neural pathways, saves tokens",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -12,7 +12,8 @@
     "postinstall": "node dist/cli.js install",
     "dev": "tsx src/cli.ts",
     "test": "tsx src/test.ts",
-    "eval": "tsx src/eval/index.ts"
+    "eval": "tsx src/eval/index.ts",
+    "visuals": "node scripts/visuals/build.mjs"
   },
   "repository": {
     "type": "git",
@@ -47,6 +48,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.0.0",
+    "subset-font": "^2.9.0",
     "tsx": "^4.0.0",
     "typescript": "^5.5.0"
   },

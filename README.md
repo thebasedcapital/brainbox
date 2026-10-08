@@ -1,26 +1,41 @@
-# BrainBox
-
 <p align="center">
-  <img src="assets/brainbox-hero.png" alt="BrainBox — AI with muscle memory" width="800" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/hero-dark.svg" />
+    <img src="assets/hero.svg" alt="BrainBox — muscle memory for coding agents" width="100%" />
+  </picture>
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/brainbox-hebbian"><img src="https://img.shields.io/npm/v/brainbox-hebbian.svg" alt="npm version" /></a>
-  <a href="https://github.com/thebasedcapital/brainbox/stargazers"><img src="https://img.shields.io/github/stars/thebasedcapital/brainbox?style=social" alt="GitHub stars" /></a>
-  <a href="https://github.com/thebasedcapital/brainbox/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" /></a>
+  <a href="https://www.npmjs.com/package/brainbox-hebbian"><img src="https://img.shields.io/npm/v/brainbox-hebbian?color=b83e2d&label=npm" alt="npm version" /></a>
+  <a href="https://github.com/thebasedcapital/brainbox/stargazers"><img src="https://img.shields.io/github/stars/thebasedcapital/brainbox?color=8a8848" alt="GitHub stars" /></a>
+  <img src="https://img.shields.io/badge/node-%E2%89%A522-526c50" alt="Node 22+" />
+  <img src="https://img.shields.io/badge/MCP-8%20tools-6d665a" alt="MCP: 8 tools" />
+  <img src="https://img.shields.io/badge/cost-%240%20%C2%B7%20local%20%C2%B7%20SQLite-6d665a" alt="Zero cost, local, SQLite" />
+  <a href="https://github.com/thebasedcapital/brainbox/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-2a2620" alt="MIT license" /></a>
 </p>
 
-Hebbian memory for AI coding agents. Learns which files you access together, which errors lead to which fixes, and which tool chains you use most — then recalls them instantly.
+<p align="center">
+  <a href="#install"><b>Install</b></a> ·
+  <a href="#how-it-works"><b>How it works</b></a> ·
+  <a href="#results"><b>Results</b></a> ·
+  <a href="#built-on-research"><b>Research</b></a> ·
+  <a href="#integrations"><b>Integrations</b></a> ·
+  <a href="./WHITEPAPER.md"><b>Whitepaper</b></a>
+</p>
 
-**Not a vector database. Not RAG. Procedural memory.**
+BrainBox is **procedural memory for AI coding agents**. It watches what the agent actually does and remembers it:
+- which files get read and edited together
+- which errors were fixed by which edits
+- which tool chains the agent repeats
 
-> If BrainBox saved you tokens, [give it a star](https://github.com/thebasedcapital/brainbox) — it helps others find it.
-> Built by [@thebasedcapital](https://x.com/thebasedcapital)
+On the next task it puts the right files in front of the agent *before* it starts searching.
+
+**Not a vector database. Not RAG.** Hebbian learning on a local SQLite graph. Zero API cost, no GPU, nothing leaves your machine.
 
 ```
-Session 1:  agent greps for auth.ts, reads it, edits it (2000 tokens)
-Session 5:  agent recalls auth.ts directly, skips search (500 tokens saved)
-Session 20: auth.ts is a superhighway — instant recall, zero search cost
+Session 1   agent greps for auth.ts, reads it, edits it            ~2,000 tokens of searching
+Session 5   BrainBox recalls auth.ts + session.ts up front         search skipped
+Session 20  auth.ts → session.ts → token.ts is a superhighway      instant recall
 ```
 
 ## Install
@@ -29,101 +44,159 @@ Session 20: auth.ts is a superhighway — instant recall, zero search cost
 npm install brainbox-hebbian
 ```
 
-That's it. The postinstall script automatically:
-1. Adds a `PostToolUse` hook to `~/.claude/settings.json` (learns from every file read/edit/search/command)
-2. Adds a `UserPromptSubmit` hook (injects compact recall into prompts — or stays silent when it has learned you ignore it)
-3. Adds a `SessionEnd` hook (scores which recalled files you actually opened/edited, compiles procedures)
-4. Registers the MCP server via `claude mcp add` (8 tools: record, recall, explain, error, resolve, predict_next, stats, decay)
-5. Creates the `~/.brainbox/` database directory and starts a background download of the embedding model
+That's it. The postinstall script:
+1. Adds a `PostToolUse` hook to `~/.claude/settings.json`. It learns from every file read, edit, search and command.
+2. Adds a `UserPromptSubmit` hook. It injects compact recall into prompts, or stays silent once it has learned you ignore it.
+3. Adds a `SessionEnd` hook. It scores which recalled files you actually opened or edited and compiles procedures.
+4. Registers the MCP server via `claude mcp add`, with 8 tools: `record`, `recall`, `explain`, `error`, `resolve`, `predict_next`, `stats`, `decay`.
+5. Creates `~/.brainbox/` and starts a background download of the embedding model.
 
-Hooks never download models: until the model is cached (`brainbox models pull`), recall runs lexical-only.
+Hooks never download models. Until the model is cached (`brainbox models pull`), recall runs lexical-only.
 
-BrainBox learns passively from your next Claude Code session. No configuration needed.
-
-## What's new in 0.2
-
-Every change below was driven by a recent paper or project and measured with the new offline replay eval (see [Evaluation](#evaluation)).
-
-- **Ranking rebuilt on evidence.** ACT-R base-level activation ([arXiv:2505.05083](https://arxiv.org/abs/2505.05083)) replaces fixed decay as the recency/frequency signal; Base3-style recurrence + popularity candidates ([2506.12764](https://arxiv.org/abs/2506.12764), [2502.04910](https://arxiv.org/abs/2502.04910)); channels are fused by weighted reciprocal rank with weights fitted on held-out-repo dev data. Directional STDP synapses; longest-suffix n-gram tool prediction.
-- **Hybrid code search.** cAST-style AST chunking ([2506.15655](https://arxiv.org/abs/2506.15655)), SQLite FTS5 BM25 + `sqlite-vec` KNN fused with RRF (k=60), incremental by content hash. Default embedding model is now `jina-embeddings-v2-base-code` (q8, 768d): Recall@5 0.867 vs 0.667 for MiniLM on a 30-query code-search set.
-- **Learned injection policy.** A contextual UCB1 bandit picks SILENT / TOP1 / TOP3 / TOP5 per context, rewarded by files you actually open or edit minus injected-token cost ([MemCon 2607.13591](https://arxiv.org/abs/2607.13591)). Every recall is logged with the synapse that produced it, so ignored recalls weaken only that edge ([MemTrace 2605.28732](https://arxiv.org/abs/2605.28732)). Injection is a compact `path:start-end — why` list ([FastContext 2606.14066](https://arxiv.org/abs/2606.14066)); deleted files are never injected.
-- **Structural code graph.** Tree-sitter import / call / inheritance edges for TS/TSX/JS, Python, Rust, Swift, Go (tsconfig `paths`/`extends`, Go modules), seeded as weak priors (≤ 0.35) that learned co-access outranks; `bootstrap --imports --since <rev>` is incremental.
-- **Procedural playbook.** Deterministic mining of *failed command → edits → passing rerun* and multi-session command workflows, with helpful/harmful counters and automatic deprecation ([ACE 2510.04618](https://arxiv.org/abs/2510.04618), [Mem^p 2508.06433](https://arxiv.org/abs/2508.06433)). Injected as quoted data, never as instructions.
-- **Provenance** via the new `brainbox_explain` MCP tool: why a file was recalled, the edge that produced it, and its hit/ignore history.
-- **Fixes:** builds on Node 22–26 (better-sqlite3 v13), hooks written in Claude Code's nested settings format, hook DB lock wait capped at 100 ms, procedure compile 470× faster on large histories.
-
-### What does NOT happen automatically
-
-The **macOS daemon** (system-wide FSEvents file watcher) is completely separate and opt-in:
-
-```bash
-# Only if you want BrainBox to learn from VS Code, Xcode, vim, shell, etc.
-brainbox daemon install   # installs LaunchAgent, starts watching
-brainbox daemon status    # check if running
-brainbox daemon uninstall # remove completely
-```
-
-The daemon watches file changes across all your editors — not just Claude Code. It requires explicit opt-in because it registers a LaunchAgent and monitors your configured project directories.
-
-### Uninstall
-
-```bash
-brainbox uninstall  # removes hooks + MCP server, preserves database
-```
-
-### Seed from git history (recommended)
-
-Kill cold start by bootstrapping from your existing git history:
+**Kill the cold start** by seeding from git history and the code graph:
 
 ```bash
 brainbox bootstrap --repo /path/to/project --imports
 ```
 
-This seeds the neural network from git commit co-changes and import graphs so BrainBox starts with knowledge instead of from zero.
+**Uninstall:** `brainbox uninstall` removes the hooks and the MCP server and keeps your database.
 
-## How It Works
+## How it works
 
-BrainBox implements neuroscience-inspired learning:
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/how-it-works-dark.svg" />
+    <img src="assets/how-it-works.svg" alt="BrainBox pipeline: tool calls → learn → recall → policy → inject, with a feedback loop" width="100%" />
+  </picture>
+</p>
 
-- **Neurons** — files, tools, and errors you interact with
-- **Synapses** — connections formed when things are accessed together ("neurons that fire together wire together")
-- **Myelination** — frequently-used paths get faster (like muscle memory)
-- **Spreading activation** — recalling one file activates related files
-- **Decay** — unused connections weaken naturally, keeping the network clean
+Every tool call is a **neuron** firing. Files, tools and errors become neurons, and things accessed close together become **synapses**. A prompt triggers **recall**, which fuses several ranking channels. A learned **policy** decides whether injecting is worth the tokens. **Feedback** on what you actually opened or edited flows back into the graph.
+
+### Fire together, wire together
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/hebbian-dark.svg" />
+    <img src="assets/hebbian.svg" alt="Hebbian learning: co-accessed files strengthen their synapse across sessions" width="100%" />
+  </picture>
+</p>
+
+Access `auth.ts` then `session.ts` across sessions and their synapse strengthens. SNAP plasticity makes strong synapses grow more slowly, so no single connection takes over. Links are directional (STDP): what you open *next* matters more than what came before.
+
+### Spreading activation
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/spreading-dark.svg" />
+    <img src="assets/spreading.svg" alt="Spreading activation from a seed file over three hops with fan-effect damping" width="100%" />
+  </picture>
+</p>
+
+Recalling one file activates its neighbours for up to 3 hops. Each hop is damped by `1/√degree`, so hub files don't flood the results. Each result carries the channel and the edge that produced it. `brainbox_explain` shows you exactly why a file was recalled.
+
+### Superhighways and decay
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/superhighway-dark.svg" />
+    <img src="assets/superhighway.svg" alt="Frequently used paths myelinate into superhighways while unused edges decay" width="100%" />
+  </picture>
+</p>
+
+Paths you use often are myelinated into instant-recall superhighways. Recency and frequency follow the ACT-R base-level equation, `B = ln Σ tⱼ^-0.5`, and unused connections fade. Files recalled but ignored weaken **only the edge that surfaced them**.
+
+### Error → fix immune system
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/immune-dark.svg" />
+    <img src="assets/immune.svg" alt="An error fingerprint is linked to the edits that fixed it and recalled the next time" width="100%" />
+  </picture>
+</p>
+
+When a failed command is followed by edits and a passing rerun, BrainBox stores an error→fix procedure. The procedure is keyed by the error's fingerprint and tracks helpful/harmful outcomes. The next time that error appears, the fix files are recalled at once. Procedures are shown to the agent as quoted observations, never as instructions.
+
+## Results
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/eval-dark.svg" />
+    <img src="assets/eval.svg" alt="v0.2 vs v0.1 vs best baseline on real agent trajectories" width="100%" />
+  </picture>
+</p>
+
+`brainbox eval` replays real coding-agent trajectories in time order. Each task is scored on a fresh in-memory DB trained only on **earlier** tasks from the same repo, and every system ranks the same candidate set.
+
+**v0.1 lost to plain recency on next-file prediction.** On the held-out SWE tasks the gap was −.207, 95% CI −.312…−.118. v0.2 is statistically tied with recency there. Next-tool prediction now beats every baseline significantly, and files-read recall leads on both data sources.
+
+**Known gap:** on local sessions, ranking by edit frequency alone still beats BrainBox for *edited* files (Δ −.089, CI −.185…0).
+
+Fitting the lexical and Hebbian channel weights to zero scored higher on dev, but recall then ignored the query, so the shipped weights keep them.
 
 <details>
-<summary><strong>Hebbian Learning in Action</strong> (click to play)</summary>
+<summary><b>Full table, protocol and commands</b></summary>
 
-https://github.com/thebasedcapital/brainbox/raw/main/assets/brainbox-animation.mp4
+Probes:
+- **P1:** files edited or read for the task (query = task text)
+- **P2:** next file, step by step
+- **P3:** next tool (top 3)
+
+Baselines: recency, frequency, BM25, EdgeBank and random. Confidence intervals are paired bootstrap 95% CIs, resampled by trajectory.
+
+Datasets:
+- Ranking weights were fit only on the **dev** repos (sqlglot, dvc, streamlink).
+- **SWE test** is 40 held-out tasks from Pillow and conan.
+- **Local** is 97 agent sessions across 5 projects, never used for fitting.
+
+Scores are MRR (P3: MRR@3), with embeddings off.
+
+| Probe | SWE test: v0.1 | v0.2 | best baseline | local: v0.1 | v0.2 | best baseline |
+|---|---:|---:|---:|---:|---:|---:|
+| P1 edited files | .307 | **.307** | .216 BM25 | .737 | .703 | **.791 frequency** |
+| P1 read files | .191 | **.267** | .206 BM25 | .372 | **.555** | .547 BM25 |
+| P2 next file | .223 | .409 | **.430 recency** (Δ CI −.049…+.003) | .634 | **.702** | .701 recency (tie) |
+| P3 next tool | .479 | **.767** | .748 frequency (Δ +.019, CI +.012…+.027) | .257 | **.686** | .662 recency (Δ CI +.010…+.036) |
+
+```bash
+npm run eval -- --source nebius --repos 5 --max-tasks-per-repo 20 --split test --embeddings off --engine new
+npm run eval -- --source omp    --repos 5 --max-tasks-per-repo 20 --embeddings off --engine old   # v0.1 engine (needs a worktree, see src/eval)
+```
+
+Code search: on a 30-query code-search set, the default `jina-embeddings-v2-base-code` reaches Recall@5 **0.867**, against 0.667 for the previous MiniLM.
 
 </details>
 
-<details>
-<summary><strong>Spreading Activation</strong> — recalling one file activates related files through synaptic connections</summary>
+## Built on research
 
-https://github.com/thebasedcapital/brainbox/raw/main/assets/brainbox-spreading.mp4
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/research-dark.svg" />
+    <img src="assets/research.svg" alt="Recent papers mapped to the BrainBox subsystems they shaped" width="100%" />
+  </picture>
+</p>
 
-</details>
+Each v0.2 change maps to a recent paper and was measured with the replay eval:
 
-<details>
-<summary><strong>Superhighway Formation</strong> — frequently-used pathways become instant-recall superhighways</summary>
+| Subsystem | What changed | Source |
+|---|---|---|
+| Ranking | ACT-R base-level activation replaces fixed decay. Recurrence and popularity candidates are added. Weighted reciprocal-rank fusion with weights fit on held-out dev repos. Directional STDP; n-gram tool prediction. | [ACT-R 2505.05083](https://arxiv.org/abs/2505.05083) · [Base3 2506.12764](https://arxiv.org/abs/2506.12764) · [2502.04910](https://arxiv.org/abs/2502.04910) |
+| Code search | cAST-style AST chunks. FTS5 BM25 + `sqlite-vec` KNN, fused with RRF (k=60). Incremental by content hash. | [cAST 2506.15655](https://arxiv.org/abs/2506.15655) |
+| Injection policy | A contextual UCB1 bandit picks SILENT / TOP1 / TOP3 / TOP5. Reward = files you open or edit, minus token cost. | [MemCon 2607.13591](https://arxiv.org/abs/2607.13591) |
+| Attribution | Every recall is logged with the synapse that produced it; ignored recalls weaken only that edge. | [MemTrace 2605.28732](https://arxiv.org/abs/2605.28732) |
+| Compact injection | Injects a compact `path:start-end — why` list; deleted files are never injected. | [FastContext 2606.14066](https://arxiv.org/abs/2606.14066) |
+| Procedures | Deterministic mining of failed command → edits → passing rerun, plus multi-session workflows, with helpful/harmful counters. | [ACE 2510.04618](https://arxiv.org/abs/2510.04618) · [Mem^p 2508.06433](https://arxiv.org/abs/2508.06433) |
+| Code graph | Tree-sitter import / call / inheritance edges (TS/JS, Python, Rust, Swift, Go), seeded as weak priors (≤ 0.35) that learned co-access outranks. | — |
+| Evaluation | Offline replay of SWE-rebench OpenHands trajectories and local sessions, with baselines and paired CIs. | [SWE-rebench trajectories](https://huggingface.co/datasets/nebius/SWE-rebench-openhands-trajectories) |
 
-https://github.com/thebasedcapital/brainbox/raw/main/assets/brainbox-superhighway.mp4
+Also in 0.2:
+- Builds on Node 22–26 (better-sqlite3 v13).
+- Hooks are written in Claude Code's nested settings format.
+- The hook DB lock wait is capped at 100 ms.
+- Procedure compilation is 470× faster on large histories.
 
-</details>
+## Integrations
 
-<details>
-<summary><strong>Error-Fix Immune System</strong> — remembers which files fixed which errors</summary>
-
-https://github.com/thebasedcapital/brainbox/raw/main/assets/brainbox-immune.mp4
-
-</details>
-
-## Other Integrations
-
-### MCP Server (any agent)
-
-If you're not using Claude Code, you can run the MCP server standalone:
+### MCP server (any agent)
 
 ```bash
 # 8 tools: record, recall (detail: compact|full), explain, error, resolve, predict_next, stats, decay
@@ -142,7 +215,7 @@ Add to `~/.config/kilo/config.json`:
 
 ### OpenClaw (NeuroVault)
 
-BrainBox can be deployed as an OpenClaw memory slot plugin. See [NeuroVault](https://github.com/thebasedcapital/neurovault) for the reference implementation.
+BrainBox can run as an OpenClaw memory slot plugin. See [NeuroVault](https://github.com/thebasedcapital/neurovault) for the reference implementation.
 
 | Aspect | Claude Code | OpenClaw |
 |---|---|---|
@@ -150,6 +223,16 @@ BrainBox can be deployed as an OpenClaw memory slot plugin. See [NeuroVault](htt
 | Context injection | `UserPromptSubmit` hook | `before_agent_start` lifecycle |
 | Learning trigger | `PostToolUse` hook | `after_tool_call` lifecycle |
 | Embeddings | jina-embeddings-v2-base-code (configurable) | Keyword-only (lower confidence gate) |
+
+### macOS daemon (opt-in)
+
+A system-wide FSEvents file watcher that learns from VS Code, Xcode, vim and the shell, not just agents. It installs a LaunchAgent, so it requires an explicit opt-in:
+
+```bash
+brainbox daemon install   # installs LaunchAgent, starts watching
+brainbox daemon status
+brainbox daemon uninstall
+```
 
 ## CLI
 
@@ -169,7 +252,8 @@ brainbox eval --source nebius|omp [...]                   # offline replay evalu
 brainbox hubs | stale | projects | sessions | streaks | graph | highways | decay
 ```
 
-## Configuration
+<details>
+<summary><b>Configuration</b></summary>
 
 | Variable | Purpose | Default |
 |---|---|---|
@@ -184,50 +268,31 @@ brainbox hubs | stale | projects | sessions | streaks | graph | highways | decay
 
 Gemma profiles are subject to the [Gemma Terms of Use](https://ai.google.dev/gemma/terms).
 
-## Evaluation
+</details>
 
-`brainbox eval` replays real coding-agent trajectories in chronological order: each task is evaluated on a fresh in-memory DB trained only on *earlier* tasks from the same repo, and all systems rank the same candidate set. Probes: **P1** files edited / read for the task (query = task text), **P2** next file (step by step), **P3** next tool (top 3). Baselines: recency, frequency, BM25, EdgeBank, random. Paired trajectory-cluster bootstrap 95% CIs.
+<details>
+<summary><b>Algorithm details</b></summary>
 
-```bash
-npm run eval -- --source nebius --repos 5 --max-tasks-per-repo 20 --split test --embeddings off --engine new
-npm run eval -- --source omp    --repos 5 --max-tasks-per-repo 20 --embeddings off --engine old   # v0.1 engine (needs a worktree, see src/eval)
-```
+| Component | Mechanism (defaults in `DEFAULT_ENGINE_OPTIONS`) |
+|-----------|-----------|
+| Synapse formation | Sequential window (25 items), positional decay; directional STDP (later→earlier edge × 0.5) |
+| Strengthening | SNAP sigmoid plasticity (midpoint 0.5, steepness 8); BCM myelination, 0.95 ceiling |
+| Recency / frequency | ACT-R base level `B = ln Σ (Δt_h)^-0.5` over the last 50 accesses |
+| File ranking | Weighted reciprocal-rank fusion. Channel weights: lexical (FTS5, scaled by verbatim query-term coverage) 4, Hebbian evidence 4, code snippets 4, frequency 2, recency 1, base level 0.5, recurrence 0.2. Session recency gets weight 30 when the query matches the current session. |
+| Spreading | 3-hop BFS, fan-out cap 10, fan effect 1/sqrt(degree) |
+| Tool prediction | Longest-suffix n-grams (n ≤ 3, min support 4) fused with frequency (0.5) |
+| Code search | AST chunks; FTS5 BM25 + sqlite-vec KNN, RRF k=60 |
+| Structural priors | import 0.2, call ≤ 0.35, inherit 0.3; never override learned co-access |
+| Injection policy | UCB1 over SILENT/TOP1/TOP3/TOP5; reward = rank-weighted opens/edits − 2 per 1k tokens |
+| Anti-recall | Ignored recalls weaken only the producing edge; `1 - (1 - 0.1)^streak`, floor 0.1 |
+| Error learning | 2x boosted learning rate; error→fix procedures from failed→edited→passing reruns |
 
-MRR (P3: MRR@3), embeddings off. Ranking weights were fit only on the **dev** repos (sqlglot, dvc, streamlink); **nebius test** = 40 held-out tasks from different repos (Pillow, conan). **omp** = 97 local agent sessions across 5 projects (not used for fitting).
+Full details in [WHITEPAPER.md](./WHITEPAPER.md).
 
-| Probe | nebius test: v0.1 | v0.2 | best baseline | omp: v0.1 | v0.2 | best baseline |
-|---|---:|---:|---:|---:|---:|---:|
-| P1 edited files | .307 | **.307** | .216 BM25 | .737 | .703 | **.791 frequency** |
-| P1 read files | .191 | **.267** | .206 BM25 | .372 | **.555** | .547 BM25 |
-| P2 next file | .223 | .409 | **.430 recency** (Δ CI −.049…+.003) | .634 | **.702** | .701 recency (tie) |
-| P3 next tool | .479 | **.767** | .748 frequency (Δ +.019, CI +.012…+.027) | .257 | **.686** | .662 recency (Δ CI +.010…+.036) |
+</details>
 
-v0.1 lost badly to plain recency on next-file prediction (nebius test Δ −0.207, CI −0.312…−0.118); v0.2 is statistically tied with it. Tool prediction now beats every baseline significantly, and read-file recall leads on both sources. Known gap: on local sessions, edit frequency alone still beats BrainBox for *edited* files (Δ −.089, CI −.185…0). The fitted weights keep strong lexical, Hebbian and snippet channels (weight 4 each) so an explicit query (`recall "auth login"`) outranks recently/frequently touched unrelated files — fitting those to zero scored higher on dev but made recall query-blind.
-
-## Key Features
-
-### Hebbian Learning
-Files accessed together form synapses. Access `auth.ts` then `session.ts` 10 times and BrainBox learns they're related — recalling one activates the other.
-
-### Error-Fix Immune System
-When you fix a bug, BrainBox remembers which files fixed which errors. Next time a similar error appears, it suggests the fix files immediately.
-
-### Tool Sequence Prediction
-After 20 Grep-Read-Edit chains, BrainBox predicts you'll Read after Grep and pre-loads likely files.
-
-### SNAP Plasticity
-Strong synapses resist further strengthening (like real neural synapses). Prevents any single connection from dominating the network.
-
-### Anti-Recall Escalation
-Files recalled but never opened get progressively stronger decay. Consecutive ignores escalate: 1st = 10%, 2nd = 19%, 3rd = 27%. Opening the file resets the streak.
-
-### Hub Detection & Staleness Alerts
-Identify the most-connected neurons in your network and detect decaying superhighways before they fade.
-
-### Project Tagging
-Auto-tag file neurons by project. Recall scoped to current project reduces cross-project noise.
-
-## Architecture
+<details>
+<summary><b>Architecture</b></summary>
 
 ```
 src/
@@ -249,38 +314,25 @@ src/
   cli.ts           # CLI
   eval/            # Offline trajectory replay evaluation
   testkit.ts       # Test harness; test.ts + tests/*.test.ts
+scripts/visuals/   # JS generators for the README figures (tbcresearch.org ink style, light + dark)
 ```
 
-## Algorithm Details
+</details>
 
-| Component | Mechanism (defaults in `DEFAULT_ENGINE_OPTIONS`) |
-|-----------|-----------|
-| Synapse formation | Sequential window (25 items), positional decay; directional STDP (later→earlier edge × 0.5) |
-| Strengthening | SNAP sigmoid plasticity (midpoint 0.5, steepness 8); BCM myelination, 0.95 ceiling |
-| Recency / frequency | ACT-R base level `B = ln Σ (Δt_h)^-0.5` over the last 50 accesses |
-| File ranking | Weighted reciprocal-rank fusion: lexical (FTS5, scaled by verbatim query-term coverage) 4, Hebbian evidence 4, code snippets 4, frequency 2, recency 1, base level 0.5, recurrence 0.2; session recency 30 when the query matches the current session |
-| Spreading | 3-hop BFS, fan-out cap 10, fan effect 1/sqrt(degree) |
-| Tool prediction | Longest-suffix n-grams (n ≤ 3, min support 4) fused with frequency (0.5) |
-| Code search | AST chunks; FTS5 BM25 + sqlite-vec KNN, RRF k=60 |
-| Structural priors | import 0.2, call ≤ 0.35, inherit 0.3; never override learned co-access |
-| Injection policy | UCB1 over SILENT/TOP1/TOP3/TOP5; reward = rank-weighted opens/edits − 2 per 1k tokens |
-| Anti-recall | Ignored recalls weaken only the producing edge; `1 - (1 - 0.1)^streak`, floor 0.1 |
-| Error learning | 2x boosted learning rate; error→fix procedures from failed→edited→passing reruns |
-
-Full details in [WHITEPAPER.md](./WHITEPAPER.md).
-
-## Tests
+## Development
 
 ```bash
 npm test                      # 147 tests
 npx tsx src/test.ts "Ranking" # filter by suite/test name
+npm run visuals               # regenerate assets/*.svg (light + dark) from scripts/visuals/scenes/*.mjs
+bash scripts/visuals/social.sh  # render assets/social-preview.png for GitHub's social preview
 ```
 
-## Requirements
+Requirements: Node.js 22+, on macOS or Linux. The FSEvents daemon is macOS-only; everything else is cross-platform.
 
-- Node.js 22+
-- macOS or Linux (FSEvents daemon is macOS-only, everything else is cross-platform)
+---
 
-## License
-
-MIT
+<p align="center">
+  If BrainBox saved your agent some searching, <a href="https://github.com/thebasedcapital/brainbox">give it a ⭐</a> so others can find it.<br/>
+  Built by <a href="https://x.com/thebasedcapital">@thebasedcapital</a> · MIT License
+</p>
