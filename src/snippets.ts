@@ -1,671 +1,325 @@
-/**
- * BrainBox Snippet Neurons — System 2 (Semantic Code Search)
- *
- * Extracts functions, classes, and methods from source files using tree-sitter.
- * Each snippet is embedded independently and stored in SQLite for vector search.
- * Query flow: semantic match on snippets → aggregate to parent file neurons → merge with Hebbian results.
- */
-
-import { readFileSync, existsSync } from "fs";
-import { extname, join, dirname } from "path";
-import { createHash } from "crypto";
-import { fileURLToPath } from "url";
+/** Structural code chunks, transactional lexical/vector indexes, and rank fusion. */
+import { readFileSync, existsSync } from "node:fs";
+import { extname, join, dirname } from "node:path";
+import { createHash } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import type Database from "better-sqlite3";
-import {
-  embedText,
-  cosineSimilarity,
-  serializeEmbedding,
-  deserializeEmbedding,
-  isEmbeddingAvailable,
-} from "./embeddings.js";
+import type { Node as SyntaxNode } from "web-tree-sitter";
+import { Parser, Language } from "web-tree-sitter";
+import * as sqliteVec from "sqlite-vec";
+import { embedText, cosineSimilarity, serializeEmbedding, deserializeEmbedding, isEmbeddingAvailable, EMBEDDING_MODEL_ID, EMBEDDING_DIM } from "./embeddings.js";
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
+export const CHUNKER_VERSION = "cast-v1-1500";
+export const CHUNK_CHAR_BUDGET = 1500;
+export const HYBRID_RRF_K = 60;
+export const HYBRID_CANDIDATES = 50;
 export interface Snippet {
   name: string;
-  kind: "function" | "class" | "method" | "struct" | "trait" | "enum";
-  startLine: number; // 1-indexed
-  endLine: number; // 1-indexed
+  kind: "function" | "class" | "method" | "struct" | "trait" | "enum" | "chunk";
+  startLine: number;
+  endLine: number;
   source: string;
+  signature: string;
 }
-
 export interface SnippetRow {
   id: string;
   parent_neuron_id: string;
+  path: string;
   name: string;
   kind: string;
   start_line: number;
   end_line: number;
   source: string;
+  signature: string;
   embedding: Buffer | null;
   content_hash: string;
+  chunker_version: string;
+  model_id: string | null;
+  dims: number | null;
 }
-
-export interface SnippetMatch {
-  snippet: SnippetRow;
-  confidence: number;
-}
-
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const MIN_LINES = 5; // minimum lines for a snippet to be extracted
-const MAX_FILE_LINES = 10_000; // skip huge files
-const SNIPPET_CONFIDENCE_GATE = 0.35; // lower than Hebbian's 0.4
-
-// Language → file extensions
-const LANG_MAP: Record<string, string[]> = {
-  typescript: [".ts", ".tsx"],
-  javascript: [".js", ".jsx", ".mjs"],
-  python: [".py"],
-  rust: [".rs"],
-  swift: [".swift"],
+export interface SnippetMatch { snippet: SnippetRow; confidence: number }
+const EXT_TO_LANG: Record<string, string> = {
+  ".ts": "typescript", ".tsx": "tsx", ".mts": "typescript", ".cts": "typescript",
+  ".js": "javascript", ".jsx": "javascript", ".mjs": "javascript", ".cjs": "javascript",
+  ".py": "python", ".rs": "rust", ".swift": "swift", ".go": "go",
 };
-
-// Reverse: extension → language
-const EXT_TO_LANG: Record<string, string> = {};
-for (const [lang, exts] of Object.entries(LANG_MAP)) {
-  for (const ext of exts) EXT_TO_LANG[ext] = lang;
-}
-
-// ── Tree-sitter Setup (lazy singleton) ───────────────────────────────────────
-
-let Parser: any = null;
-let LanguageClass: any = null;
-let parsers: Map<string, any> = new Map();
+const parsers = new Map<string, Parser>();
 let initPromise: Promise<void> | null = null;
-
-async function ensureInit(): Promise<boolean> {
-  if (Parser) return true;
-  if (initPromise) {
-    await initPromise;
-    return Parser !== null;
-  }
-
-  initPromise = (async () => {
-    try {
-      const TreeSitter: any = await import("web-tree-sitter");
-      const ParserClass = TreeSitter.Parser || TreeSitter.default;
-      await ParserClass.init();
-      Parser = ParserClass;
-      LanguageClass = TreeSitter.Language || ParserClass.Language;
-    } catch {
-      Parser = null;
-    }
-  })();
-
-  await initPromise;
-  return Parser !== null;
+export function getSupportedLang(filePath: string): string | null {
+  return EXT_TO_LANG[extname(filePath).toLowerCase()] || null;
 }
-
-async function getParser(lang: string): Promise<any | null> {
-  if (!(await ensureInit())) return null;
-  if (parsers.has(lang)) return parsers.get(lang);
-
-  // Find WASM grammar from tree-sitter-wasms package
-  const wasmPath = resolveGrammarPath(lang);
-  if (!wasmPath) return null;
-
+export async function getParser(lang: string): Promise<Parser | null> {
+  if (parsers.has(lang)) return parsers.get(lang) || null;
   try {
-    // Load as Uint8Array to avoid CJS/ESM fs/promises compatibility issue
-    const wasmBuffer = readFileSync(wasmPath);
-    const language = await LanguageClass.load(new Uint8Array(wasmBuffer));
+    initPromise ||= Parser.init();
+    await initPromise;
+    const thisDir = dirname(fileURLToPath(import.meta.url));
+    const filename = `tree-sitter-${lang}.wasm`;
+    const wasmPath = [join(thisDir, "..", "node_modules", "tree-sitter-wasms", "out", filename), join(thisDir, "..", "..", "node_modules", "tree-sitter-wasms", "out", filename), join(thisDir, "..", "grammars", filename)].find(existsSync);
+    if (!wasmPath) return null;
+    const language = await Language.load(new Uint8Array(readFileSync(wasmPath)));
     const parser = new Parser();
     parser.setLanguage(language);
     parsers.set(lang, parser);
     return parser;
-  } catch {
-    return null;
+  } catch { return null; }
+}
+
+interface Span { start: number; end: number }
+/** Recursive child-boundary split; indivisible lexical leaves may exceed the budget. */
+function splitNode(node: SyntaxNode, source: string, budget: number): Span[] {
+  if (node.text.replace(/\s/g, "").length <= budget || node.namedChildCount === 0) return [{ start: node.startIndex, end: node.endIndex }];
+  const spans: Span[] = [];
+  let cursor = node.startIndex;
+  for (const child of node.namedChildren) {
+    if (!child) continue;
+    const parts = splitNode(child, source, budget);
+    if (parts.length) {
+      parts[0].start = cursor;
+      spans.push(...parts);
+      cursor = child.endIndex;
+    }
   }
-}
-
-function resolveGrammarPath(lang: string): string | null {
-  const thisDir = dirname(fileURLToPath(import.meta.url));
-  const filename = `tree-sitter-${lang}.wasm`;
-  const candidates = [
-    // From tree-sitter-wasms npm package (preferred)
-    join(thisDir, "..", "node_modules", "tree-sitter-wasms", "out", filename),
-    join(thisDir, "..", "..", "node_modules", "tree-sitter-wasms", "out", filename),
-    // Legacy vendored grammars/ dir
-    join(thisDir, "..", "grammars", filename),
-    join(thisDir, "grammars", filename),
-  ];
-  for (const p of candidates) {
-    if (existsSync(p)) return p;
+  if (spans.length) spans[spans.length - 1].end = node.endIndex;
+  else return [{ start: node.startIndex, end: node.endIndex }];
+  const merged: Span[] = [];
+  for (const span of spans) {
+    const last = merged[merged.length - 1];
+    if (last && source.slice(last.start, span.end).replace(/\s/g, "").length <= budget) last.end = span.end;
+    else merged.push({ ...span });
   }
-  return null;
+  return merged;
 }
+const ENTITY_KINDS: Record<string, Snippet["kind"]> = {
+  function_declaration: "function", function_definition: "function", function_item: "function",
+  method_definition: "method", method_declaration: "method", class_declaration: "class", class_definition: "class",
+  struct_item: "struct", struct_declaration: "struct", trait_item: "trait", enum_item: "enum", enum_declaration: "enum",
+};
 
-// ── Extraction ───────────────────────────────────────────────────────────────
-
-export function getSupportedLang(filePath: string): string | null {
-  const ext = extname(filePath).toLowerCase();
-  return EXT_TO_LANG[ext] || null;
+export async function extractSnippetSource(source: string, lang: string, budget = CHUNK_CHAR_BUDGET): Promise<Snippet[]> {
+  const parser = await getParser(lang);
+  if (!parser) return [];
+  const tree = parser.parse(source);
+  if (!tree) return [];
+  const snippets: Snippet[] = [];
+  // Binary search line offsets instead of rescanning the file for every chunk.
+  const lineStarts = [0];
+  for (let i = 0; i < source.length; i++) if (source[i] === "\n") lineStarts.push(i + 1);
+  const lineAt = (offset: number): number => {
+    let lo = 0, hi = lineStarts.length;
+    while (lo + 1 < hi) { const mid = (lo + hi) >>> 1; if (lineStarts[mid] <= offset) lo = mid; else hi = mid; }
+    return lo + 1;
+  };
+  const emit = (node: SyntaxNode, name: string, kind: Snippet["kind"]): void => {
+    const body = node.childForFieldName("body");
+    const signature = source.slice(node.startIndex, body?.startIndex ?? Math.min(node.endIndex, node.startIndex + 240)).trim();
+    for (const span of splitNode(node, source, budget)) {
+      const text = source.slice(span.start, span.end);
+      if (!text.trim()) continue;
+      snippets.push({ name, kind, signature, source: text, startLine: lineAt(span.start), endLine: lineAt(Math.max(span.start, span.end - 1)) });
+    }
+  };
+  const visit = (node: SyntaxNode, parent: string): boolean => {
+    let kind = ENTITY_KINDS[node.type];
+    let name = node.childForFieldName("name")?.text;
+    if (node.type === "impl_item") {
+      const owner = node.childForFieldName("type")?.text || "impl";
+      let found = false;
+      const body = node.childForFieldName("body");
+      if (body) for (const child of body.namedChildren) if (child) found = visit(child, owner) || found;
+      return found;
+    }
+    if (node.type === "method_declaration" && !parent) {
+      const receiver = node.childForFieldName("receiver");
+      const receiverType = receiver?.namedChildren.find(child => child?.type === "parameter_declaration")?.childForFieldName("type")?.text;
+      if (receiverType) parent = receiverType.replace(/^\*/, "");
+    }
+    if (node.type === "variable_declarator") {
+      const value = node.childForFieldName("value");
+      if (value && ["arrow_function", "function_expression", "function"].includes(value.type)) kind = "function";
+    }
+    if (kind && name) {
+      const qualified = parent ? `${parent}.${name}` : name;
+      if (parent && kind === "function") kind = "method";
+      emit(node, qualified, kind);
+      if (["class", "struct", "trait"].includes(kind)) for (const child of node.namedChildren) if (child) visit(child, qualified);
+      return true;
+    }
+    let found = false;
+    for (const child of node.namedChildren) if (child) found = visit(child, parent) || found;
+    return found;
+  };
+  try {
+    // Entity chunks plus gap chunks cover imports, constants and executable top-level code.
+    let pending: SyntaxNode[] = [];
+    const flush = (): void => {
+      if (!pending.length) return;
+      const spans = pending.flatMap(n => splitNode(n, source, budget));
+      const merged: Span[] = [];
+      for (const span of spans) {
+        const last = merged[merged.length - 1];
+        if (last && source.slice(last.start, span.end).replace(/\s/g, "").length <= budget) last.end = span.end;
+        else merged.push({ ...span });
+      }
+      for (const span of merged) snippets.push({ name: `<module>:${lineAt(span.start)}`, kind: "chunk", signature: "", source: source.slice(span.start, span.end), startLine: lineAt(span.start), endLine: lineAt(span.end - 1) });
+      pending = [];
+    };
+    for (const node of tree.rootNode.namedChildren) {
+      if (!node) continue;
+      const before = snippets.length;
+      if (visit(node, "")) {
+        const entities = snippets.splice(before);
+        flush();
+        snippets.push(...entities);
+      } else pending.push(node);
+    }
+    flush();
+    return snippets;
+  } finally { tree.delete(); }
 }
-
 export async function extractSnippets(filePath: string): Promise<Snippet[]> {
   const lang = getSupportedLang(filePath);
   if (!lang) return [];
-
-  let source: string;
   try {
-    source = readFileSync(filePath, "utf-8");
-  } catch {
-    return [];
-  }
-
-  const lines = source.split("\n");
-  if (lines.length > MAX_FILE_LINES) return [];
-
-  const parser = await getParser(lang);
-  if (!parser) return [];
-
-  const tree = parser.parse(source);
-  if (!tree) return [];
-
-  const snippets: Snippet[] = [];
-
-  try {
-    switch (lang) {
-      case "typescript":
-      case "javascript":
-        extractJS(tree.rootNode, snippets, lines);
-        break;
-      case "python":
-        extractPython(tree.rootNode, snippets, lines);
-        break;
-      case "rust":
-        extractRust(tree.rootNode, snippets, lines);
-        break;
-      case "swift":
-        extractSwift(tree.rootNode, snippets, lines);
-        break;
-    }
-  } finally {
-    tree.delete();
-  }
-
-  return snippets;
+    const source = readFileSync(filePath, "utf8");
+    if (source.split("\n").length > 10_000) return [];
+    return await extractSnippetSource(source, lang);
+  } catch { return []; }
 }
-
-// ── Language-specific extractors ─────────────────────────────────────────────
-
-function extractJS(node: any, snippets: Snippet[], lines: string[]) {
-  // Walk all children — extract exported functions, classes, and large methods
-  for (let i = 0; i < node.childCount; i++) {
-    const child = node.child(i);
-    if (!child) continue;
-
-    const type = child.type;
-
-    // export function foo() {} or export default function foo() {}
-    if (type === "export_statement") {
-      const decl = child.namedChildren?.[0];
-      if (decl) extractJSDecl(decl, snippets, lines, true);
-      continue;
-    }
-
-    // Top-level function/class (non-exported but still useful)
-    if (
-      type === "function_declaration" ||
-      type === "class_declaration" ||
-      type === "lexical_declaration"
-    ) {
-      extractJSDecl(child, snippets, lines, false);
-      continue;
-    }
-  }
-}
-
-function extractJSDecl(node: any, snippets: Snippet[], lines: string[], exported: boolean) {
-  const type = node.type;
-  const startLine = node.startPosition.row + 1;
-  const endLine = node.endPosition.row + 1;
-  const lineCount = endLine - startLine + 1;
-
-  if (type === "function_declaration") {
-    const nameNode = node.childForFieldName("name");
-    if (nameNode && lineCount >= MIN_LINES) {
-      snippets.push({
-        name: nameNode.text,
-        kind: "function",
-        startLine,
-        endLine,
-        source: getSource(lines, startLine, endLine),
-      });
-    }
-  } else if (type === "class_declaration") {
-    const nameNode = node.childForFieldName("name");
-    const name = nameNode?.text || "anonymous";
-    if (lineCount >= MIN_LINES) {
-      snippets.push({
-        name,
-        kind: "class",
-        startLine,
-        endLine,
-        source: getSource(lines, startLine, endLine),
-      });
-    }
-    // Also extract large methods inside the class
-    extractJSClassMethods(node, snippets, lines, name);
-  } else if (type === "lexical_declaration") {
-    // const foo = () => {} or const foo = function() {}
-    for (let i = 0; i < node.namedChildCount; i++) {
-      const declarator = node.namedChild(i);
-      if (declarator?.type !== "variable_declarator") continue;
-      const nameNode = declarator.childForFieldName("name");
-      const valueNode = declarator.childForFieldName("value");
-      if (!nameNode || !valueNode) continue;
-      if (
-        valueNode.type === "arrow_function" ||
-        valueNode.type === "function"
-      ) {
-        const sl = node.startPosition.row + 1;
-        const el = node.endPosition.row + 1;
-        if (el - sl + 1 >= MIN_LINES) {
-          snippets.push({
-            name: nameNode.text,
-            kind: "function",
-            startLine: sl,
-            endLine: el,
-            source: getSource(lines, sl, el),
-          });
-        }
-      }
-    }
-  }
-}
-
-function extractJSClassMethods(classNode: any, snippets: Snippet[], lines: string[], className: string) {
-  const body = classNode.childForFieldName("body");
-  if (!body) return;
-  for (let i = 0; i < body.namedChildCount; i++) {
-    const member = body.namedChild(i);
-    if (!member) continue;
-    if (member.type === "method_definition" || member.type === "public_field_definition") {
-      const nameNode = member.childForFieldName("name");
-      if (!nameNode) continue;
-      const sl = member.startPosition.row + 1;
-      const el = member.endPosition.row + 1;
-      if (el - sl + 1 >= MIN_LINES) {
-        snippets.push({
-          name: `${className}.${nameNode.text}`,
-          kind: "method",
-          startLine: sl,
-          endLine: el,
-          source: getSource(lines, sl, el),
-        });
-      }
-    }
-  }
-}
-
-function extractPython(node: any, snippets: Snippet[], lines: string[]) {
-  for (let i = 0; i < node.namedChildCount; i++) {
-    const child = node.namedChild(i);
-    if (!child) continue;
-
-    if (child.type === "function_definition") {
-      const nameNode = child.childForFieldName("name");
-      if (!nameNode) continue;
-      const sl = child.startPosition.row + 1;
-      const el = child.endPosition.row + 1;
-      if (el - sl + 1 >= MIN_LINES) {
-        snippets.push({
-          name: nameNode.text,
-          kind: "function",
-          startLine: sl,
-          endLine: el,
-          source: getSource(lines, sl, el),
-        });
-      }
-    } else if (child.type === "class_definition") {
-      const nameNode = child.childForFieldName("name");
-      const name = nameNode?.text || "anonymous";
-      const sl = child.startPosition.row + 1;
-      const el = child.endPosition.row + 1;
-      if (el - sl + 1 >= MIN_LINES) {
-        snippets.push({
-          name,
-          kind: "class",
-          startLine: sl,
-          endLine: el,
-          source: getSource(lines, sl, el),
-        });
-      }
-      // Extract methods
-      const body = child.childForFieldName("body");
-      if (body) {
-        for (let j = 0; j < body.namedChildCount; j++) {
-          const method = body.namedChild(j);
-          if (method?.type === "function_definition") {
-            const mName = method.childForFieldName("name");
-            if (!mName) continue;
-            const msl = method.startPosition.row + 1;
-            const mel = method.endPosition.row + 1;
-            if (mel - msl + 1 >= MIN_LINES) {
-              snippets.push({
-                name: `${name}.${mName.text}`,
-                kind: "method",
-                startLine: msl,
-                endLine: mel,
-                source: getSource(lines, msl, mel),
-              });
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-function extractRust(node: any, snippets: Snippet[], lines: string[]) {
-  for (let i = 0; i < node.namedChildCount; i++) {
-    const child = node.namedChild(i);
-    if (!child) continue;
-
-    if (child.type === "function_item") {
-      const nameNode = child.childForFieldName("name");
-      if (!nameNode) continue;
-      const sl = child.startPosition.row + 1;
-      const el = child.endPosition.row + 1;
-      if (el - sl + 1 >= MIN_LINES) {
-        snippets.push({
-          name: nameNode.text,
-          kind: "function",
-          startLine: sl,
-          endLine: el,
-          source: getSource(lines, sl, el),
-        });
-      }
-    } else if (child.type === "struct_item") {
-      const nameNode = child.childForFieldName("name");
-      if (!nameNode) continue;
-      const sl = child.startPosition.row + 1;
-      const el = child.endPosition.row + 1;
-      if (el - sl + 1 >= MIN_LINES) {
-        snippets.push({
-          name: nameNode.text,
-          kind: "struct",
-          startLine: sl,
-          endLine: el,
-          source: getSource(lines, sl, el),
-        });
-      }
-    } else if (child.type === "trait_item") {
-      const nameNode = child.childForFieldName("name");
-      if (!nameNode) continue;
-      const sl = child.startPosition.row + 1;
-      const el = child.endPosition.row + 1;
-      if (el - sl + 1 >= MIN_LINES) {
-        snippets.push({
-          name: nameNode.text,
-          kind: "trait",
-          startLine: sl,
-          endLine: el,
-          source: getSource(lines, sl, el),
-        });
-      }
-    } else if (child.type === "enum_item") {
-      const nameNode = child.childForFieldName("name");
-      if (!nameNode) continue;
-      const sl = child.startPosition.row + 1;
-      const el = child.endPosition.row + 1;
-      if (el - sl + 1 >= MIN_LINES) {
-        snippets.push({
-          name: nameNode.text,
-          kind: "enum",
-          startLine: sl,
-          endLine: el,
-          source: getSource(lines, sl, el),
-        });
-      }
-    } else if (child.type === "impl_item") {
-      // Extract methods from impl blocks
-      const typeNode = child.childForFieldName("type");
-      const implName = typeNode?.text || "impl";
-      const body = child.childForFieldName("body");
-      if (body) {
-        for (let j = 0; j < body.namedChildCount; j++) {
-          const fn = body.namedChild(j);
-          if (fn?.type === "function_item") {
-            const fnName = fn.childForFieldName("name");
-            if (!fnName) continue;
-            const fsl = fn.startPosition.row + 1;
-            const fel = fn.endPosition.row + 1;
-            if (fel - fsl + 1 >= MIN_LINES) {
-              snippets.push({
-                name: `${implName}::${fnName.text}`,
-                kind: "method",
-                startLine: fsl,
-                endLine: fel,
-                source: getSource(lines, fsl, fel),
-              });
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-function extractSwift(node: any, snippets: Snippet[], lines: string[]) {
-  for (let i = 0; i < node.namedChildCount; i++) {
-    const child = node.namedChild(i);
-    if (!child) continue;
-
-    if (child.type === "function_declaration") {
-      const nameNode = child.childForFieldName("name");
-      if (!nameNode) continue;
-      const sl = child.startPosition.row + 1;
-      const el = child.endPosition.row + 1;
-      if (el - sl + 1 >= MIN_LINES) {
-        snippets.push({
-          name: nameNode.text,
-          kind: "function",
-          startLine: sl,
-          endLine: el,
-          source: getSource(lines, sl, el),
-        });
-      }
-    } else if (child.type === "class_declaration" || child.type === "struct_declaration") {
-      const nameNode = child.childForFieldName("name");
-      const name = nameNode?.text || "anonymous";
-      const kind = child.type === "class_declaration" ? "class" : "struct";
-      const sl = child.startPosition.row + 1;
-      const el = child.endPosition.row + 1;
-      if (el - sl + 1 >= MIN_LINES) {
-        snippets.push({
-          name,
-          kind: kind as any,
-          startLine: sl,
-          endLine: el,
-          source: getSource(lines, sl, el),
-        });
-      }
-      // Extract methods from body
-      extractSwiftMethods(child, snippets, lines, name);
-    } else if (child.type === "enum_declaration") {
-      const nameNode = child.childForFieldName("name");
-      if (!nameNode) continue;
-      const sl = child.startPosition.row + 1;
-      const el = child.endPosition.row + 1;
-      if (el - sl + 1 >= MIN_LINES) {
-        snippets.push({
-          name: nameNode.text,
-          kind: "enum",
-          startLine: sl,
-          endLine: el,
-          source: getSource(lines, sl, el),
-        });
-      }
-    }
-  }
-}
-
-function extractSwiftMethods(parentNode: any, snippets: Snippet[], lines: string[], parentName: string) {
-  const body = parentNode.childForFieldName("body");
-  if (!body) return;
-  for (let i = 0; i < body.namedChildCount; i++) {
-    const child = body.namedChild(i);
-    if (!child) continue;
-    if (child.type === "function_declaration") {
-      const nameNode = child.childForFieldName("name");
-      if (!nameNode) continue;
-      const sl = child.startPosition.row + 1;
-      const el = child.endPosition.row + 1;
-      if (el - sl + 1 >= MIN_LINES) {
-        snippets.push({
-          name: `${parentName}.${nameNode.text}`,
-          kind: "method",
-          startLine: sl,
-          endLine: el,
-          source: getSource(lines, sl, el),
-        });
-      }
-    }
-  }
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function getSource(lines: string[], startLine: number, endLine: number): string {
-  return lines.slice(startLine - 1, endLine).join("\n");
-}
-
 export function snippetId(parentNeuronId: string, startLine: number, endLine: number): string {
-  const hash = createHash("sha256")
-    .update(`${parentNeuronId}:${startLine}:${endLine}`)
-    .digest("hex")
-    .slice(0, 16);
-  return `snip:${hash}`;
+  return `snip:${contentHash(`${parentNeuronId}:${startLine}:${endLine}`)}`;
 }
-
 export function contentHash(source: string): string {
   return createHash("sha256").update(source).digest("hex").slice(0, 16);
 }
+export function snippetEmbeddingText(path: string, snippet: Snippet): string {
+  return `${path}\n${snippet.name}\n${snippet.kind}\n${snippet.signature}\n${snippet.source}`;
+}
 
-// ── DB Operations ────────────────────────────────────────────────────────────
-
+const vectorStates = new WeakMap<Database.Database, boolean>();
+let vectorWarningLogged = false;
+const VECTOR_TABLE = `snippet_vectors_${contentHash(EMBEDDING_MODEL_ID)}`;
+/** Drain row-level invalidations, including cascaded deletions and manual model changes. */
+function synchronizeVectorChanges(db: Database.Database): void {
+  const changed = db.prepare("SELECT snippet_rowid FROM snippet_vector_changes").all() as { snippet_rowid: number }[];
+  if (!changed.length) return;
+  db.transaction(() => {
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE name GLOB 'snippet_vectors_*' AND sql LIKE 'CREATE VIRTUAL TABLE%'").all() as { name: string }[];
+    const validTables = tables.filter(t => /^snippet_vectors_[a-f0-9]+$/.test(t.name));
+    const deletes = validTables.map(t => db.prepare(`DELETE FROM ${t.name} WHERE rowid = ?`));
+    const inserts = new Map(validTables.map(t => [t.name, db.prepare(`INSERT INTO ${t.name}(rowid,embedding) VALUES (?,?)`)]));
+    const current = db.prepare("SELECT embedding,model_id,dims FROM snippets WHERE rowid = ?");
+    const remove = db.prepare("DELETE FROM snippet_vector_changes WHERE snippet_rowid = ?");
+    for (const { snippet_rowid } of changed) {
+      for (const statement of deletes) statement.run(BigInt(snippet_rowid));
+      const row = current.get(snippet_rowid) as { embedding: Buffer | null; model_id: string | null; dims: number | null } | undefined;
+      if (row?.model_id && row.embedding && row.dims && row.embedding.length === row.dims * 4) {
+        inserts.get(`snippet_vectors_${contentHash(row.model_id)}`)?.run(BigInt(snippet_rowid), row.embedding);
+      }
+      remove.run(snippet_rowid);
+    }
+  })();
+}
+/** Extension loaded only on snippet paths, once per connection. Existing BLOBs backfill once. */
+export function ensureSnippetVectorIndex(db: Database.Database): boolean {
+  const state = vectorStates.get(db);
+  if (state === false) return false;
+  try {
+    if (state !== true) sqliteVec.load(db);
+    const exists = db.prepare("SELECT 1 FROM sqlite_master WHERE name = ?").get(VECTOR_TABLE);
+    if (!exists) db.transaction(() => {
+      db.exec(`CREATE VIRTUAL TABLE ${VECTOR_TABLE} USING vec0(embedding float[${EMBEDDING_DIM}] distance_metric=cosine)`);
+      // Backfill stays inside SQLite; never materialize every BLOB in JavaScript.
+      db.prepare(`INSERT INTO ${VECTOR_TABLE}(rowid,embedding) SELECT rowid,embedding FROM snippets WHERE model_id = ? AND dims = ? AND length(embedding) = ?`).run(EMBEDDING_MODEL_ID, EMBEDDING_DIM, EMBEDDING_DIM * 4);
+    })();
+    synchronizeVectorChanges(db);
+    vectorStates.set(db, true);
+    return true;
+  } catch (error: unknown) {
+    vectorStates.set(db, false);
+    if (!vectorWarningLogged) {
+      vectorWarningLogged = true;
+      console.error(`[brainbox] sqlite-vec unavailable; using cosine scan: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    return false;
+  }
+}
 export function prepareSnippetStatements(db: Database.Database): Record<string, Database.Statement> {
   return {
-    upsertSnippet: db.prepare(`
-      INSERT INTO snippets (id, parent_neuron_id, name, kind, start_line, end_line, source, embedding, content_hash, created_at, updated_at)
-      VALUES (@id, @parentNeuronId, @name, @kind, @startLine, @endLine, @source, @embedding, @contentHash, @now, @now)
-      ON CONFLICT(id) DO UPDATE SET
-        name = @name, kind = @kind, start_line = @startLine, end_line = @endLine,
-        source = @source, embedding = @embedding, content_hash = @contentHash, updated_at = @now
-    `),
-    deleteSnippetsForNeuron: db.prepare(
-      `DELETE FROM snippets WHERE parent_neuron_id = @parentNeuronId`
-    ),
-    getSnippetsForNeuron: db.prepare(
-      `SELECT * FROM snippets WHERE parent_neuron_id = @parentNeuronId`
-    ),
-    getAllSnippetEmbeddings: db.prepare(
-      `SELECT id, parent_neuron_id, name, kind, start_line, end_line, embedding FROM snippets WHERE embedding IS NOT NULL`
-    ),
-    countSnippets: db.prepare(`SELECT COUNT(*) as cnt FROM snippets`),
-    getSnippetById: db.prepare(`SELECT * FROM snippets WHERE id = @id`),
+    getSnippetsForNeuron: db.prepare("SELECT * FROM snippets WHERE parent_neuron_id = @parentNeuronId"),
+    countSnippets: db.prepare("SELECT COUNT(*) as cnt FROM snippets"),
+    getSnippetById: db.prepare("SELECT * FROM snippets WHERE id = @id"),
   };
 }
 
-// ── Search ───────────────────────────────────────────────────────────────────
-
-// Cache for snippet embeddings (invalidated when snippets change)
-let embeddingCache: { rows: any[]; timestamp: number } | null = null;
-const CACHE_TTL_MS = 60_000; // 1 minute
-
-export function searchSnippets(
-  db: Database.Database,
-  queryEmbedding: Float32Array,
-  limit: number = 10
-): SnippetMatch[] {
-  const stmts = prepareSnippetStatements(db);
-
-  // Use cached embeddings if fresh
-  const now = Date.now();
-  if (!embeddingCache || now - embeddingCache.timestamp > CACHE_TTL_MS) {
-    embeddingCache = {
-      rows: stmts.getAllSnippetEmbeddings.all(),
-      timestamp: now,
-    };
+export function searchDenseSnippets(db: Database.Database, queryEmbedding: Float32Array, limit = HYBRID_CANDIDATES): SnippetMatch[] {
+  if (queryEmbedding.length !== EMBEDDING_DIM || limit <= 0) return [];
+  if (ensureSnippetVectorIndex(db)) {
+    const rows = db.prepare(`SELECT s.*, 1-v.distance AS similarity FROM ${VECTOR_TABLE} v JOIN snippets s ON s.rowid=v.rowid WHERE v.embedding MATCH ? AND k = ? AND s.model_id = ? AND s.dims = ? ORDER BY v.distance`).all(serializeEmbedding(queryEmbedding), limit, EMBEDDING_MODEL_ID, EMBEDDING_DIM) as (SnippetRow & { similarity: number })[];
+    return rows.filter(row => row.similarity >= 0.2).map(row => ({ snippet: row, confidence: row.similarity }));
   }
-
   const results: SnippetMatch[] = [];
-  for (const row of embeddingCache.rows) {
-    if (!row.embedding) continue;
-    const emb = deserializeEmbedding(row.embedding);
-    const sim = cosineSimilarity(queryEmbedding, emb);
-    if (sim >= SNIPPET_CONFIDENCE_GATE) {
-      results.push({
-        snippet: row as SnippetRow,
-        confidence: sim,
-      });
-    }
+  const rows = db.prepare("SELECT * FROM snippets WHERE embedding IS NOT NULL AND model_id = ? AND dims = ?").iterate(EMBEDDING_MODEL_ID, EMBEDDING_DIM);
+  for (const value of rows) {
+    const row = value as SnippetRow;
+    if (!row.embedding || row.embedding.byteLength !== EMBEDDING_DIM * 4) continue;
+    const confidence = cosineSimilarity(queryEmbedding, deserializeEmbedding(row.embedding));
+    if (confidence >= 0.2) results.push({ snippet: row, confidence });
   }
-
-  results.sort((a, b) => b.confidence - a.confidence);
-  return results.slice(0, limit);
+  return results.sort((a, b) => b.confidence - a.confidence).slice(0, limit);
 }
-
-/** Invalidate the embedding cache (call after extraction) */
-export function invalidateSnippetCache() {
-  embeddingCache = null;
+export function searchSnippets(db: Database.Database, query: string, queryEmbedding: Float32Array | null, limit = 10): SnippetMatch[] {
+  if (limit <= 0) return [];
+  const tokens = [...new Set(query.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().match(/[\p{L}\p{N}_]+/gu) || [])].slice(0, 32);
+  const lexical = tokens.length ? db.prepare(`SELECT s.* FROM snippet_fts JOIN snippets s ON s.rowid = snippet_fts.rowid WHERE snippet_fts MATCH ? ORDER BY bm25(snippet_fts, 3, 5, 1, 1) LIMIT ?`).all(tokens.map(t => `"${t}"`).join(" OR "), HYBRID_CANDIDATES) as SnippetRow[] : [];
+  const dense = queryEmbedding ? searchDenseSnippets(db, queryEmbedding) : [];
+  const fused = new Map<string, { snippet: SnippetRow; score: number; denseSimilarity: number; lexical: boolean }>();
+  lexical.forEach((snippet, rank) => fused.set(snippet.id, { snippet, score: 1 / (HYBRID_RRF_K + rank + 1), denseSimilarity: 0, lexical: true }));
+  dense.forEach(({ snippet, confidence }, rank) => {
+    const old = fused.get(snippet.id);
+    if (old) { old.score += 1 / (HYBRID_RRF_K + rank + 1); old.denseSimilarity = confidence; }
+    else fused.set(snippet.id, { snippet, score: 1 / (HYBRID_RRF_K + rank + 1), denseSimilarity: confidence, lexical: false });
+  });
+  const matches = [...fused.values()].map(item => {
+    const identifiers: string[] = `${item.snippet.path} ${item.snippet.name}`.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().match(/[\p{L}\p{N}_]+/gu) || [];
+    const exact = tokens.length ? tokens.filter(t => identifiers.includes(t)).length / tokens.length : 0;
+    const score = item.score * (1 + 0.25 * exact);
+    // Full-evidence rank-1 single channel maps to .625, dual channel to .95.
+    // Lexical query coverage gates broad OR matches; this is an evidence score, not a probability.
+    const text = `${item.snippet.path} ${item.snippet.name} ${item.snippet.source}`.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+    const coverage = tokens.length ? tokens.filter(t => text.includes(t)).length / tokens.length : 0;
+    const evidence = item.lexical ? Math.max(coverage, item.denseSimilarity) : item.denseSimilarity;
+    return { snippet: item.snippet, confidence: Math.min(0.99, (0.30 + 0.65 * score * (HYBRID_RRF_K + 1) / 2) * (0.5 + 0.5 * evidence)), score };
+  });
+  return matches.sort((a, b) => b.score - a.score || b.confidence - a.confidence).slice(0, limit).map(({ snippet, confidence }) => ({ snippet, confidence }));
 }
-
-// ── Batch Extraction + Embedding ─────────────────────────────────────────────
-
-export interface ExtractionStats {
-  filesScanned: number;
-  filesWithSnippets: number;
-  snippetsExtracted: number;
-  snippetsEmbedded: number;
-  errors: number;
-}
-
-export async function extractAndStoreSnippets(
-  db: Database.Database,
-  filePath: string,
-  neuronId: string,
-  embed: boolean = true
-): Promise<number> {
-  const snippets = await extractSnippets(filePath);
-  if (snippets.length === 0) return 0;
-
-  const stmts = prepareSnippetStatements(db);
-  const now = new Date().toISOString();
-  let stored = 0;
-
-  // Delete old snippets for this file and re-insert
-  stmts.deleteSnippetsForNeuron.run({ parentNeuronId: neuronId });
-
-  for (const s of snippets) {
-    const id = snippetId(neuronId, s.startLine, s.endLine);
-    const hash = contentHash(s.source);
-
-    let embedding: Buffer | null = null;
-    if (embed && isEmbeddingAvailable()) {
-      // Embed: name + first 500 chars of source for context
-      const text = `${s.kind} ${s.name}\n${s.source.slice(0, 500)}`;
-      const emb = await embedText(text);
-      if (emb) embedding = serializeEmbedding(emb);
-    }
-
-    stmts.upsertSnippet.run({
-      id,
-      parentNeuronId: neuronId,
-      name: s.name,
-      kind: s.kind,
-      startLine: s.startLine,
-      endLine: s.endLine,
-      source: s.source,
-      embedding,
-      contentHash: hash,
-      now,
-    });
-    stored++;
+export interface ExtractionStats { filesScanned: number; filesWithSnippets: number; snippetsExtracted: number; snippetsEmbedded: number; errors: number }
+export async function extractAndStoreSnippets(db: Database.Database, filePath: string, neuronId: string, embed = true, force = false): Promise<number> {
+  const source = existsSync(filePath) ? readFileSync(filePath, "utf8") : "";
+  const hash = contentHash(source);
+  const model = embed && isEmbeddingAvailable() ? EMBEDDING_MODEL_ID : null;
+  const indexed = db.prepare("SELECT content_hash, chunker_version, model_id FROM snippet_files WHERE parent_neuron_id = ?").get(neuronId) as { content_hash: string; chunker_version: string; model_id: string | null } | undefined;
+  if (!force && indexed?.content_hash === hash && indexed.chunker_version === CHUNKER_VERSION && indexed.model_id === model) return 0;
+  const lang = getSupportedLang(filePath);
+  const snippets = lang && source.split("\n").length <= 10_000 ? await extractSnippetSource(source, lang) : [];
+  const rows: { snippet: Snippet; embedding: Buffer | null; hash: string }[] = [];
+  let allEmbedded = true;
+  for (const snippet of snippets) {
+    const text = snippetEmbeddingText(filePath, snippet);
+    const vector = model ? await embedText(text, "document") : null;
+    if (model && !vector) allEmbedded = false;
+    rows.push({ snippet, embedding: vector ? serializeEmbedding(vector) : null, hash: contentHash(text) });
   }
-
-  invalidateSnippetCache();
-  return stored;
+  const vec = ensureSnippetVectorIndex(db);
+  db.transaction(() => {
+    db.prepare("DELETE FROM snippets WHERE parent_neuron_id = ?").run(neuronId);
+    const insert = db.prepare(`INSERT INTO snippets(id,parent_neuron_id,path,name,kind,start_line,end_line,source,signature,embedding,content_hash,chunker_version,model_id,dims,created_at,updated_at) VALUES (@id,@parent,@path,@name,@kind,@start,@end,@source,@signature,@embedding,@hash,@version,@model,@dims,@now,@now)`);
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i], s = row.snippet;
+      insert.run({ id: `snip:${contentHash(`${neuronId}:${s.name}:${s.kind}:${s.startLine}:${s.endLine}:${i}`)}`, parent: neuronId, path: filePath, name: s.name, kind: s.kind, start: s.startLine, end: s.endLine, source: s.source, signature: s.signature, embedding: row.embedding, hash: row.hash, version: CHUNKER_VERSION, model: row.embedding ? EMBEDDING_MODEL_ID : null, dims: row.embedding ? EMBEDDING_DIM : null, now: new Date().toISOString() });
+    }
+    db.prepare(`INSERT INTO snippet_files(parent_neuron_id,path,content_hash,chunker_version,model_id) VALUES (?,?,?,?,?) ON CONFLICT(parent_neuron_id) DO UPDATE SET path=excluded.path,content_hash=excluded.content_hash,chunker_version=excluded.chunker_version,model_id=excluded.model_id`).run(neuronId, filePath, hash, CHUNKER_VERSION, allEmbedded ? model : null);
+    if (vec) synchronizeVectorChanges(db);
+  })();
+  return snippets.length;
 }

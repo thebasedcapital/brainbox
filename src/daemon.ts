@@ -34,7 +34,7 @@ import { execSync } from "node:child_process";
 import { openDb } from "./db.js";
 import { HebbianEngine } from "./hebbian.js";
 import { shouldSkipPath } from "./adapter.js";
-import { getSupportedLang, extractAndStoreSnippets, invalidateSnippetCache } from "./snippets.js";
+import { getSupportedLang, extractAndStoreSnippets } from "./snippets.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -220,7 +220,6 @@ async function flushSnippetQueue() {
       if (count > 0) updated++;
     }
     if (updated > 0) {
-      invalidateSnippetCache();
       log("info", `Re-extracted snippets for ${updated} files`);
     }
     db.close();

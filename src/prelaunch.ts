@@ -804,7 +804,7 @@ async function verifySnippets() {
     const queryEmb = await embedText("HTTP request handler routing");
     if (!queryEmb) { db.close(); return "embedding model unavailable"; }
 
-    const matches = searchSnippets(db, queryEmb, 10);
+    const matches = searchSnippets(db, "HTTP request handler routing", queryEmb, 10);
     db.close();
     if (matches.length === 0) return "no snippet matches for 'HTTP request handler routing'";
     return true;
