@@ -65,8 +65,8 @@ brainbox bootstrap --repo /path/to/project --imports
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/how-it-works-dark.svg" />
-    <img src="assets/how-it-works.svg" alt="BrainBox pipeline: tool calls → learn → recall → policy → inject, with a feedback loop" width="100%" />
+    <source media="(prefers-color-scheme: dark)" srcset="assets/the-loop-dark.svg" />
+    <img src="assets/the-loop.svg" alt="BrainBox pipeline: tool calls → learn → recall → policy → inject, with a feedback loop" width="100%" />
   </picture>
 </p>
 
