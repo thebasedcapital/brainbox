@@ -21,6 +21,9 @@ for (const file of readdirSync(scenesDir).filter((n) => n.endsWith(".mjs")).sort
     const scene = render(ink(T));
     const svg = await plate({ T, id: name, ...scene });
     if (/<script|\son\w+=/i.test(svg)) throw new Error(`${name}: scripts/event handlers are stripped by GitHub`);
+    // GitHub serves these as image/svg+xml: one stray "&" or "<" and the image silently fails to load.
+    const bare = svg.replace(/&(amp|lt|gt|quot|apos|#\d+|#x[0-9a-f]+);/gi, "");
+    if (/&/.test(bare)) throw new Error(`${name}: unescaped "&" (use &amp;) — invalid XML`);
     const out = join(outDir, `${name}${T.name === "dark" ? "-dark" : ""}.svg`);
     writeFileSync(out, svg);
     console.log(`${basename(out).padEnd(24)} ${(Buffer.byteLength(svg) / 1024).toFixed(1)} KB`);

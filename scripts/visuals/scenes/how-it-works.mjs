@@ -33,7 +33,7 @@ const stations = [
 ];
 
 const modules = [
-  { x: 395, title: "code graph", sub: "tree-sitter imports & calls" },
+  { x: 395, title: "code graph", sub: "tree-sitter imports &amp; calls" },
   { x: 640, title: "hybrid search", sub: "FTS5 + sqlite-vec, RRF" },
   { x: 1130, title: "procedures", sub: "error → fix playbooks" },
 ];
