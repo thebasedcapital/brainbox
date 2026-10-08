@@ -1,6 +1,6 @@
 # BrainBox research-paper draft
 
-The manuscript is **BrainBox: Local Behavioral Memory for Coding Agents**, version 2 (8 October 2026), with version DOI 10.5281/zenodo.23250505, reserved on Zenodo as a new version under concept DOI 10.5281/zenodo.18664906. The DOI resolves only once that version is published; until then the concept DOI still points to the February version.
+The manuscript is **BrainBox: Local Behavioral Memory for Coding Agents**, version 2 (8 October 2026), published on Zenodo as [doi:10.5281/zenodo.23250505](https://doi.org/10.5281/zenodo.23250505). It is a new version under concept DOI [10.5281/zenodo.18664906](https://doi.org/10.5281/zenodo.18664906), which resolves to the latest version. The published file is the `brainbox.pdf` built from commit `6dc1ae9` (MD5 `5c2c881d4f8fbe33e62074f348000fc8`).
 
 ## Files
 
@@ -47,4 +47,4 @@ The revision replaces the older draft's headline estimated-token-savings claims 
 - Added coverage denominators, all five baselines, paired intervals, ordering assumptions and provenance limits. Every number in Tables 2–4 and Appendix A was checked against `evidence.json`.
 - Added Section 7, which lists each version-1 claim and its status: withdrawn, superseded, reframed or removed.
 - Corrected related-work metadata and added three foundational references (Hebb 1949, Collins & Loftus 1975, Palmer & Zdonik 1991).
-- Prepared with coding-assistant drafting and evidence review. The author must review it before deposit.
+- Prepared with coding-assistant drafting and evidence review.

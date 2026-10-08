@@ -38,6 +38,24 @@ Session 5   BrainBox recalls auth.ts + session.ts up front         search skippe
 Session 20  auth.ts → session.ts → token.ts is a superhighway      instant recall
 ```
 
+## Paper
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18664906.svg)](https://doi.org/10.5281/zenodo.18664906)
+
+**BrainBox: Local Behavioral Memory for Coding Agents** (Bhavesh B, 2026). The DOI above covers all versions and resolves to the latest. Latest version: **v0.2**, [doi:10.5281/zenodo.23250505](https://doi.org/10.5281/zenodo.23250505).
+
+```bibtex
+@misc{b2026brainbox,
+  author    = {B, Bhavesh},
+  title     = {BrainBox: Local Behavioral Memory for Coding Agents},
+  year      = {2026},
+  publisher = {Zenodo},
+  version   = {v0.2},
+  doi       = {10.5281/zenodo.23250505},
+  url       = {https://doi.org/10.5281/zenodo.23250505}
+}
+```
+
 ## Install
 
 ```bash
@@ -287,7 +305,7 @@ Gemma profiles are subject to the [Gemma Terms of Use](https://ai.google.dev/gem
 | Anti-recall | Ignored recalls weaken only the producing edge; `1 - (1 - 0.1)^streak`, floor 0.1 |
 | Error learning | 2x boosted learning rate; error→fix procedures from failed→edited→passing reruns |
 
-The revised [research-paper draft](./WHITEPAPER.md) describes the implementation and coverage-conditioned replay results, including uncertainty and provenance limitations. See [paper build and evidence notes](./paper/README.md) for the bibliography, aggregate evidence, LaTeX and PDF build.
+The [paper's source](./WHITEPAPER.md) (v0.2, [doi:10.5281/zenodo.23250505](https://doi.org/10.5281/zenodo.23250505)) describes the implementation and coverage-conditioned replay results, including uncertainty and provenance limitations. See [paper build and evidence notes](./paper/README.md) for the bibliography, aggregate evidence, LaTeX and PDF build.
 
 </details>
 
