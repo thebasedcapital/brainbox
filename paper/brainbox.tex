@@ -1,1209 +1,1163 @@
-\documentclass[11pt,a4paper]{article}
-
-% Packages
-\usepackage[margin=1in]{geometry}
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage{lmodern}
-\usepackage{amsmath,amssymb}
-\usepackage{booktabs}
-\usepackage{hyperref}
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
+\documentclass[
+  american,
+  11pt,
+]{article}
 \usepackage{xcolor}
-\usepackage{listings}
-\usepackage{fancyhdr}
-\usepackage{enumitem}
-\usepackage{titlesec}
-\usepackage{caption}
-\usepackage{float}
-\usepackage{tabularx}
-\usepackage{microtype}
-
-% Colors
-\definecolor{codegreen}{rgb}{0.2,0.6,0.2}
-\definecolor{codegray}{rgb}{0.5,0.5,0.5}
-\definecolor{codepurple}{rgb}{0.58,0,0.82}
-\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
-\definecolor{linkblue}{rgb}{0.0,0.3,0.7}
-
-% Hyperref config
+\usepackage[margin=25mm]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\newcounter{none} % for unnumbered tables
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+% definitions for citeproc citations
+\NewDocumentCommand\citeproctext{}{}
+\NewDocumentCommand\citeproc{mm}{%
+  \begingroup\def\citeproctext{#2}\cite{#1}\endgroup}
+\makeatletter
+ % allow citations to break across lines
+ \let\@cite@ofmt\@firstofone
+ % avoid brackets around text for \cite:
+ \def\@biblabel#1{}
+ \def\@cite#1#2{{#1\if@tempswa , #2\fi}}
+\makeatother
+\newlength{\cslhangindent}
+\setlength{\cslhangindent}{1.5em}
+\newlength{\csllabelwidth}
+\setlength{\csllabelwidth}{3em}
+\newenvironment{CSLReferences}[2] % #1 hanging-indent, #2 entry-spacing
+ {\begin{list}{}{%
+  \setlength{\itemindent}{0pt}
+  \setlength{\leftmargin}{0pt}
+  \setlength{\parsep}{0pt}
+  % turn on hanging indent if param 1 is 1
+  \ifodd #1
+   \setlength{\leftmargin}{\cslhangindent}
+   \setlength{\itemindent}{-1\cslhangindent}
+  \fi
+  % set entry spacing
+  \setlength{\itemsep}{#2\baselineskip}}}
+ {\end{list}}
+\usepackage{calc}
+\newcommand{\CSLBlock}[1]{\hfill\break\parbox[t]{\linewidth}{\strut\ignorespaces#1\strut}}
+\newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{\strut#1\strut}}
+\newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{\strut#1\strut}}
+\newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
+\ifLuaTeX
+\usepackage[bidi=basic,shorthands=off]{babel}
+\else
+\usepackage[bidi=default,shorthands=off]{babel}
+\fi
+\ifLuaTeX
+  \usepackage{selnolig} % disable illegal ligatures
+\fi
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
 \hypersetup{
-    colorlinks=true,
-    linkcolor=linkblue,
-    citecolor=linkblue,
-    urlcolor=linkblue,
-    bookmarksnumbered=true,
+  pdftitle={BrainBox: Local Behavioral Memory for Coding Agents},
+  pdfauthor={Bhavesh B},
+  pdflang={en-US},
+  colorlinks=true,
+  linkcolor={blue},
+  filecolor={Maroon},
+  citecolor={Blue},
+  urlcolor={blue},
+  pdfcreator={LaTeX via pandoc}}
+
+\title{BrainBox: Local Behavioral Memory for Coding Agents}
+\usepackage{etoolbox}
+\makeatletter
+\providecommand{\subtitle}[1]{% add subtitle to \maketitle
+  \apptocmd{\@title}{\par {\large #1 \par}}{}{}
 }
-
-% Code listing style
-\lstdefinestyle{pseudocode}{
-    backgroundcolor=\color{backcolour},
-    commentstyle=\color{codegreen},
-    keywordstyle=\color{codepurple}\bfseries,
-    numberstyle=\tiny\color{codegray},
-    stringstyle=\color{codegreen},
-    basicstyle=\ttfamily\small,
-    breakatwhitespace=false,
-    breaklines=true,
-    captionpos=b,
-    keepspaces=true,
-    numbers=left,
-    numbersep=5pt,
-    showspaces=false,
-    showstringspaces=false,
-    showtabs=false,
-    tabsize=2,
-    frame=single,
-    framerule=0.4pt,
-    rulecolor=\color{codegray},
-    xleftmargin=1.5em,
-    framexleftmargin=1.5em,
-}
-\lstset{style=pseudocode}
-
-% SQL style
-\lstdefinestyle{sql}{
-    backgroundcolor=\color{backcolour},
-    basicstyle=\ttfamily\small,
-    keywordstyle=\color{codepurple}\bfseries,
-    morekeywords={CREATE,TABLE,PRIMARY,KEY,NOT,NULL,DEFAULT,REFERENCES,AUTOINCREMENT,INTEGER,TEXT,REAL,BLOB},
-    breaklines=true,
-    frame=single,
-    framerule=0.4pt,
-    rulecolor=\color{codegray},
-    xleftmargin=1.5em,
-    framexleftmargin=1.5em,
-}
-
-% Section formatting
-\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
-\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
-\titleformat{\subsubsection}{\normalsize\itshape}{\thesubsubsection}{1em}{}
-
-% Header/footer
-\pagestyle{fancy}
-\fancyhf{}
-\fancyhead[L]{\small BrainBox: Hebbian Memory Systems for AI Agent Behavioral Learning}
-\fancyhead[R]{\small\thepage}
-\renewcommand{\headrulewidth}{0.4pt}
-
-% ORCID icon (manual definition — orcidlink package not in TeX Live Basic)
-\usepackage{tikz}
-\definecolor{orcidgreen}{HTML}{A6CE39}
-\newcommand{\orcidicon}[1]{\href{https://orcid.org/#1}{%
-  \begin{tikzpicture}[baseline=-0.1em]
-    \fill[orcidgreen] (0,0) circle (0.45em);
-    \node[white,font=\bfseries\tiny] at (0,0) {iD};
-  \end{tikzpicture}}}
-
-% Tight lists
-\setlist{nosep,leftmargin=*}
+\makeatother
+\subtitle{A systems draft with coverage-conditioned replay evaluation}
+\author{Bhavesh B}
+\date{8 October 2026 --- revised draft, not a new archival release}
 
 \begin{document}
-
-% ============================================================
-% TITLE
-% ============================================================
-\begin{center}
-{\LARGE\bfseries BrainBox: Hebbian Memory Systems for\\[0.3em] AI Agent Behavioral Learning}
-
-\vspace{1em}
-
-{\large Learning File Access Patterns, Error$\to$Fix Pairs, and Tool Sequences\\Through Biologically Inspired Pathway Myelination}
-
-\vspace{1.5em}
-
-{\large Bhavesh B\,\orcidicon{0009-0007-9680-3842}}
-
-\vspace{0.3em}
-
-{\small Independent Researcher\\
-\texttt{bhaveshb@proton.me}}
-
-\vspace{0.5em}
-
-{\normalsize February 2026}
-
-\vspace{0.5em}
-
-{\small DOI: \href{https://doi.org/10.5281/zenodo.18664906}{10.5281/zenodo.18664906} --- Code: \href{https://github.com/thebasedcapital/brainbox}{github.com/thebasedcapital/brainbox} --- Preprint --- CC BY 4.0}
-\end{center}
-
-\vspace{1em}
-
-% ============================================================
-% ABSTRACT
-% ============================================================
+\maketitle
 \begin{abstract}
-\noindent We present BrainBox, a novel memory architecture for AI coding agents that learns behavioral patterns using Hebbian learning and biologically inspired pathway myelination. Unlike vector databases, retrieval-augmented generation, and static instruction files, BrainBox implements procedural memory---learning \emph{how agents work} rather than \emph{what they know}. The system records file co-access patterns, error$\to$fix associations, and tool usage sequences, strengthening neural pathways through repeated use and weakening them through multiplicative decay.
-
-We introduce several key innovations: (1) cross-type Hebbian synapses connecting file, tool, and error neurons, (2) error$\to$fix pair learning that creates persistent error-resolution mappings, (3) SNAP plasticity preventing synaptic saturation via sigmoid gating, (4) fan-effect normalization and hub penalties addressing the hub explosion problem, (5) homeostatic scaling maintaining stable network dynamics, (6) sleep consolidation with session replay and spaced repetition, and (7) anti-recall negative Hebbian learning for active unlearning. Mathematical verification across 59 tests confirms learning dynamics follow established principles.
-
-While several contemporary systems address agent behavioral memory through symbolic or Bayesian approaches, BrainBox is the first to apply \emph{neuromimetic plasticity mechanisms}---specifically Hebbian learning with pathway myelination---to agent file access patterns, tool sequencing, and error$\to$fix pair association. We position this at Layer~3 (agent behavioral learning) in our proposed four-layer framework for Hebbian learning in AI. A calibrated benchmark suite across six scenarios shows 4.5--8.4\% gross token savings in synthetic evaluation and 8.9\% in production deployment, with recall-served rates reaching 46\% after 100 sessions. Production data confirms SNAP plasticity saturation curves match theoretical predictions.
+Coding agents repeatedly revisit files and tool sequences, creating an
+opportunity for external memory without updating language-model
+parameters. We present BrainBox, a local SQLite-backed system that
+learns directed co-access associations among files, tools and errors.
+Its current implementation combines bounded associative updates,
+query-conditioned graph retrieval, temporal features and reciprocal-rank
+fusion; a separate sequence model predicts tools. Optional components
+provide structural code hints, hybrid snippet retrieval, contextual
+control of prompt injection and deterministic procedure mining. We
+reassess the system using recorded agent trajectories rather than
+treating estimated search-token avoidance as measured savings. In a
+selected 40-task SWE-rebench replay, next-tool MRR@3 is 0.767 versus
+0.748 for frequency, with a paired trajectory-bootstrap difference
+interval of {[}0.012, 0.027{]}. Next-file MRR is 0.409 versus 0.430 for
+recency, with an interval spanning zero. All rank metrics condition on
+targets already represented in prior-task memory: only 221 of 1,303 SWE
+next-file opportunities are scored. A separate 97-session local replay
+shows the same next-tool advantage but lower edited-file MRR than
+frequency. These results support a narrow claim about repeated-access
+prediction, not improved task completion, net token savings, biological
+fidelity or superiority to complete agent-memory products. We make the
+evaluation's ordering assumptions, coverage limits and incomplete
+artifact provenance explicit.
 \end{abstract}
 
-\noindent\textbf{Keywords:} Hebbian learning, agent memory, pathway myelination, spreading activation, procedural memory, token optimization
+\textbf{Author:} Bhavesh B, independent researcher; bhaveshb@proton.me.
+ORCID:
+\href{https://orcid.org/0009-0007-9680-3842}{0009-0007-9680-3842}.
 
-\vspace{1em}
-\hrule
-\vspace{1em}
+\textbf{Draft status.} This revision describes the v0.2 source tree and
+recorded replay runs. It replaces the earlier manuscript's central
+synthetic-token-savings argument. The existing concept DOI,
+\href{https://doi.org/10.5281/zenodo.18664906}{10.5281/zenodo.18664906},
+identifies the prior publication record; this draft has not been
+deposited as a new version. Code:
+\href{https://github.com/thebasedcapital/brainbox}{thebasedcapital/brainbox}.
+Manuscript license: CC BY 4.0; code license: MIT.
 
-% ============================================================
-% TERMINOLOGY
-% ============================================================
-\subsection*{Terminology}
+\textbf{Keywords:} coding agents; behavioral memory; associative
+retrieval; tool prediction; rank fusion; offline replay.
 
-BrainBox introduces several domain-specific terms that map biological learning concepts onto agent behavioral patterns. We define them here for clarity.
+\section{1. Introduction}\label{introduction}
 
-\begin{table}[H]
-\centering
-\small
-\begin{tabularx}{\textwidth}{l X}
-\toprule
-\textbf{Term} & \textbf{Definition} \\
-\midrule
-\textbf{Neuron} & A node in the BrainBox graph representing an entity the agent interacts with: a file path, tool, error message, or semantic concept. Analogous to a biological neuron that fires when activated. \\
-\textbf{Synapse} & A weighted, bidirectional edge between two neurons. Strengthens when connected neurons are co-accessed (Hebbian learning) and weakens through multiplicative decay when unused. \\
-\textbf{Pathway myelination} & The process by which frequently-used neurons accumulate a persistent priority score ($0$--$0.95$), analogous to how biological myelination increases signal conduction velocity along frequently-used axonal pathways. Myelinated neurons are recalled preferentially. \\
-\textbf{High-conductance pathway} & A synapse or pathway whose weight has been consolidated through repeated co-access to the point where recall is near-instant and high-confidence ($\geq 0.7$). Informally referred to as a ``superhighway'' throughout. \\
-\textbf{Spreading activation} & The recall algorithm: direct keyword matches seed a frontier, which propagates through synaptic connections via breadth-first search, with confidence decaying at each hop. Based on Collins \& Loftus (1975). \\
-\textbf{Confidence gate} & A threshold ($\geq 0.4$) below which recalled neurons are discarded. Prevents low-signal noise from reaching the agent. \\
-\textbf{Co-access window} & The last 25 unique files accessed by the agent. Neurons within this window are considered to ``fire together'' and form or strengthen synapses. \\
-\textbf{Error$\to$fix pair} & A learned association between a normalized error message (error neuron) and the files that resolved it (file neurons), strengthened at $2\times$ the normal learning rate. \\
-\bottomrule
-\end{tabularx}
-\end{table}
+Repeated work on a repository produces a trace of operational
+associations: files are read together, edits follow errors, and familiar
+tool sequences recur. A coding agent can use this history to propose
+likely resources before repeating a broad search. This is a prediction
+problem as well as a retrieval problem. The file most often used after a
+test failure may be useful even when its contents do not closely match
+the next task description; conversely, a strong lexical query must be
+able to override a habitual but irrelevant file.
 
-% ============================================================
-% 1. INTRODUCTION
-% ============================================================
-\section{Introduction}
+BrainBox stores these associations outside the language model. Adapters
+translate tool activity into local events; an indexed SQLite graph
+retains resources, directed associations and access history. Recall
+combines query evidence and behavioral priors rather than relying on
+either alone. The model's parameters are unchanged. Learning and recall
+require no LLM inference call, although optional dense retrieval uses a
+downloaded embedding model on the CPU. This removes an API dependency,
+not computational or storage cost.
 
-\subsection{The Problem: Stateless Agents Are Inefficient}
+We use \emph{behavioral memory} for historical file/tool/error
+associations and \emph{procedural memory} more narrowly for mined action
+sequences with observed verification outcomes. Neither term implies that
+observing a frequently used action proves it useful or correct. In
+particular, access frequency is not a causal estimate of utility.
 
-Current AI agent frameworks treat each session as \emph{tabula rasa}. When a coding agent starts a new session, it has no memory of which files it accessed yesterday, which errors it debugged last week, or which tool chains it uses most frequently. Every session rediscovers the same patterns through expensive search operations.
-
-Consider a developer who works on an authentication module daily. The agent reads \texttt{auth.ts}, \texttt{session.ts}, and \texttt{encryption.ts} together in 80\% of sessions. Without memory, each session begins with a grep for ``authentication,'' reads search results, then opens files one by one---consuming ${\sim}2{,}000$ tokens per rediscovery. With Hebbian memory, the agent would recall these three files instantly at ${\sim}0$ additional search tokens because the synaptic pathway is consolidated.
-
-The cost is not trivial. At \$3 per million input tokens (Claude Sonnet pricing), an agent making 1,000 file accesses per day spends approximately \$4.50/day on search and file reading tokens. If 30--50\% of these accesses follow repeated patterns (conservative estimates from our production data showing 46\% recall-served rate after 100 sessions), an 8--9\% gross reduction in total token usage saves \$0.35--0.45/day---approximately \$100--150 per developer per year, not counting the latency benefit of skipping 200--400ms search operations.
-
-\subsection{The Insight: Hardware Prefetching for Software Agents}
-
-In 1991, Brown University researchers published ``Fido: A Cache That Learns to Fetch''~\cite{palmer1991fido}---a system that used associative memory to predict which database pages would be needed next based on access patterns. The key insight was simple: \textbf{access patterns are learnable, not random.} By recording which pages were co-accessed and strengthening those associations, Fido achieved significant cache hit rate improvements.
-
-Thirty-five years later, hardware CPU prefetchers use sophisticated neural pattern learning to predict memory access sequences. Intel's Stride Prefetcher, AMD's L1/L2 prefetching, and ARM's data-dependent prefetch all learn from past access patterns to predict future ones.
-
-Yet nobody has applied this principle \emph{up the stack} to software agents. BrainBox fills this gap by treating file paths as neurons, co-access patterns as synapses, and frequently-used pathways as \emph{superhighways}---high-conductance routes that carry recall traffic near-instantly, directly mapping biological learning onto agent behavior.
-
-\subsection{Contributions}
+This revision makes three contributions:
 
 \begin{enumerate}
-    \item \textbf{BrainBox:} An open-source Hebbian memory system for AI coding agents with 59 mathematically verified tests (Appendix~\ref{app:reproducibility})
-    \item \textbf{Cross-type synapses:} Connections between file, tool, and error neurons enabling multi-modal behavioral learning
-    \item \textbf{Error$\to$fix pair learning:} Persistent error-resolution mappings that learn which files fix which errors
-    \item \textbf{Self-healing plasticity:} SNAP sigmoid gating, hub penalty, noise bridge detection, homeostatic scaling, and synaptic tagging with capture---preventing network degeneration over long horizons
-    \item \textbf{Anti-recall:} Negative Hebbian learning that actively weakens recalled-but-not-opened associations
-    \item \textbf{Sleep consolidation:} Offline session replay with Ebbinghaus spaced repetition and cross-session pattern discovery
-    \item \textbf{Layer~3 positioning:} A four-layer framework identifying where Hebbian learning applies in AI systems
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{An inspectable local implementation} combining directed
+  co-access learning, temporal retrieval, query-aware rank fusion and
+  suffix-based tool prediction, with optional code retrieval and
+  procedure mining.
+\item
+  \textbf{A prior-history replay protocol} that fixes candidate
+  universes before each target task, separates edited-file, read-file,
+  next-file and next-tool probes, and reports both coverage and ranking
+  quality.
+\item
+  \textbf{A bounded empirical finding:} next-tool prediction exceeds the
+  strongest measured heuristic baseline in the stored runs;
+  file-retrieval comparisons are mixed, and low historical coverage
+  limits the claim.
 \end{enumerate}
 
+We do not claim a new biological learning law or first-in-field status.
+The main contribution is the concrete system and its evaluation
+boundary. A useful research outcome includes identifying when simple
+frequency or recency is competitive with a more elaborate memory system.
 
-% ============================================================
-% 2. BACKGROUND AND MOTIVATION
-% ============================================================
-\section{Background and Motivation}
+\section{2. Related work and
+positioning}\label{related-work-and-positioning}
 
-\subsection{A Four-Layer Framework for Hebbian Learning in AI}
+\textbf{Agent memory.} A-MEM builds linked agent memories, while SYNAPSE
+uses spreading activation over episodic-semantic memory and MAGMA
+separates several graph relationships (\citeproc{ref-amem2025}{Xu et al.
+2025}; \citeproc{ref-synapse2026}{H. Jiang et al. 2026};
+\citeproc{ref-magma2026}{D. Jiang et al. 2026}). These systems
+invalidate a simple division in which all existing memory is static or
+purely declarative. BrainBox emphasizes operational traces from coding
+tools and deterministic local updates; it does not establish empirical
+superiority over these systems.
 
-We propose a conceptual taxonomy for understanding where Hebbian learning principles apply across AI systems:
+\textbf{Procedures and tool experience.} ToolMem studies learned
+tool-capability memory, and MACLA studies hierarchical procedural memory
+with Bayesian selection and contrastive refinement
+(\citeproc{ref-toolmem2025}{Xiao et al. 2025};
+\citeproc{ref-macla2025}{Forouzandeh et al. 2025}). NEMORI addresses
+adaptive memory distillation (\citeproc{ref-nemori2025}{Ma et al.
+2025}). BrainBox's procedure compiler instead recognizes constrained
+patterns in execution traces. Its advantages and disadvantages relative
+to language-mediated abstraction remain an empirical question:
+deterministic extraction is easier to inspect but may miss transferable
+explanations or infer spurious fixes.
 
-\begin{table}[H]
-\centering
-\caption{Four-layer framework for Hebbian learning in AI}
-\label{tab:layers}
-\begin{tabularx}{\textwidth}{c l l X}
-\toprule
-\textbf{Layer} & \textbf{Domain} & \textbf{What Is Learned} & \textbf{Examples} \\
-\midrule
-L1 & Model Internals & Weight updates, attention & Chaudhary~\cite{chaudhary2025}, Szelogowski~\cite{szelogowski2025}, CL Survey~\cite{safa2024} \\
-L2 & General Memory & Facts, episodes, semantics & Shodh-Memory, Mem0, A-MEM~\cite{amem2025} \\
-L3 & Agent Behavior & File access, tool chains, error$\to$fix & ToolMem~\cite{toolmem2025}, MACLA~\cite{macla2025}, \textbf{BrainBox} \\
-L4 & Collective Intel. & Shared behavioral patterns & (proposed, not yet implemented) \\
-\bottomrule
-\end{tabularx}
-\end{table}
+\textbf{Association, temporal history and caching.} Hebbian plasticity
+is a broad family of learning ideas, not a correctness argument for a
+particular implementation (\citeproc{ref-safa2024}{Safa 2024}).
+ACT-R-inspired personalization motivates combining recency and
+recurrence (\citeproc{ref-actr2025}{Innerebner et al. 2025}), while
+temporal-graph research demonstrates the importance of heuristic
+comparators (\citeproc{ref-heuristics2025}{Cornell et al. 2025}). Cortex
+studies semantic-aware knowledge caching for LLM access
+(\citeproc{ref-cortex2025}{Ruan et al. 2025}). BrainBox shares the
+motivation of avoiding repeated discovery but predicts operational
+resources rather than measuring remote-cache performance.
 
-Layer~3 has been addressed by several contemporary systems using symbolic, Bayesian, or retrieval-based approaches. Enterprise AI architectural models have also formalized ``process memory'' at this layer, governing how work gets done and which tools are utilized for specific tasks~\cite{maestro2025}. BrainBox's contribution is not the identification of Layer~3 itself, but rather the application of \emph{neuromimetic plasticity mechanisms}---specifically Hebbian learning with pathway myelination---within this established behavioral layer, an approach not previously explored.
+\textbf{Retrieval composition.} Reciprocal-rank fusion combines
+heterogeneous rankers without requiring comparable raw scores
+(\citeproc{ref-rrf2009}{Cormack et al. 2009}). BrainBox uses a weighted
+variant at the file level and a separate hybrid snippet ranker.
+Structural chunking is motivated by cAST (\citeproc{ref-cast2025}{Zhang
+et al. 2025}). These are adopted design ingredients, not new algorithms
+claimed by this paper. The replay results below do not evaluate
+embedding models or code-chunk retrieval.
 
-\subsection{Why Neuromimetic Approaches Are Underexplored at Layer~3}
+\section{3. System and task
+definition}\label{system-and-task-definition}
 
-Three factors explain why neuromimetic approaches to Layer~3 behavioral learning have not been explored:
+\subsection{3.1 State and interfaces}\label{state-and-interfaces}
 
-\begin{enumerate}
-    \item \textbf{Benchmark blindness:} Academic benchmarks evaluate general task performance (SWE-bench, HumanEval), not developer workflow efficiency across repeated sessions.
-    \item \textbf{RAG local maximum:} The industry consensus that ``just use RAG'' prevents exploration of learning-based alternatives to retrieval.
-    \item \textbf{Cross-disciplinary gap:} Hardware architects who understand prefetching do not build LLM agents, and agent builders rarely engage with computer architecture literature.
-\end{enumerate}
+A resource record contains an identifier, type, path or name,
+accumulated query context, timestamps, access count, activation and a
+bounded reinforcement scalar. Types include files, tools and errors.
+Directed edges retain association weights, counts and temporal metadata.
+Additional tables hold access logs, recall decisions, injection
+outcomes, code snippets, replay events and procedures.
 
-\subsection{Static Instructions vs.\ Learned Behavior}
+The operational flow is:
 
-Current agent frameworks rely on static instruction files (e.g., \texttt{CLAUDE.md}) for behavioral configuration. These are declarative, manually authored, and limited to ${\sim}50$--$100$ rules. They cannot capture implicit behavioral patterns, do not adapt to changing workflows, and provide the same instructions regardless of query context. BrainBox addresses this limitation by learning behavioral associations automatically from agent activity, adapting continuously through Hebbian strengthening and decay.
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{Tool events {-}\textgreater{} event normalization {-}\textgreater{} resource/edge updates}
+\NormalTok{                                     |}
+\NormalTok{Prompt query {-}\textgreater{} candidate channels {-}\textgreater{} rank fusion {-}\textgreater{} injection choice}
+\NormalTok{                                                       |}
+\NormalTok{                           observed opens/edits {-}\textgreater{} outcome attribution}
+\NormalTok{Session end {-}\textgreater{} outcome finalization + procedure compilation}
+\end{Highlighting}
+\end{Shaded}
 
-% ============================================================
-% 3. RELATED WORK
-% ============================================================
-\section{Related Work}
+The Claude Code integration observes tool completion, performs
+pre-prompt recall and finalizes outcomes at session end. An MCP server
+exposes recording, recall, explanation, error recording, resolution,
+prediction, statistics and decay. Other adapters use the same
+observation/recall layer. Platform integration demonstrates an available
+interface, not a measured benefit on each platform.
 
-\subsection{Layer 1: Model Internals}
+\subsection{3.2 Two distinct deployment
+questions}\label{two-distinct-deployment-questions}
 
-Recent work has explored Hebbian principles within neural network architectures:
+The deployed system asks both \emph{which resources should be ranked?}
+and \emph{whether any of them should be injected?} The former is
+evaluated here through retrieval and prediction probes. The latter
+involves a contextual policy, prompt overhead and agent responses; it is
+not evaluated by the recorded ranking replay. The same separation
+applies to procedure mining: implementation availability is not evidence
+that remembered procedures improve debugging success.
+
+The database is local, but local storage is not a security boundary.
+Recorded commands, paths and excerpts can be sensitive, and
+repository-controlled text remains untrusted after it enters memory.
+
+\section{4. Methods}\label{methods}
+
+\subsection{4.1 Bounded association
+learning}\label{bounded-association-learning}
+
+An access resets the resource's activation and updates its counters. The
+current event is associated with up to 25 distinct recent resources. Let
+\(w_{uv}\) be an existing directed association, \(p\in(0,1]\) the
+relative position of the earlier resource within that window, and \(h\)
+a hub multiplier. The base update uses
+
+\[
+g(w)=\frac{1}{1+\exp(8(w-0.5))},\qquad
+\delta_{uv}=\eta\,p\,h\,d_{uv}\,g(w_{uv}),
+\]
+
+\[
+w'_{uv}=\min\{1,\;w_{uv}+\delta_{uv}(1-w_{uv})\}.
+\]
+
+The ordinary rate is \(\eta=0.1\), doubled when an error participates.
+The multiplier \(h\) is 0.5 when either endpoint has degree greater than
+20, otherwise 1. Earlier-to-later associations receive \(d_{uv}=1\); the
+reverse orientation receives 0.5 by default. For a new edge, the
+inserted weight is the corresponding \(\delta\) computed from zero.
+Additional tagging/capture and maintenance mechanisms can modify stored
+weights, so this equation describes the ordinary co-access update, not
+every possible transition.
+
+The code retains the name \texttt{myelination} for a resource-level
+reinforcement scalar \(m\). Its ordinary access update is
+
+\[
+\Delta m=0.02\left(1-\frac{m}{0.95}\right)
+\max\left\{\frac{1}{\sqrt{\max(n,1)}},0.1\right\},
+\qquad m'=\min\{0.95,m+\Delta m\},
+\]
+
+where \(n\) is the access count supplied to the update. This is a
+saturating heuristic. It does not implement the sliding modification
+threshold of biological BCM theory. Likewise, event-order asymmetry is
+not continuous-time spike-timing-dependent plasticity, and
+\texttt{myelination} is a software field name, not a model of axonal
+physiology.
+
+Maintenance supports multiplicative decay and pruning. Daily multipliers
+are 0.85 for activation, 0.995 for the reinforcement scalar and 0.98 for
+association weight. These mechanisms require maintenance to run; they do
+not imply a hard bound on database size or an experimentally verified
+forgetting curve.
+
+\subsection{4.2 Retrieval channels and graph
+traversal}\label{retrieval-channels-and-graph-traversal}
+
+File candidates come from lexical evidence over stored path/context
+text, query-conditioned associative retrieval, optional snippet matches,
+recurrence, recency, frequency and base-level activation. A channel need
+not contain every candidate. Lexical tokenization and stored context are
+part of the implementation, not an oracle over repository contents.
+
+For resource \(i\), the ACT-R-inspired feature uses the last at most 50
+access times:
+
+\[
+B_i(t)=\log\sum_{j\in H_i}
+\max\{(t-t_{ij})/\text{hour},1/60\}^{-0.5}.
+\]
+
+A sigmoid provides a bounded version for some confidence calculations. A
+bootstrap resource without an access log can use its seed timestamp.
+This feature is an engineering adaptation; the evaluation uses synthetic
+event time rather than actual elapsed developer time.
+
+Associative retrieval traverses up to three hops and at most ten
+outgoing edges per expanded resource. In the default fan-damped path, a
+proposed target score is proportional to
+
+\[
+a_v=a_u\,w_{uv}\,(1+\min\{m_v,m_{\rm cap}\})
+\left[\max\{1,\min(\deg(u),D_{\rm cap})\}\right]^{-1/2}.
+\]
+
+Only sufficiently strong edges and sufficiently confident targets pass
+admission gates; candidate-type, universe and budget filters also apply.
+Already activated targets keep a better discovered score rather than
+summing every path. The alternative full inverse-degree mode exists but
+is disabled by default. Because reinforcement can increase an individual
+transition factor, the hop bound---not a proof of monotonic
+attenuation---limits traversal depth.
+
+\subsection{4.3 Query-aware rank fusion}\label{query-aware-rank-fusion}
+
+For candidate \(i\), channel \(c\) supplies a one-based rank \(r_c(i)\).
+The default file score is
+
+\[
+S(i\mid q)=\sum_{c:i\in L_c(q)}
+\frac{\lambda_c\,\gamma_c(i,q)}{20+r_c(i)},
+\]
+
+where \(\gamma_c=1\) except for the lexical channel, whose contribution
+is scaled by distinct query-term coverage matched against raw text. The
+denominator constant is 20 for file/tool fusion, distinct from the
+snippet ranker's constant of 60. Table 1 records the inspected defaults.
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Channel
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Default weight
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Qualification
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Lexical & 4 & Scaled by query-term coverage \\
+Query-conditioned associative evidence & 4 & Excludes purely
+popularity-driven evidence from this channel \\
+Snippet & 4 & Requires an available snippet index \\
+Frequency & 2 & Historical access count \\
+Recency & 1 & Replaced by 30 when the query matches recent-session
+lexical evidence \\
+Base level & 0.5 & Recency/frequency history feature \\
+Recurrence & 0.2 & Recent-resource association candidates \\
+\end{longtable}
+}
+
+Table 1. File-level fusion defaults. The reported replay does not
+populate every optional channel.
+
+A final score normalization supplies the API field called
+\texttt{confidence}; it is not a calibrated probability of relevance.
+Results have count and budget limits, and the wrapper can abstain when
+no supporting evidence is available. Ranking weights were developed
+using the designated development repositories and product-level
+query-sensitivity checks. An immutable tuning log and a quantitative
+channel-ablation study are not present in the evidence used here, so the
+values should not be described as a reproducibly estimated optimum.
+
+\subsection{4.4 Tool-sequence
+prediction}\label{tool-sequence-prediction}
+
+Tool prediction backs off from the longest supported suffix, up to three
+tools, to shorter suffixes and then directional associations. Default
+minimum suffix support is four observations. A rank-fusion stage
+combines the sequence-derived ranking with frequency: weights are 1 for
+the sequence channel and 0.5 for frequency; tool recency has weight
+zero. The API returns at most three predicted tools. This is a small
+sequence model over observed tool names, not a planner that decides
+whether the proposed operation is safe or productive.
+
+\subsection{4.5 Optional code and procedure
+components}\label{optional-code-and-procedure-components}
+
+\textbf{Code structure and snippets.} Tree-sitter supports extraction of
+import, call and inheritance hints and syntax-aware code chunks.
+Structural edges are weak priors; unchanged files are not repeatedly
+strengthened merely by re-indexing. Snippet retrieval combines FTS5 BM25
+and optional local dense similarity using rank fusion. The default
+embedding profile is Jina code, 768 dimensions with q8 weights; other
+local profiles are configurable. Hooks do not initiate model downloads,
+and lexical retrieval remains available when embeddings are disabled or
+unavailable. A missing vector extension can use a cosine-scan fallback,
+whose scaling differs from indexed search.
+
+\textbf{Injection policy.} The deployed policy chooses SILENT, TOP1,
+TOP3 or TOP5 in a context formed from confidence band, query class,
+project familiarity and session stage. After an initial TOP5 period, it
+uses a UCB-style bonus:
+
+\[
+U(a)=\overline{R}_a+0.15\sqrt{\frac{2\log N}{N_a}}.
+\]
+
+An unseen arm is explored. For injected suggestions, the implemented
+reward is
+
+\[
+R=\sum_{i\in\text{used suggestions}}\frac{v_i}{r_i}
+-2\,\frac{\widehat{T}_{\rm injected}}{1000},
+\]
+
+where \(v_i=1\) for a read and 1.5 for an edit, and
+\(\widehat{T}_{\rm injected}=\lceil\text{characters}/4\rceil\). SILENT
+receives zero. This does not observe opportunities lost by silence.
+Reads/edits are attribution signals, not counterfactual evidence that a
+suggestion helped. Ignored recalls can weaken the producing association
+rather than indiscriminately weakening every adjacent edge.
+
+\textbf{Procedures.} A deterministic compiler recognizes failed command
+→ successful edits → similar successful rerun patterns, and workflows
+supported by at least three sessions. Error-fix candidates may originate
+from one session. Command outcomes use exit status when available and an
+error detector otherwise; detector-clean output is weaker evidence than
+an explicit passing exit. Workflow retrieval requires a matching live
+prefix and a concrete command-bearing step. Formatting constrains paths
+and command text and labels output as historical observation.
+Helpful/harmful counters can deprecate failing procedures. None of these
+safeguards constitutes a proof against prompt injection or poisoned
+histories.
+
+\section{5. Evaluation protocol}\label{evaluation-protocol}
+
+\subsection{5.1 Data and selection}\label{data-and-selection}
+
+The public source is the Nebius SWE-rebench OpenHands trajectory
+collection (\citeproc{ref-nebius2025}{Trofimova et al. 2025}). The
+recorded catalog has 67,074 rows; this is not the evaluation sample
+size. Selection deduplicates attempts by issue, ranks repositories by
+distinct issue count, takes a five-repository slice, and assigns
+alternating global repository ranks to development or test. The reported
+test slice contains 40 trajectories, at most 20 per repository, from
+Pillow and conan; sqlglot, dvc and streamlink are the designated
+development repositories. This is a selected, repository-disjoint
+evaluation, not a random sample of all SWE-rebench tasks.
+
+The local run selects 97 sessions from up to five project groups in the
+author's OMP logs. Its loader scanned 715 session files spanning nine
+source projects; the nine-project metadata describes the scanned corpus,
+not the selected evaluation cohort. Local inputs were not released, and
+the recorded run used the all-project split. We treat this as a
+secondary descriptive cohort, not an independently auditable held-out
+benchmark.
+
+For the public data, the loader uses PR-number-like issue order as its
+chronology proxy and chooses a single attempt per issue. For local data,
+it uses the parser's session order. Neither is sufficient to establish
+perfect temporal correspondence with actual repository state. The
+simulated clock advances one second per event from a fixed epoch.
+Consequently, the replay does not evaluate real-time forgetting across
+days or weeks.
+
+\subsection{5.2 Candidate universe and probe
+timing}\label{candidate-universe-and-probe-timing}
+
+An in-memory database and baseline indexes are initialized per
+repository. Selected trajectories are processed in the prescribed order;
+state persists across tasks within that repository, while per-session
+transient state is reset. At the beginning of target task \(t\), the
+evaluator freezes file and tool candidate universes \(U_t\) to resources
+observed in earlier tasks. For sequential probes it records prefix
+events after predicting them, but newly observed resources remain
+outside \(U_t\) until a later task.
+
+The four reported target labels are:
 
 \begin{itemize}
-    \item \textbf{Chaudhary (2025)}~\cite{chaudhary2025} augmented decoder-only transformers with Hebbian plasticity modules that adapt \emph{during inference}, achieving rapid task-specific adaptation on copying, regression, and few-shot classification.
-    \item \textbf{Szelogowski (2025)}~\cite{szelogowski2025} introduced the Engram Neural Network (ENN)---a recurrent architecture with explicit, differentiable Hebbian memory and sparse attention-driven retrieval, achieving performance comparable to GRU/LSTM on WikiText-103.
-    \item \textbf{Continual Learning Survey (2024)}~\cite{safa2024} reviewed Hebbian plasticity and STDP in sparse/predictive coding networks for catastrophic forgetting mitigation.
+\tightlist
+\item
+  \textbf{P1-edit:} rank the task's edited files from its initial
+  task-text query, before observing target-task events.
+\item
+  \textbf{P1-read:} the analogous retrieval probe for files read during
+  the task.
+\item
+  \textbf{P2:} predict each upcoming read/edit file from prefix context,
+  before recording that event.
+\item
+  \textbf{P3:} predict each upcoming tool from prior tools, before
+  recording that tool event.
 \end{itemize}
 
-These approaches modify model \emph{weights} or apply Hebbian plasticity within the network architecture. BrainBox operates at a higher abstraction level---learning behavioral patterns \emph{outside} the model, in the agent's tool-use layer.
+Gold sets come from parsed trace activity, not independent relevance
+annotation. At any probe, the scored gold is \(G'_t=G_t\cap U_t\). A
+probe with \(G'_t=\varnothing\) contributes to coverage statistics but
+not ranking metrics. For P1, novel files are also removed from a mixed
+gold set. Thus the experiment measures \textbf{retrieval conditional on
+prior-resource coverage}, not full-repository localization and not
+discovery of new files. Prefix-only ordering reduces one source of
+target leakage but does not remove dataset selection, parser or
+repository-version biases.
 
-\subsection{Layer 2: General Memory Systems}
+\subsection{5.3 Metrics, baselines and
+uncertainty}\label{metrics-baselines-and-uncertainty}
+
+File rankings are truncated at ten; tool rankings at three. Reciprocal
+rank is the inverse rank of the first eligible relevant item, or zero if
+absent. We report MRR@10 for files (the stored field is \texttt{mrr})
+and MRR@3 for tools. For multi-file P1 gold, this measures finding the
+first relevant file, not retrieving all relevant files.
+
+All point estimates average over scored probe opportunities. P2 and P3
+therefore weight longer trajectories more heavily. Paired intervals
+resample trajectory clusters 1,000 times with seed 42, retain each
+sampled cluster's sum and count, and use the 2.5th and 97.5th
+percentiles of the resulting event-weighted differences. This preserves
+within-trajectory clustering but not all dependence between trajectories
+that share a growing repository history. No repository-cluster
+uncertainty estimate or multiple-comparison correction is provided.
+Intervals spanning zero indicate insufficient evidence of a difference,
+not equivalence.
+
+Comparators share the candidate universe and parsed history. They are
+locally implemented heuristics, not complete competing memory products:
 
 \begin{itemize}
-    \item \textbf{Shodh-Memory}~\cite{shodhmemory} (Rust, open-source) implements Hebbian learning for general agent memories using a three-tier edge system with multi-scale long-term potentiation and hybrid exponential/power-law decay. It learns \emph{what agents know}---user preferences, entity identities, declarative facts---not \emph{how they behave}.
-    \item \textbf{A-MEM}~\cite{amem2025} utilizes Zettelkasten-inspired principles to create interconnected, self-evolving networks of knowledge with dynamic indexing and structural linking. It represents the state of the art in dynamically evolving graph structures for agents, providing a non-Hebbian baseline for how graphs continuously refine memory connections.
-    \item \textbf{Nemori}~\cite{nemori2025} uses a cognitive science-inspired ``predict-calibrate'' mechanism for episodic segmentation and structured narrative memory generation, offering an alternative cognitive approach to memory boundary detection.
-    \item \textbf{Mem0} provides semantic memory via vector embeddings---pure retrieval with no learning or strengthening mechanism.
+\tightlist
+\item
+  \textbf{Recency:} descending last-access order.
+\item
+  \textbf{Frequency:} descending historical touch count.
+\item
+  \textbf{BM25:} lexical ranking of accumulated path/context terms, with
+  \(k_1=1.2\) and \(b=0.75\); it does not index the repository's full
+  source code.
+\item
+  \textbf{Co-session (EdgeBank-style):} overlap between a candidate's
+  historical sessions and sessions containing current-prefix resources.
+  It is a local co-occurrence baseline, not a reproduction of a complete
+  published EdgeBank evaluation.
+\item
+  \textbf{Random:} seeded permutation of candidates.
 \end{itemize}
 
-\subsection{Layer 3: Agent Behavioral Memory}
+The strongest observed comparator is selected separately per probe and
+cohort for compact reporting. That selection is post hoc. All baselines
+are reported in Appendix A to avoid hiding weaker or stronger
+comparisons.
 
-Several contemporary systems address agent behavioral memory through non-Hebbian approaches:
+\subsection{5.4 What was actually
+exercised}\label{what-was-actually-exercised}
+
+All principal runs have embeddings \textbf{off}. Replay calls core
+recording, error association, recall and tool prediction. It does not
+populate source-code snippet indexes, scan structural code graphs, run
+the prompt-injection policy or execute mined procedures. It also does
+not run an agent with and without suggestions. Accordingly, Tables 2--5
+do not establish benefits from code embeddings, static structure, the
+policy or procedure mining.
+
+Artifact fields labelled injected tokens are character-based estimates
+for short path lists; they are not tokenizer counts from live prompts
+and are not net tokens saved. Earlier synthetic scenarios and production
+counter estimates are not used as evidence of cost reduction in this
+revision. Historical latency figures are likewise not carried forward as
+a current controlled benchmark.
+
+\section{6. Results}\label{results}
+
+\subsection{6.1 Coverage before ranking
+quality}\label{coverage-before-ranking-quality}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Cohort / probe
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Gold occurrences
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Eligible gold
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Opportunities
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Scored
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+SWE P1-edit & 298 & 28 & 40 & 16 \\
+SWE P1-read & 374 & 92 & 40 & 30 \\
+SWE P2 & 1,303 & 221 & 1,303 & 221 \\
+SWE P3 & 2,727 & 2,625 & 2,727 & 2,625 \\
+Local P1-edit & 693 & 121 & 97 & 38 \\
+Local P1-read & 980 & 343 & 97 & 57 \\
+Local P2 & 5,885 & 2,490 & 5,885 & 2,490 \\
+Local P3 & 9,663 & 7,083 & 9,663 & 7,083 \\
+\end{longtable}
+}
+
+Table 2. Eligibility is membership in the frozen prior-task candidate
+universe. P1 gold counts sum unique targets within each task; they are
+not corpus-wide unique-file counts. P2/P3 count individual target
+opportunities.
+
+Only 16.96\% of SWE next-file opportunities and 42.31\% of local
+next-file opportunities are eligible. Tool coverage is much higher:
+96.26\% and 73.30\%, respectively. This difference is central to
+interpretation. A strong conditional file ranker may still remain silent
+or miss most novel work; the experiment does not score those novel
+targets as ranking failures.
+
+\subsection{6.2 Selected public
+trajectories}\label{selected-public-trajectories}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Probe
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Historical engine
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Current run
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Best baseline
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Difference {[}95\% interval{]}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Clusters
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+P1-edit & 0.307 & 0.307 & BM25 0.216 & +0.092 {[}−0.018, +0.224{]} &
+16 \\
+P1-read & 0.191 & 0.267 & BM25 0.206 & +0.061 {[}−0.038, +0.165{]} &
+30 \\
+P2 & 0.223 & 0.409 & Recency 0.430 & −0.021 {[}−0.049, +0.003{]} & 30 \\
+P3 & 0.479 & 0.767 & Frequency 0.748 & +0.019 {[}+0.012, +0.027{]} &
+38 \\
+\end{longtable}
+}
+
+Table 3. SWE conditional MRR@10 for files and MRR@3 for tools.
+Difference is current-run minus the indicated heuristic, not current
+minus historical engine. Historical/current public artifacts have
+matching declared options, coverage and baseline scores; missing
+immutable input manifests prevent a stronger identity claim.
+
+The clearest result is tool prediction: its interval against the
+strongest measured heuristic is positive. The improvement over the
+historical sequence predictor is descriptive; the artifacts do not
+include a paired historical-versus-current interval. File results do not
+support a blanket superiority claim. Both P1 point estimates exceed
+BM25, but their intervals include zero. Next-file prediction improves
+over the historical engine while remaining below recency in point
+estimate, with uncertainty spanning zero.
+
+At three decimal places P1-edit appears unchanged; the raw historical
+and current values are 0.3067708333 and 0.3072916667. The draft does not
+interpret this tiny difference as a meaningful improvement.
+
+\subsection{6.3 Local sessions}\label{local-sessions}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Probe
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Current run
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Best baseline
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Difference {[}95\% interval{]}
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Clusters
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+P1-edit & 0.703 & Frequency 0.791 & −0.089 {[}−0.185, 0.000{]} & 38 \\
+P1-read & 0.555 & BM25 0.547 & +0.008 {[}−0.101, +0.123{]} & 57 \\
+P2 & 0.702 & Recency 0.701 & +0.001 {[}−0.003, +0.006{]} & 64 \\
+P3 & 0.686 & Recency 0.662 & +0.024 {[}+0.010, +0.036{]} & 85 \\
+\end{longtable}
+}
+
+Table 4. Secondary, private local cohort, scored under the same
+eligibility rule. The P1-edit upper endpoint is approximately zero
+(stored floating-point value \(1.46\times10^{-19}\)), so we do not claim
+a strictly negative interval.
+
+Tool prediction again has a positive interval against the strongest
+observed heuristic. Frequency is substantially better on edited-file
+point estimates. Read-file and next-file differences are small relative
+to their intervals. These observations caution against adding memory
+complexity without simple comparators.
+
+A historical local run exists, but its scanned source count differs from
+the current run (713 versus 715 sessions). Even though aggregate
+denominators and comparator scores match, neither artifact retains
+selected input identities. We therefore omit a controlled local
+version-to-version claim rather than infer exact cohort identity from
+matching aggregates.
+
+\section{7. Discussion and
+limitations}\label{discussion-and-limitations}
+
+\textbf{Evidence supports prediction, not productivity.} The agent
+traces are fixed. Better next-tool prediction may reflect repeated
+interface conventions rather than transferable task knowledge. The
+evaluator does not show that suggestions are read, that searches are
+avoided, or that patches become more correct. A deployment study must
+measure task outcomes, actual tokenizer counts, failed-action rates and
+wall-clock cost under randomized or otherwise controlled memory-on/off
+assignment.
+
+\textbf{Coverage conditions the headline scores.} Prior-access
+candidates exclude unseen files even after their first appearance within
+a target task. This is intentionally conservative about information
+leakage, but unlike full-repository retrieval. A broader experiment
+should report unconditional quality and separate known-resource and
+novel-resource tasks. The current small P1 cluster counts particularly
+limit precision.
+
+\textbf{Selection and adaptation remain risks.} The public cohort covers
+two selected test repositories, not broad language or repository
+diversity. PR-number ordering is only a chronology proxy. The local
+corpus is private and evolving. Development-informed ranking choices do
+not constitute a preregistered protocol; evaluation results were
+inspected during engineering. Repository-level separation alone does not
+establish that all later design decisions were independent of test
+observations.
+
+\textbf{No causal mechanism attribution.} Multiple ranking mechanisms
+changed together. The available artifacts do not isolate benefits from
+asymmetric co-access, base-level features, recurrence, query coverage or
+the sequence-frequency mixture. No quantitative ablation result is
+claimed. Similarly, a separate small embedding comparison mentioned in
+project documentation is omitted because the draft's evidence set does
+not contain its query manifest and raw outcomes.
+
+\textbf{Confidence and feedback are heuristic.} A normalized fusion
+score is not calibrated relevance. Opens and edits can be prompted by
+existing agent intent, so credit attribution can reward suggestions that
+did not help. Ignored suggestions are not necessarily wrong. UCB-style
+exploration also operates under changing task distributions and
+imperfect rewards; this paper supplies no regret guarantee or online
+policy result.
+
+\textbf{Security and privacy.} A poisoned repository can manufacture
+co-accesses, misleading error fingerprints or command histories.
+Labeling procedure text as observation and constraining paths/commands
+reduces some presentation risk, but does not authenticate the source or
+make execution safe. Permission checks and tool-execution authorization
+must remain outside the memory system. Local databases and raw session
+logs should be treated as sensitive artifacts. Sanitization is not a
+guarantee that secrets never enter memory.
+
+\textbf{Systems scale.} Per-event windows and per-seed graph expansion
+are bounded, but the number of resources, associations, logs and
+procedures is not globally capped by those bounds. If \(s\) seeds are
+expanded with fan-out at most ten and depth at most three, the traversal
+budget has a worst-case shape proportional to \(s(10+10^2+10^3)\) before
+filtering and deduplication; SQL access, candidate generation and
+indexing add work. This is not an end-to-end complexity or latency
+guarantee. Vector-scan fallback, growing logs, file renames and
+multi-process SQLite contention require separate evaluation.
+
+\section{8. Reproducibility and artifact
+scope}\label{reproducibility-and-artifact-scope}
+
+The methods were checked against source revision
+\texttt{0edc2ed728f71d4b986a39e5d56a9dca505b0ab3}. The numerical
+evidence predates this manuscript revision and comes from these result
+directories under \texttt{eval-results/}:
 
 \begin{itemize}
-    \item \textbf{SYNAPSE}~\cite{synapse2026} uses spreading activation for episodic-semantic memory in conversational agents, operating on a Unified Episodic-Semantic Graph. SYNAPSE employs \emph{lateral inhibition} to prevent ``hub explosion.'' BrainBox addresses the same problem through complementary mechanisms: fan-effect normalization ($1/\sqrt{d}$ activation division), per-node fan-out caps (max 10 synapses traversed), hub penalty (reduced learning rate for nodes with $>20$ connections), and SNAP plasticity (strong synapses resist further strengthening). These provide degree-proportional signal dampening without requiring explicit inhibitory neurons.
-
-    \item \textbf{MACLA}~\cite{macla2025} implements hierarchical procedural memory via \emph{Bayesian selection}, tracking reliability via probabilistic posteriors, and employs \emph{contrastive refinement}, continuously comparing successful trajectories against failures. This contrasts with BrainBox's deterministic, computationally lightweight Hebbian updates. MACLA's approach may be more sample-efficient for complex trajectories but incurs higher computational overhead per update.
-
-    \item \textbf{ToolMem}~\cite{toolmem2025} implements an evolving capability memory for tools based on past interactions, utilizing language-mediated RAG induction. While ToolMem learns tool \emph{capabilities} (strengths and weaknesses) rather than tool \emph{sequencing}, it demonstrates the symbolic alternative to Hebbian learning for procedural knowledge at the same abstraction layer.
-
-    \item \textbf{ViLoMem}~\cite{vilomem2025} implements a dual-stream memory framework separately encoding visual distraction patterns and logical reasoning errors, enabling agents to learn explicitly from failed experiences. This is relevant to BrainBox's error$\to$fix pair learning, though ViLoMem operates in the multimodal domain.
-
-    \item \textbf{Cortex/Asteria}~\cite{cortex2025} implements semantic-aware caching for agentic tool access with predictive prefetching---the closest system to BrainBox's prefetching framing. BrainBox draws direct analogies to the Fido system~\cite{palmer1991fido} from hardware architecture. However, Cortex/Asteria uses semantic similarity (ANN + LLM judger) for cache hit detection rather than Hebbian learning.
-
-    \item \textbf{MAGMA}~\cite{magma2026} distributes memory across orthogonal semantic, temporal, causal, and entity graphs with policy-guided traversal. In contrast to BrainBox's single heterogeneous graph with cross-type synapses, MAGMA's decoupled multi-graph approach isolates operational modalities. This architectural divergence represents a fundamental design trade-off warranting further investigation.
+\tightlist
+\item
+  Public current: \texttt{2026-10-08T18-01-31-878Z}.
+\item
+  Public historical: \texttt{2026-10-08T17-37-06-513Z}.
+\item
+  Local current: \texttt{2026-10-08T18-06-22-676Z}.
+\item
+  Local historical, not used for controlled version comparison:
+  \texttt{2026-10-08T17-42-39-240Z}.
 \end{itemize}
 
-A comprehensive survey of agent memory systems~\cite{liu2025survey} identifies three memory types---token-level, parametric, and latent---but does not discuss neuromimetic learning for operational behavioral patterns.
-
-\textbf{BrainBox is the first system to apply neuromimetic plasticity mechanisms---specifically Hebbian learning with pathway myelination---to agent file access patterns, tool sequencing, and error$\to$fix pair association.} While ToolMem, MACLA, and others achieve behavioral learning through symbolic or Bayesian means, no prior work employs continuous Hebbian weight updates across a cross-type synaptic graph for this purpose.
-
-\subsection{Comparison with Reinforcement Learning}
-
-From a computational perspective, learning behavioral patterns and tool execution sequences is traditionally the domain of Reinforcement Learning (RL). Systems typically rely on algorithms such as Proximal Policy Optimization (PPO) or off-policy Q-learning. BrainBox differs fundamentally: traditional RL requires computationally intensive gradient updates to model parameters (operating at Layer~1), which is unfeasible for on-the-fly, localized personalization. BrainBox operates strictly at inference time via a lightweight external graph structure (Layer~3), enabling $O(1)$ updates per access event. This makes it suitable for real-time, per-user behavioral adaptation without model retraining.
-
-\subsection{Comparison with Alternative Memory Substrates}
-
-Vector databases (Mem0, Pinecone, Chroma) have no learning mechanism---the 100th retrieval returns the same similarity score as the first. BrainBox strengthens pathways with use, weakens them with disuse, and discovers connections through graph traversal rather than embedding distance. Knowledge graphs (e.g., VaultGraph) use explicit, manually authored links; BrainBox's edges are implicit and weighted, learned from behavior. Full-text search systems (BM25) retrieve by content similarity, not behavioral association.
-
-
-% ============================================================
-% 3. ARCHITECTURE
-% ============================================================
-\section{Architecture}
-
-\subsection{Core Abstractions}
-
-BrainBox models agent behavior as a neural network with four primitives:
-
-\textbf{Neurons} represent entities the agent interacts with:
-\begin{itemize}
-    \item \texttt{file} neurons: file paths the agent reads or writes
-    \item \texttt{tool} neurons: tools the agent invokes (Grep, Read, Edit, Bash)
-    \item \texttt{error} neurons: normalized error messages encountered during sessions
-    \item \texttt{semantic} neurons: abstract concepts (reserved for future use)
-\end{itemize}
-
-Each neuron maintains:
-\begin{itemize}
-    \item \textbf{Activation} $(0$--$1)$: How recently and strongly the neuron was accessed. Decays multiplicatively.
-    \item \textbf{Myelination} $(0$--$0.95)$: Pathway priority score. In neurobiology, myelination insulates axons to increase signal conduction velocity along frequently-used pathways. We adopt this term for the analogous computational process: neurons accessed repeatedly accumulate a persistent priority score that increases recall speed and confidence, forming \emph{superhighways} (see Terminology). Increases with repeated access using bounded saturation. Decays very slowly.
-    \item \textbf{Access count:} Total number of times this neuron has been activated.
-    \item \textbf{Contexts:} JSON array of query strings that triggered this neuron, enabling keyword-based recall.
-\end{itemize}
-
-\textbf{Synapses} are weighted, bidirectional connections between neurons:
-\begin{itemize}
-    \item \textbf{Weight} $(0$--$1)$: Hebbian strength. Increases when neurons fire together, using bounded saturation (see below). Decays multiplicatively when unused.
-    \item \textbf{Co-access count:} How many times the connected neurons were activated within the co-access window.
-\end{itemize}
-
-\textbf{Sessions} group accesses within a time window and track token savings.
-
-\textbf{The co-access window} (last 25 unique files) defines ``firing together.'' Neurons in the sequential window form or strengthen synapses, with positional proximity determining strength. This is a \emph{discrete ordinal abstraction} of spike-timing-dependent plasticity (STDP): where biological STDP operates on continuous millisecond-scale temporal deltas ($\Delta t$), our model uses the ordinal position within a fixed event window as the analogous proximity signal. Such discrete abstractions of STDP are established in the spiking neural network literature for sequence learning tasks~\cite{stdpsequence2021}.
-
-\subsection{Hebbian Learning Algorithm}
-
-When the agent accesses a resource, BrainBox executes:
-
-\begin{lstlisting}[caption={Hebbian learning procedure (v4.0)},label={lst:learning}]
-CO_ACCESS_WINDOW_SIZE = 25    // last 25 unique files
-HUB_PENALTY_THRESHOLD = 20
-HUB_PENALTY_FACTOR    = 0.5
-SNAP_STEEPNESS        = 8     // sigmoidal plasticity
-SNAP_MIDPOINT         = 0.5
-TAG_CAPTURE_WEIGHT    = 0.3
-TAG_CAPTURE_WINDOW    = 60    // minutes
-
-function record(path, type, query):
-  neuron = getOrCreate(path, type)
-  neuron.activation = 1.0
-
-  // BCM-inspired myelination with 1/sqrt(n) dampening
-  bcmFactor = 1 - (neuron.myelination / MYELIN_MAX)
-  accessDamp = max(1 / sqrt(neuron.access_count), 0.1)
-  neuron.myelination += MYELIN_RATE * bcmFactor * accessDamp
-  neuron.contexts.append(query)
-
-  for i, recentNeuron in recentAccessWindow:
-    positionFactor = (i + 1) / windowSize
-    rate = LEARNING_RATE * (ERROR_BOOST if error else 1)
-
-    // Hub penalty: reduce learning for highly-connected nodes
-    if synapseCount(neuron) > HUB_PENALTY_THRESHOLD:
-      rate *= HUB_PENALTY_FACTOR
-
-    // SNAP plasticity: sigmoid gate on synapse weight
-    snapFactor(w) = 1 / (1 + exp(STEEPNESS * (w - MIDPOINT)))
-    fwdDelta = rate * positionFactor * snapFactor(synapse.weight)
-    revDelta = rate * positionFactor * snapFactor(reverse.weight)
-
-    synapse(neuron, recent).weight += fwdDelta * (1 - w)
-    synapse(recent, neuron).weight += revDelta * (1 - w)
-
-    // Tag newly created synapses for potential capture
-    if synapse was just created: tag(synapse, now)
-
-  // Synaptic capture: confirm tagged synapses within window
-  for tagged synapse connecting to neuron within TAG_WINDOW:
-    synapse.weight = max(synapse.weight, TAG_CAPTURE_WEIGHT)
-    clear tag
-
-  updateWindow(neuron)
-\end{lstlisting}
-
-\textbf{Design rationale---sequential window over timestamp window:}
-
-An earlier design used a 60-second temporal window: neurons accessed within 60s of each other formed synapses. This created a ``deep work blind spot''---when an agent spends 2+ minutes studying a file before navigating to a related file, the temporal gap exceeds the window and no synapse forms, despite the files being clearly related.
-
-The sequential window model tracks the last 25 unique files regardless of time elapsed. Position within the window determines synapse strength via a smooth gradient:
-
-\begin{itemize}
-    \item Most recently accessed file: $\text{positionFactor} = 1.0$ (full strength)
-    \item Oldest file in window: $\text{positionFactor} = 1/25 \approx 0.04$ (4\% strength)
-\end{itemize}
-
-Key properties:
-\begin{itemize}
-    \item \textbf{Bounded Hebbian saturation}: Both myelination and synapse strengthening follow $\Delta w = \eta(1 - w)$, a soft-bounded update rule that prevents saturation while providing diminishing returns as weights approach their ceiling. Note: this is \emph{not} BCM theory~\cite{bcm1982}, which additionally requires a sliding modification threshold separating long-term potentiation from long-term depression. Our rule implements unidirectional saturation without such a threshold.
-    \item \textbf{SNAP plasticity} (Sigmoidal Nonlinear Attenuation of Plasticity): Strong synapses ($w > 0.5$) resist further strengthening via a sigmoid gate $\sigma = 1/(1 + e^{8(w - 0.5)})$. This prevents any single connection from dominating the network, analogous to synaptic saturation in biological AMPA receptor trafficking.
-    \item \textbf{Hub penalty:} Neurons with $>20$ outgoing synapses receive a $0.5\times$ learning rate reduction. This is the computational analog of TF-IDF: highly-connected ``hub'' files (e.g., \texttt{utils.ts}, \texttt{index.ts}) carry less signal per connection.
-    \item \textbf{BCM-inspired myelination:} Myelination growth uses $\Delta m = 0.02 \times (1 - m/0.95) \times 1/\sqrt{n}$ where $n$ is the access count. The $1/\sqrt{n}$ dampening prevents high-access-count hubs from accumulating disproportionate myelination.
-    \item \textbf{Synaptic tagging with capture:} Newly formed synapses are ``tagged.'' If the connection is reconfirmed within 60 minutes, the synapse is ``captured'' with a weight floor of 0.3---preventing useful patterns from being lost to noise. This is inspired by the synaptic tagging and capture (STC) hypothesis in neuroscience~\cite{frey1997}.
-    \item \textbf{Error learning boost:} Synapses involving error neurons strengthen at 2$\times$ rate because errors are high-signal events.
-\end{itemize}
-
-\subsection{Recall Algorithm: Multi-Hop Spreading Activation}
-
-Recall uses three-phase spreading activation inspired by Collins \& Loftus (1975)~\cite{collins1975}, with multi-hop BFS traversal and convergence detection.
-
-\textbf{Phase 1a---Direct Keyword Match:}
-Search neuron contexts for query keywords. Score each match using weighted factors:
-
-\begin{table}[H]
-\centering
-\caption{Recall scoring weights by deployment}
-\label{tab:scoring}
-\begin{tabular}{l c c}
-\toprule
-\textbf{Factor} & \textbf{With Embeddings} & \textbf{Without Embeddings} \\
-\midrule
-Context/embedding match & 50\% & 50\% \\
-Consolidation & 20\% & 20\% \\
-Recency (linear decay, 1 week) & 20\% & 20\% \\
-Path match & 10\% & 10\% \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\textbf{Phase 1b---Vector Similarity} (optional): If neurons have embedding vectors (384-dimensional, all-MiniLM-L6-v2), compute cosine similarity between the query embedding and all embedded neurons. Neurons with similarity $> 0.25$ are included as candidates even without keyword overlap.
-
-\textbf{Phase 2---Multi-Hop Spreading Activation (BFS):}
-Direct matches seed a frontier. The algorithm expands up to \texttt{MAX\_SPREAD\_HOPS} (default~3) levels:
-
-\begin{lstlisting}[caption={Multi-hop spreading activation with fan-effect normalization},label={lst:spreading}]
-MAX_SPREAD_HOPS    = 3
-MAX_SPREAD_FAN_OUT = 10   // cap per-node traversal
-FAN_DEGREE_CAP     = 50
-
-frontier = direct_matches
-for hop = 0 to MAX_SPREAD_HOPS:
-  next_frontier = []
-  for each seed in frontier:
-    synapses = top_K(seed.outgoing, K=MAX_SPREAD_FAN_OUT)
-    outDegree = seed.total_outgoing_count
-
-    // Fan effect (Anderson 1983): divide by sqrt(out-degree)
-    fanFactor = 1 / sqrt(min(outDegree, FAN_DEGREE_CAP))
-
-    for each synapse in synapses where weight > 0.3:
-      myelinBoost = 1 + min(target.myelination, 0.5)
-      spreadConf = seed.conf * synapse.weight
-                   * myelinBoost * fanFactor
-      if spreadConf < CONFIDENCE_GATE: skip
-
-      if target already activated:
-        existing.conf = max(existing.conf, spreadConf)
-      else:
-        add target to results and next_frontier
-  frontier = next_frontier
-\end{lstlisting}
-
-Key properties:
-\begin{itemize}
-    \item \textbf{Breadth-first by hop level}---processes all hop-1 nodes before hop-2
-    \item \textbf{Fan-effect normalization}---activation is divided by $1/\sqrt{d}$ where $d$ is the out-degree, following Anderson's (1983) ACT-R fan effect. Hub neurons with many connections dilute their signal proportionally, preventing them from dominating recall.
-    \item \textbf{Fan-out cap}---at most 10 synapses are traversed per neuron (the strongest by weight), bounding worst-case traversal to $O(10^3) = 1{,}000$ nodes regardless of graph density.
-    \item \textbf{Natural confidence decay}---the product $\text{parentConf} \times \text{synapseWeight} \times \text{myelinBoost} \times \text{fanFactor}$ decays exponentially across hops
-    \item \textbf{Convergence detection}---when multiple paths reach the same neuron, the maximum confidence is taken (Collins \& Loftus~\cite{collins1975}, not summed)
-    \item \textbf{Transitive discovery}---if \texttt{auth.ts} co-accesses \texttt{session.ts}, and \texttt{session.ts} co-accesses \texttt{encryption.ts}, a query matching \texttt{auth.ts} discovers \texttt{encryption.ts} at hop~2
-\end{itemize}
-
-\textbf{Phase 3---Consolidated Pathway Fallback:}
-If fewer than \texttt{limit} results found, suggest top consolidated neurons as weak candidates (confidence $= \text{consolidation} \times 0.5$, gate~0.15).
-
-\textbf{Confidence Gating:}
-\begin{itemize}
-    \item $\geq 0.7$ (HIGH): \emph{Superhighway}---skip search entirely, use file directly
-    \item $0.4$--$0.7$ (MEDIUM): Verify with a quick check
-    \item $< 0.4$: Rejected, not returned
-\end{itemize}
-
-\textbf{Token Budget Awareness:}
-Results are returned in confidence order, consuming estimated tokens per file. When the budget is exhausted, spreading stops early.
-
-\subsection{Self-Healing Decay Engine}
-
-Unused connections weaken over time following a seven-phase self-healing cycle:
-
-\begin{lstlisting}[caption={Self-healing decay engine (v3.0+)},label={lst:decay}]
-function decay():
-  // Phase 1: Global multiplicative decay
-  for each neuron:
-    activation     *= 0.85   // 15% daily decay
-    myelination    *= 0.995  // 0.5% daily decay
-
-  for each synapse:
-    weight *= 0.98           // 2% daily decay
-
-  // Phase 2: Anti-Hebbian noise bridge weakening
-  // Detect weak synapses connecting to low-value dead-ends
-  for each synapse where weight < 0.3
-    AND co_access_count <= 2
-    AND target.activation < 0.1
-    AND target.myelination < 0.05:
-      synapse.weight *= 0.8  // 20% extra decay
-
-  // Phase 3: Tiered pruning (weight + staleness + co-access)
-  prune where weight < 0.05 AND last_fired > 7 days
-  prune where weight < 0.15 AND co_access = 1 AND > 3 days
-  prune where weight < 0.30 AND last_fired > 30 days
-
-  // Phase 4: Orphan pruning
-  prune neurons with no synapses AND access_count < 3
-
-  // Phase 5: Homeostatic scaling
-  homeostasis()
-\end{lstlisting}
-
-The multiplicative decay matches Ebbinghaus (1885)~\cite{ebbinghaus1885} and Wixted \& Ebbesen (1991)~\cite{wixted1991}: forgetting follows exponential/power-law curves, not linear subtraction. A synapse accessed 100 times then abandoned retains a faint trace for weeks; one accessed twice is pruned within days.
-
-\textbf{Noise bridge detection} (Phase~2) identifies and weakens spurious synapses that connect to low-value neurons---the computational analog of synaptic depression for incidental co-activations. A ``noise bridge'' is a synapse with few co-accesses ($\leq 2$) connecting to a neuron with both low activation ($< 0.1$) and low myelination ($< 0.05$). These receive accelerated decay (20\% per cycle vs.\ the standard 2\%).
-
-\textbf{Homeostatic scaling} (Phase~5) prevents runaway inflation of network-wide statistics:
-
-\begin{itemize}
-    \item If average myelination exceeds the target (0.15), all myelination values are scaled down proportionally ($\text{factor} = \text{target} / \text{avg}$).
-    \item If average synapse weight exceeds the target (0.35), all weights are scaled down.
-    \item Individual neurons with access count $> 3\times$ the network average have their myelination dampened by 10\%.
-    \item Underactive but surviving neurons ($\text{accessCount} < \text{avg}/3$) receive a 5\% myelination boost to prevent premature forgetting.
-    \item Expired synaptic tags (older than 60 minutes, never captured) are cleared.
-\end{itemize}
-
-This homeostatic mechanism is inspired by synaptic scaling in biological neural circuits~\cite{turrigiano2004}, which globally normalizes synaptic strengths to maintain stable network dynamics.
-
-\subsection{Sleep Consolidation}
-
-Biological memory consolidation occurs during sleep, when the hippocampus replays recent experiences to strengthen cortical representations. BrainBox implements an analogous process via a \texttt{consolidate()} function designed to run during idle periods:
-
-\textbf{Phase 1---Session Replay:} The top 5 sessions from the past 7 days (by access count, minimum 5 accesses) are replayed through the co-access window. Crucially, replay only \emph{strengthens existing synapses}---it never creates new connections, preventing hallucinated associations. Strengthening uses a gentle delta of $0.01$ (10\% of the normal learning rate), modulated by SNAP plasticity to respect synapse maturity.
-
-\textbf{Phase 2---Ebbinghaus Spaced Repetition:} Neurons are evaluated against a spaced repetition schedule. Those due for review (based on access count and time since last access) receive a small myelination boost, while neurons that have missed their review window receive extra decay. This implements the spacing effect: memories reviewed at increasing intervals are retained longer than those crammed in rapid succession~\cite{ebbinghaus1885}.
-
-\textbf{Phase 3---Cross-Session Pattern Discovery:} The system identifies file pairs that co-occur across $\geq 3$ distinct sessions. These durable patterns receive directional synapse adjustments based on access order (A before B vs.\ B before A), and triplet patterns (A, B, and C appearing together across sessions) are also extracted. Additionally, the access log is pruned to maintain episodic memory within bounded storage.
-
-\subsection{Anti-Recall: Negative Hebbian Learning}
-
-BrainBox implements a form of active unlearning for files that are recalled but \emph{not subsequently opened}. During each session, the system tracks which neurons were suggested by recall and which were actually accessed. At session end, synapses connecting to recalled-but-ignored neurons are weakened by 10\% per ignored session, with a floor of 0.1 to prevent permanent forgetting. This ``negative Hebbian'' signal---equivalent to a simplified form of Long-Term Depression (LTD)---allows the network to correct false positive associations over time. A file recalled 5 times but never opened will have its connecting synapses reduced by ${\sim}41\%$ ($0.9^5 = 0.59$), naturally suppressing irrelevant suggestions.
-
-\subsection{Bootstrap: Cold Start Elimination}
-
-BrainBox addresses the cold start problem with a multi-source bootstrap system:
-
-\begin{table}[H]
-\centering
-\caption{Bootstrap phases and signal quality}
-\label{tab:bootstrap}
-\begin{tabularx}{\textwidth}{c l c X}
-\toprule
-\textbf{Phase} & \textbf{Source} & \textbf{Synapse Weight} & \textbf{Signal Quality} \\
-\midrule
-1 & Git history (bipartite projection) & 0.05--0.95 & Strongest---files committed together \\
-2 & VaultGraph (wikilinks) & 0.6 & Strong---explicit knowledge links \\
-3 & Import graph (TS/JS) & 0.5 & Moderate---structural dependency \\
-4 & Directory patterns & 0.3 & Weak---heuristic association \\
-5 & Session replay & 0.4 & Moderate---actual agent behavior \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\textbf{Git bipartite projection} (Phase~1) computes a file--file co-occurrence matrix directly from git history:
-
-$$w = 0.05 + \frac{\text{sharedCommits}}{\text{maxSharedCommits}} \times 0.9$$
-
-Production bootstrap results: 198 neurons, 19,028 synapses from 76 commits + 180 imports (single repo); 2,343 neurons, 1.5M synapses from 416 commits (4 repos).
-
-\textbf{Note on bootstrap semantics:} Git co-committed files are logically related but not necessarily accessed sequentially by an agent. The bootstrap therefore serves as a \emph{semantic initialization}---analogous to warm-start initialization in transfer learning~\cite{warmstart2019}---that provides a reasonable prior over file co-occurrence. These initial weights are subsequently refined and potentially overwritten by actual sequential episodic access during live agent sessions. This two-phase approach (semantic prior $\to$ episodic refinement) follows established patterns in STDP-based pre-training literature.
-
-\subsection{macOS Daemon: System-Wide Learning}
-
-BrainBox includes a persistent macOS daemon that extends learning beyond AI agent sessions:
-
-\begin{itemize}
-    \item Native \textbf{FSEvents} (C++ addon)---one kernel-level watcher per root path regardless of subdirectory count
-    \item Debounced batch recording: 2-second window, max 50 files/flush, transaction-wrapped
-    \item \textbf{Git hooks auto-installer}---scans for \texttt{.git} repos, installs \texttt{post-commit}, \texttt{post-checkout}, \texttt{post-merge} hooks
-    \item \textbf{Frontmost app polling}---records app switches as tool neurons (\texttt{app:Xcode}, \texttt{app:Code})
-    \item \textbf{Unix socket server} at \texttt{\textasciitilde/.brainbox/daemon.sock} for external event sources
-\end{itemize}
-
-
-% ============================================================
-% 4. NOVEL CONTRIBUTIONS
-% ============================================================
-\section{Novel Contributions}
-
-\subsection{Error$\to$Fix Pair Learning}
-
-Traditional agent debugging: encounter error $\to$ grep codebase $\to$ trial and error $\to$ eventually find the fix. Each session starts from scratch.
-
-BrainBox error-resolution mapping: encounter error $\to$ recall known fix files instantly via consolidated error$\to$file synapses.
-
-\textbf{Mechanism:}
-\begin{enumerate}
-    \item Error messages are \textbf{normalized} before storage: line numbers, variable names, timestamps, and hex addresses are replaced with placeholders.
-    \item Error neurons receive a \textbf{2$\times$ learning rate boost}---a single error-then-fix sequence creates stronger synapses than three file co-accesses.
-    \item The \texttt{recordError()} method records the error and immediately performs recall for connected file neurons, returning fix suggestions.
-\end{enumerate}
-
-\textbf{Example trajectory:}
-\begin{itemize}
-    \item Session 1: Error occurs $\to$ agent reads \texttt{auth.ts} and \texttt{session.ts} $\to$ error$\to$\texttt{auth.ts} synapse forms (weight 0.17)
-    \item Session 2: Similar error $\to$ same files $\to$ synapse strengthens (weight 0.31)
-    \item Session 3: Error occurs $\to$ \texttt{recordError()} returns \texttt{auth.ts} at 62\% confidence $\to$ agent skips search
-\end{itemize}
-
-\subsection{Tool Sequence Myelination}
-
-Agents execute tool chains repeatedly: Grep$\to$Read$\to$Edit$\to$Bash(test) is the canonical coding loop. BrainBox learns these sequences, myelinating them into operational superhighways:
-
-\begin{enumerate}
-    \item Tool invocations are recorded as \texttt{tool} type neurons
-    \item Sequential tool uses create tool$\to$tool synapses
-    \item After 20 repetitions, the synapse becomes a \emph{superhighway} and \texttt{predictNext(``Grep'')} returns ``Read'' with high confidence
-    \item \textbf{Cross-type synapses} connect tools to files: Read$\to$\texttt{auth.ts} strengthens over time
-\end{enumerate}
-
-\subsection{Cross-Type Synapses}
-
-The key architectural innovation is that all neuron types share a single synaptic network:
-
-\begin{table}[H]
-\centering
-\caption{Cross-type synapse semantics}
-\label{tab:crosstype}
-\begin{tabular}{l l}
-\toprule
-\textbf{Synapse Type} & \textbf{Meaning} \\
-\midrule
-error $\to$ file & ``This error is fixed by editing these files'' \\
-tool $\to$ tool & ``After Grep, you usually Read'' \\
-tool $\to$ file & ``When you use Edit, it's usually on these files'' \\
-file $\to$ file & ``These files are always accessed together'' \\
-error $\to$ tool & ``This error is usually debugged using Bash(test)'' \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-No other agent memory system supports cross-type learned associations. Vector databases store embeddings per item; graph databases store explicit relationships. BrainBox discovers implicit behavioral relationships through co-access patterns.
-
-\subsection{Snippet Neurons: Sub-File Semantic Search (v4.0)}
-
-Standard file-level neurons treat entire files as atomic units. BrainBox v4.0 introduces \emph{snippet neurons}---sub-file code entities (functions, classes, methods, structs, traits) extracted via tree-sitter parsing and embedded for semantic search. This provides a ``System~2'' slow-thinking recall path complementing the fast Hebbian ``System~1'' path:
-
-\begin{itemize}
-    \item Tree-sitter grammars extract named code entities from TypeScript/JavaScript, Python, and Rust source files, with a minimum size of 5 lines.
-    \item Each snippet is embedded using all-MiniLM-L6-v2 (384 dimensions) and stored with a content hash for cache invalidation.
-    \item During recall, if Hebbian spreading activation returns fewer results than the limit, snippet vector search fills remaining slots via cosine similarity against the query embedding.
-    \item Snippet neurons are children of their parent file neuron, inheriting synaptic context but providing function-level granularity.
-\end{itemize}
-
-This dual-path architecture---fast Hebbian recall for known patterns, slow semantic search for novel queries---mirrors the System~1/System~2 cognitive framework proposed by Kahneman~\cite{kahneman2011}.
-
-
-% ============================================================
-% 5. EVALUATION
-% ============================================================
-\section{Evaluation}
-
-\subsection{Mathematical Verification}
-
-All learning dynamics are verified via direct SQL queries against hand-calculated expected values:
-
-\begin{table}[H]
-\centering
-\caption{Mathematical verification results}
-\label{tab:verification}
-\begin{tabularx}{\textwidth}{c X c}
-\toprule
-\textbf{Test} & \textbf{What It Verifies} & \textbf{Result} \\
-\midrule
-1 & BCM myelination: $0\% \to 2\% \to 3.38\% \to 4.50\%$ (with $1/\sqrt{n}$ dampening) & PASS \\
-2 & Bidirectional synapse formation on co-access; SNAP plasticity applied & PASS \\
-3 & Sequential window correctly evicts at size 25 & PASS \\
-4 & 5$\times$ co-access weight converges with SNAP sigmoid gate & PASS \\
-5 & Confidence gating: relevant queries pass, irrelevant rejected & PASS \\
-6 & Spreading activation: fan-effect normalization, fan-out cap 10 & PASS \\
-7 & Token savings: 20,000 without $\to$ 19,500 with $\to$ 500 saved & PASS \\
-8 & Error$\to$fix synapses with 2$\times$ boost; error fingerprint clustering & PASS \\
-9 & Grep$\to$Read synapse $>0.5$ after 20 reps; predictNext works & PASS \\
-10 & 3-hop BFS: alpha$\to$beta$\to$gamma chain via transitive spreading & PASS \\
-11 & Hub penalty: nodes with $>20$ synapses get reduced learning rate & PASS \\
-12 & Noise bridge detection and accelerated decay & PASS \\
-13 & Homeostatic scaling: global myelination/weight normalization & PASS \\
-14 & Synaptic tagging with capture within 60-minute window & PASS \\
-15 & Anti-recall: recalled-but-not-opened files weakened & PASS \\
-16 & Session intent capture: semantic neurons from extracted keywords (v5) & PASS \\
-17 & Hub detection: identifies high-degree neurons above threshold (v5) & PASS \\
-18 & Staleness detection and alert formatting (v5) & PASS \\
-19 & Project tagging: neurons scoped to project context (v5) & PASS \\
-20 & Anti-recall escalation: consecutive ignores increase decay rate (v5) & PASS \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-The complete test suite includes 59 tests across 31 suites covering all algorithmic components. All tests use in-memory SQLite databases, are deterministic, and are reproducible via the open-source test suite.
-
-\subsection{Before and After: What the Agent Sees}
-
-To ground the evaluation in concrete experience, consider what changes for an AI coding agent when BrainBox is installed. The agent's task is the same---``fix the authentication token bug''---but the information available at session start differs dramatically.
-
-\textbf{Without BrainBox (stateless):}
-\begin{lstlisting}[basicstyle=\ttfamily\small,frame=single,numbers=none]
-User: Fix the authentication token bug
-Agent: [searches "authentication token" -> 200ms grep]
-       [reads 3 candidate files -> 4,500 tokens]
-       [searches "session cookie" -> 200ms grep]
-       [reads 2 more files -> 3,000 tokens]
-       Total: 2 searches (1,000 tokens) + 5 file reads (7,500 tokens)
-       = ~8,500 tokens, ~400ms search latency
-\end{lstlisting}
-
-\textbf{With BrainBox (after 100 sessions):}
-\begin{lstlisting}[basicstyle=\ttfamily\small,frame=single,numbers=none]
-User: Fix the authentication token bug
-[BrainBox prompt-hook injects automatically:]
-  Predicted files (high confidence):
-    - src/api/auth.ts (conf: 0.82, myelin: 0.44)
-    - src/api/apiSession.ts (conf: 0.71, myelin: 0.23)
-    - src/api/encryption.ts (conf: 0.58, myelin: 0.18)
-Agent: [skips 1 of 2 searches, skips 2 false-positive reads]
-       Total: ~225 injection + 1 search (500) + 3 reads (4,500)
-       = ~5,225 tokens, ~200ms search latency
-       Saved: ~3,275 tokens (~39% of search+read for these files)
-\end{lstlisting}
-
-\textbf{Important distinction:} The savings above apply to a \emph{single recall-served access cluster}---the specific file group that BrainBox has learned. At 100 sessions, approximately 46\% of file accesses fall into such learned clusters (Table~\ref{tab:e1curve}). The overall gross token savings across \emph{all} accesses is 8.4\% (E1 benchmark) to 8.9\% (production), because many accesses involve novel files that BrainBox has not yet learned.
-
-The injection overhead is modest: ${\sim}75$ tokens per recalled file (path + confidence line + type annotation), typically 3 files per recall (${\sim}225$ tokens total). In the A1 benchmark, net savings (4.4\%) are within 0.1\% of gross (4.5\%), confirming injection overhead is negligible.
-
-\subsection{Benchmark Suite}
-
-We developed a reproducible benchmark suite with six scenarios modeling distinct developer behavior patterns. Each scenario runs in an isolated in-memory SQLite database, is fully deterministic, and is repeated 5 times with different seeds to compute confidence intervals.
-
-\begin{table}[H]
-\centering
-\caption{Benchmark scenarios and results ($N=5$ runs per scenario, deterministic)}
-\label{tab:benchmark}
-\small
-\begin{tabularx}{\textwidth}{l l r r r r r}
-\toprule
-\textbf{ID} & \textbf{Scenario} & \textbf{Sessions} & \textbf{Gross} & \textbf{Net} & \textbf{F1} & \textbf{Time} \\
-\midrule
-A1 & Standard Workflow & 20 & 4.5\% & 4.4\% & 0.625 & 554ms \\
-A2 & With Daily Decay & 20 & 4.3\% & 4.2\% & 0.625 & 507ms \\
-B1 & Large Codebase (110 files) & 30 & 6.3\% & 6.2\% & 0.400 & 1,437ms \\
-C1 & Error Debugging & 20 & 2.8\% & 2.7\% & 0.583 & 360ms \\
-D1 & Cross-Project Switching & 35 & 4.4\% & 4.3\% & 0.560 & 617ms \\
-E1 & Long-Running (100 sessions) & 100 & 8.4\% & 8.3\% & 0.667 & 6,088ms \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\textbf{Note on variance:} All runs produce identical results ($\sigma = 0$) because scenarios are deterministic with fixed access sequences. Real-world variance would arise from different user access patterns, partially addressed by the production validation in Section~\ref{sec:production}.
-
-\textbf{Key observations:}
-
-\begin{itemize}
-    \item \textbf{Decay has minimal impact:} A2 (with daily multiplicative decay) loses only 0.2\% savings compared to A1 (without decay), confirming that the self-healing decay engine is correctly calibrated---it weakens stale connections without destroying active ones.
-    \item \textbf{Large codebases trade precision for coverage:} B1 achieves the second-highest savings (6.3\%) but lowest F1 (0.400). With 110 files across 6 directories, the wider co-access window creates more synapses but also more false positives.
-    \item \textbf{Long-horizon learning converges:} E1 shows a clear learning curve from 0\% (session 1) through 4.2\% (session 20) to 8.4\% (session 100), with recall-served rate reaching 46\%.
-    \item \textbf{Error debugging is slower to learn:} C1 reaches only 2.8\% savings because error neurons are accessed less frequently than file neurons, building myelination more slowly.
-\end{itemize}
-
-\textbf{E1 learning curve} (100 sessions with daily decay and consolidation every 10 sessions):
-
-\begin{table}[H]
-\centering
-\caption{E1 long-horizon learning progression}
-\label{tab:e1curve}
-\small
-\begin{tabular}{r r r r r r}
-\toprule
-\textbf{Session} & \textbf{Gross Savings} & \textbf{Recall-Served} & \textbf{Avg Myelin} & \textbf{Max Myelin} & \textbf{Superhighways} \\
-\midrule
-1 & 0.0\% & 0.0\% & 0.034 & 0.034 & 0 \\
-10 & 2.7\% & 15.6\% & 0.083 & 0.178 & 0 \\
-20 & 4.2\% & 24.6\% & 0.122 & 0.245 & 0 \\
-50 & 6.4\% & 38.3\% & 0.181 & 0.345 & 0 \\
-100 & 8.4\% & 45.9\% & 0.225 & 0.444 & 0 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Production Validation}
-\label{sec:production}
-
-To validate synthetic benchmarks against real-world usage, we analyzed a production BrainBox database accumulated over one day (${\sim}5$ hours of active agent sessions).
-
-\begin{table}[H]
-\centering
-\caption{Production network statistics}
-\label{tab:production}
-\begin{tabular}{l r}
-\toprule
-\textbf{Metric} & \textbf{Value} \\
-\midrule
-Neurons (73 file, 6 tool) & 79 \\
-Synapses & 3,554 \\
-Graph density & 57.6\% \\
-High-conductance pathways (myelin $\geq 0.5$) & 2 \\
-Total accesses & 857 \\
-Tokens without BrainBox & 1,694,000 \\
-Tokens saved & 150,500 \\
-\textbf{Gross token savings} & \textbf{8.9\%} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\textbf{SNAP saturation curve (production evidence):} The synapse weight distribution across co-access count buckets confirms the SNAP sigmoid plasticity model---weights grow logarithmically with co-access count, plateauing near 0.7:
-
-\begin{table}[H]
-\centering
-\caption{SNAP saturation in production: weight vs.\ co-access count}
-\label{tab:snap}
-\small
-\begin{tabular}{r r r r r}
-\toprule
-\textbf{Co-access Bucket} & \textbf{Synapses} & \textbf{Avg Weight} & \textbf{Min} & \textbf{Max} \\
-\midrule
-1--5 & 2,492 & 0.294 & 0.008 & 0.413 \\
-6--10 & 428 & 0.339 & 0.100 & 0.469 \\
-11--25 & 406 & 0.415 & 0.100 & 0.612 \\
-26--50 & 160 & 0.478 & 0.100 & 0.696 \\
-51--100 & 128 & 0.655 & 0.306 & 0.916 \\
-100+ & 28 & 0.707 & 0.515 & 0.996 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The strongest production pathway is Grep$\to$Read (weight 0.996, 301 co-accesses)---the universal ``search then read'' pattern. The two high-conductance pathways are the Read tool (myelination 0.626, 213 accesses) and Grep tool (myelination 0.606, 122 accesses).
-
-\textbf{Benchmark--production comparison:} Production performance (8.9\% savings) closely matches the E1 long-horizon benchmark (8.4\% at 100 sessions), validating that synthetic scenarios produce realistic estimates. Production slightly exceeds the benchmark due to organic co-access patterns that synthetic scenarios cannot fully capture.
-
-\subsection{Recall Latency}
-
-\begin{table}[H]
-\centering
-\caption{Operation latency (SQLite, $<$1,000 neurons)}
-\label{tab:latency}
-\begin{tabular}{l r}
-\toprule
-\textbf{Operation} & \textbf{Latency} \\
-\midrule
-\texttt{record()} (single file) & $<$1ms \\
-\texttt{recall()} (5 results, 3-phase) & $<$5ms \\
-\texttt{predictNext()} (tool sequence) & $<$1ms \\
-\texttt{decay()} (full network) & $<$10ms \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Compared to a typical Grep search (200--500ms) or vector similarity search (50--200ms), BrainBox recall is effectively instant.
-
-\subsection{Evaluation Limitations}
-
-We acknowledge several limitations of the current evaluation:
-
-\textbf{Scale.} The benchmark scenarios model focused development workflows with 11--37 neurons. Production usage confirms this is representative for single-project work, but evaluation against large monorepos (10,000+ files) and established multi-agent benchmarks such as SWE-bench Lite remains future work.
-
-\textbf{Baselines.} The evaluation compares BrainBox against a stateless (tabula rasa) agent. A complete evaluation should include comparisons against standard RAG with vector databases, static procedural prompts, and symbolic procedural memory systems such as ToolMem~\cite{toolmem2025} or MACLA~\cite{macla2025}.
-
-\textbf{Net vs.\ gross token savings.} The reported savings are gross reductions in search tokens. The overhead of injecting BrainBox context (${\sim}225$ tokens per recall, typically 3 files at 75 tokens each) is modest but not subtracted from the headline numbers. In the A1 benchmark, net savings (4.4\%) are within 0.1\% of gross (4.5\%), confirming that injection overhead is negligible relative to savings.
-
-\textbf{Deterministic benchmarks.} Zero standard deviation across runs reflects the deterministic nature of the scenarios, not measurement confidence. Real-world variance would come from different user access patterns, which we partially address with the production validation.
-
-
-% ============================================================
-% 7. LIMITATIONS AND FUTURE WORK
-% ============================================================
-\section{Limitations and Future Work}
-\label{sec:limitations}
-
-\subsection{Current Limitations}
-
-\begin{itemize}
-    \item \textbf{Stale paths:} Files that move or are renamed break synaptic connections. No automatic path migration exists.
-    \item \textbf{No explicit lateral inhibition:} While BrainBox now implements fan-effect normalization, hub penalty, and SNAP plasticity to address the hub explosion problem (Section~4.3), it does not employ explicit lateral inhibition as used by SYNAPSE~\cite{synapse2026}. The current mechanisms are \emph{degree-proportional dampening}, not active suppression of competing activations.
-    \item \textbf{Limited LTD:} The anti-recall mechanism (Section~4.7) provides a form of Long-Term Depression for recalled-but-not-opened files, but this is session-scoped and requires the file to be recalled first. General LTD---weakening synapses when expected co-access does not occur---is not implemented. Only passive multiplicative decay reduces weights for connections that are simply unused.
-    \item \textbf{Single-user single-machine:} The current architecture uses a local SQLite database with no synchronization mechanism. Multi-agent or multi-machine deployments would require a shared backing store.
-    \item \textbf{Evaluation scale:} As discussed in Section~5.4, the current evaluation is a proof-of-concept simulation. Production-scale validation against standardized benchmarks is needed.
-\end{itemize}
-
-\subsection{Security and Adversarial Robustness}
-
-A persistent, continuously learning memory graph introduces security considerations absent from stateless agents. If an agent accesses a malicious file alongside routine operations, BrainBox's Hebbian algorithm will strengthen the association between the malicious file and standard tools---potentially causing the agent to recall and access compromised files in future sessions.
-
-The confidence gate (Section~4.3) provides a partial mitigation: files must exceed a 0.4 confidence threshold before being returned as recall candidates, which limits the influence of weakly-associated malicious entries. However, a dedicated validation or sanitization mechanism---such as the consensus-based approach used by A-MemGuard~\cite{amemguard2025}---would provide stronger protection. Developing a robust adversarial defense for Hebbian agent memory is an important direction for future work.
-
-\subsection{Future Directions}
-
-\textbf{Near-term:} Path migration for renamed/moved files; explicit lateral inhibition complementing the current fan-effect normalization; production-scale benchmarking on SWE-bench Lite, ALFWorld, or LoCoMo.
-
-\textbf{Medium-term:} Layer~4 collective intelligence---shared synaptic networks across agent teams; cross-session transfer of universal patterns; formal analysis of hub explosion bounds under SNAP + fan-effect.
-
-\textbf{Long-term:} User intent mapping (``make it faster'' $\to$ codebase-specific actions); circadian patterns in tool and file usage; formal adversarial robustness guarantees with consensus-based myelination validation.
-
-
-% ============================================================
-% 8. CROSS-PLATFORM DEPLOYMENT
-% ============================================================
-\section{Cross-Platform Deployment}
-
-To validate portability, we ported BrainBox to OpenClaw (an open-source AI agent platform) as ``NeuroVault.'' The system registers three standard LLM lifecycle hooks (\texttt{before\_agent\_start} for context injection, \texttt{after\_tool\_call} for Hebbian learning, \texttt{agent\_end} for fact capture) and two agent-callable tools. The port required adaptation for tool name normalization, parameter naming conventions, and the absence of embedding models---compensated by boosted keyword weight and a lower confidence gate. Cross-platform porting also served as a verification strategy, revealing a previously undetected bug in the fallback gate formula. Full adaptation details are provided in Appendix~\ref{app:neurovault}.
-
-
-% ============================================================
-% 9. CONCLUSION
-% ============================================================
-\section{Conclusion}
-
-BrainBox demonstrates that Hebbian learning and biologically inspired pathway myelination---principles rooted in Hebb (1949)~\cite{hebb1949}---can improve AI agent efficiency by learning file access patterns, error$\to$fix associations, and tool sequences. The v4.0 architecture addresses key challenges in long-horizon graph stability through SNAP plasticity, fan-effect normalization, homeostatic scaling, and anti-recall negative Hebbian learning, while sleep consolidation enables offline pattern reinforcement via session replay and spaced repetition. A calibrated benchmark suite across six scenarios (standard workflow, decay, large codebase, error debugging, cross-project switching, and long-horizon 100-session) shows 4.5--8.4\% gross token savings with F1 scores of 0.400--0.667, and production deployment validates these numbers at 8.9\% savings with SNAP saturation curves matching theoretical predictions.
-
-The system addresses a gap in the application of neuromimetic mechanisms to agent behavioral memory. While contemporary systems such as ToolMem~\cite{toolmem2025} and MACLA~\cite{macla2025} achieve behavioral learning through symbolic and Bayesian means, BrainBox is the first to apply continuous Hebbian plasticity with cross-type synapses, self-healing decay, and homeostatic regulation to this domain. The cross-platform NeuroVault deployment validates portability across agent frameworks.
-
-Three decades after Fido~\cite{palmer1991fido} demonstrated associative prefetching for database caches, BrainBox applies the same principle to software agents---extending the hardware architecture community's insight about learnable access patterns to the agent behavioral layer.
-
-
-% ============================================================
-% REFERENCES
-% ============================================================
-\begin{thebibliography}{15}
-
-\bibitem{hebb1949}
-D.~O. Hebb, \emph{The Organization of Behavior}, Wiley, 1949.
-
-\bibitem{bcm1982}
-E.~L. Bienenstock, L.~N. Cooper, and P.~W. Munro, ``Theory for the development of neuron selectivity,'' \emph{Journal of Neuroscience}, vol.~2, no.~1, pp.~32--48, 1982.
-
-\bibitem{ebbinghaus1885}
-H.~Ebbinghaus, \emph{Memory: A Contribution to Experimental Psychology}, 1885.
-
-\bibitem{collins1975}
-A.~M. Collins and E.~F. Loftus, ``A spreading-activation theory of semantic processing,'' \emph{Psychological Review}, vol.~82, no.~6, pp.~407--428, 1975.
-
-\bibitem{wixted1991}
-J.~T. Wixted and E.~B. Ebbesen, ``On the form of forgetting,'' \emph{Psychological Science}, vol.~2, no.~6, pp.~409--415, 1991.
-
-\bibitem{palmer1991fido}
-M.~Palmer and S.~Zdonik, ``Fido: A Cache That Learns to Fetch,'' \emph{Proceedings of the 17th International Conference on Very Large Data Bases}, pp.~255--264, 1991.
-
-\bibitem{chaudhary2025}
-S.~Chaudhary, ``Enabling Robust In-Context Memory and Rapid Task Adaptation in Transformers with Hebbian and Gradient-Based Plasticity,'' \emph{arXiv:2510.21908}, 2025.
-
-\bibitem{szelogowski2025}
-D.~Szelogowski, ``Hebbian Memory-Augmented Recurrent Networks: Engram Neurons in Deep Learning,'' \emph{arXiv:2507.21474}, 2025.
-
-\bibitem{safa2024}
-A.~Safa, ``Continual Learning with Hebbian Plasticity in Sparse and Predictive Coding Networks: A Survey and Perspective,'' \emph{arXiv:2407.17305}, 2024.
-
-\bibitem{synapse2026}
-``SYNAPSE: Empowering LLM Agents with Episodic-Semantic Memory via Spreading Activation,'' \emph{arXiv:2601.02744}, 2026.
-
-\bibitem{macla2025}
-``MACLA: Learning Hierarchical Procedural Memory for LLM Agents through Bayesian Selection and Contrastive Refinement,'' \emph{arXiv:2512.18950}, 2025.
-
-\bibitem{shodhmemory}
-Shodh-Memory, \url{https://github.com/varun29ankuS/shodh-memory}.
-
-\bibitem{cortex2025}
-``Cortex/Asteria: Achieving Low-Latency, Cost-Efficient Remote Data Access For LLM via Semantic-Aware Knowledge Caching,'' \emph{arXiv:2509.17360}, 2025.
-
-\bibitem{magma2026}
-``MAGMA: A Multi-Graph based Agentic Memory Architecture for AI Agents,'' \emph{arXiv:2601.03236}, 2026.
-
-\bibitem{liu2025survey}
-S.~Liu et~al., ``Memory in the Age of AI Agents: A Survey,'' \emph{arXiv:2512.13564}, 2025.
-
-\bibitem{toolmem2025}
-Y.~Xiao et~al., ``ToolMem: Enhancing Multimodal Agents with Learnable Tool Capability Memory,'' \emph{arXiv:2510.06664}, 2025.
-
-\bibitem{amem2025}
-J.~Xu et~al., ``A-MEM: Agentic Memory for LLM Agents,'' \emph{arXiv:2502.12110}, 2025.
-
-\bibitem{nemori2025}
-Y.~Nan et~al., ``Nemori: Self-Organizing Agent Memory Inspired by Cognitive Science,'' \emph{arXiv:2508.03341}, 2025.
-
-\bibitem{vilomem2025}
-``ViLoMem: Agentic Learner with Grow-and-Refine Multimodal Semantic Memory,'' \emph{arXiv:2511.21678}, 2025.
-
-\bibitem{amemguard2025}
-``A-MemGuard: A Proactive Defense Framework for LLM-Based Agent Memory,'' \emph{arXiv:2510.02373}, 2025.
-
-\bibitem{maestro2025}
-Cloud Security Alliance, ``MAESTRO: An Agentic AI Threat Modeling Framework,'' 2025.
-
-\bibitem{stdpsequence2021}
-T.~Zhang et~al., ``Brain Inspired Sequences Production by Spiking Neural Networks With Reward-Modulated STDP,'' \emph{Frontiers in Computational Neuroscience}, vol.~15, 2021.
-
-\bibitem{warmstart2019}
-A.~Ash and R.~P.~Adams, ``On Warm-Starting Neural Network Training,'' \emph{arXiv:1910.08475}, 2019.
-
-\bibitem{frey1997}
-U.~Frey and R.~G.~M. Morris, ``Synaptic tagging and long-term potentiation,'' \emph{Nature}, vol.~385, pp.~533--536, 1997.
-
-\bibitem{turrigiano2004}
-G.~G. Turrigiano and S.~B. Nelson, ``Homeostatic plasticity in the developing nervous system,'' \emph{Nature Reviews Neuroscience}, vol.~5, pp.~97--107, 2004.
-
-\bibitem{kahneman2011}
-D.~Kahneman, \emph{Thinking, Fast and Slow}, Farrar, Straus and Giroux, 2011.
-
-\end{thebibliography}
-
-
-% ============================================================
-% APPENDICES
-% ============================================================
-\appendix
-
-\section{Constants and Hyperparameters}
-\label{app:constants}
-
-\begin{table}[H]
-\centering
-\small
-\begin{tabularx}{\textwidth}{l c X}
-\toprule
-\textbf{Constant} & \textbf{Value} & \textbf{Rationale} \\
-\midrule
-\texttt{LEARNING\_RATE} & 0.1 & Moderate strengthening; avoids oscillation \\
-\texttt{MYELIN\_RATE} & 0.02 & Slow pathway formation \\
-\texttt{MYELIN\_MAX} & 0.95 & Asymptotic ceiling prevents saturation \\
-\texttt{CO\_ACCESS\_WINDOW} & 25 & Last 25 unique files (sequential) \\
-\texttt{CONFIDENCE\_GATE} & 0.4 & Balances precision/recall \\
-\texttt{HIGH\_CONFIDENCE} & 0.7 & Above this, skip search entirely \\
-\texttt{ERROR\_BOOST} & 2.0 & Errors are high-signal events \\
-\texttt{MAX\_SPREAD\_HOPS} & 3 & BFS depth limit \\
-\texttt{MAX\_SPREAD\_FAN\_OUT} & 10 & Max outgoing synapses per node per hop \\
-\texttt{FAN\_DEGREE\_CAP} & 50 & Max degree for fan factor calculation \\
-\texttt{SNAP\_STEEPNESS} & 8 & Sigmoid steepness for SNAP plasticity \\
-\texttt{SNAP\_MIDPOINT} & 0.5 & Plasticity transition point \\
-\texttt{HUB\_PENALTY\_THRESHOLD} & 20 & Synapse count triggering hub penalty \\
-\texttt{HUB\_PENALTY\_FACTOR} & 0.5 & Learning rate multiplier for hubs \\
-\texttt{TAG\_CAPTURE\_WEIGHT} & 0.3 & Weight floor for captured tagged synapses \\
-\texttt{TAG\_CAPTURE\_WINDOW} & 60 min & Window for synaptic tag capture \\
-\texttt{MYELIN\_GATE} & 0.15 & Phase~3 fallback gate \\
-\texttt{SYNAPSE\_DECAY} & 0.02/day & Moderate weakening \\
-\texttt{ACTIVATION\_DECAY} & 0.15/day & Fast fade \\
-\texttt{MYELIN\_DECAY} & 0.005/day & ${\sim}200$ days to halve \\
-\texttt{NOISE\_BRIDGE\_DECAY} & 0.20/cycle & Accelerated decay for noise bridges \\
-\texttt{HOMEOSTASIS\_MYELIN\_TGT} & 0.15 & Target average myelination \\
-\texttt{HOMEOSTASIS\_WEIGHT\_TGT} & 0.35 & Target average synapse weight \\
-\texttt{ANTI\_RECALL\_DECAY} & 0.10 & Per-session decay for ignored recalls \\
-\texttt{SYNAPSE\_PRUNE} & 0.05 & Remove near-dead synapses \\
-\texttt{TOKENS\_PER\_FILE} & 1,500 & Conservative estimate \\
-\texttt{TOKENS\_PER\_SEARCH} & 500 & Search operation estimate \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\section{Database Schema}
-\label{app:schema}
-
-\begin{lstlisting}[style=sql,caption={BrainBox database schema}]
-CREATE TABLE neurons (
-  id TEXT PRIMARY KEY,
-  type TEXT NOT NULL,
-  path TEXT NOT NULL,
-  activation REAL DEFAULT 0,
-  myelination REAL DEFAULT 0,
-  access_count INTEGER DEFAULT 0,
-  last_accessed TEXT,
-  created_at TEXT NOT NULL,
-  contexts TEXT DEFAULT '[]',
-  embedding BLOB DEFAULT NULL,
-  project TEXT DEFAULT NULL,        -- v5: project scoping
-  ignore_streak INTEGER DEFAULT 0   -- v5: anti-recall escalation
-);
-
-CREATE TABLE synapses (
-  source_id TEXT NOT NULL REFERENCES neurons(id),
-  target_id TEXT NOT NULL REFERENCES neurons(id),
-  weight REAL DEFAULT 0.1,
-  co_access_count INTEGER DEFAULT 1,
-  last_fired TEXT,
-  created_at TEXT NOT NULL,
-  tagged_at TEXT DEFAULT NULL,       -- v3.2: synaptic tagging
-  PRIMARY KEY (source_id, target_id)
-);
-
-CREATE TABLE access_log (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  neuron_id TEXT NOT NULL,
-  session_id TEXT NOT NULL,
-  query TEXT,
-  timestamp TEXT NOT NULL,
-  token_cost INTEGER DEFAULT 0,
-  access_order INTEGER DEFAULT 0
-);
-
-CREATE TABLE sessions (
-  id TEXT PRIMARY KEY,
-  started_at TEXT,
-  total_accesses INTEGER DEFAULT 0,
-  tokens_used INTEGER DEFAULT 0,
-  tokens_saved INTEGER DEFAULT 0,
-  hit_rate REAL DEFAULT 0,
-  intent TEXT DEFAULT NULL           -- v5: session intent tracking
-);
-
-CREATE TABLE snippets (
-  id TEXT PRIMARY KEY,
-  parent_neuron_id TEXT NOT NULL REFERENCES neurons(id),
-  name TEXT NOT NULL,
-  kind TEXT NOT NULL,
-  start_line INTEGER NOT NULL,
-  end_line INTEGER NOT NULL,
-  source TEXT NOT NULL,
-  embedding BLOB,
-  content_hash TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-\end{lstlisting}
-
-\section{Integration Points}
-\label{app:integration}
-
-BrainBox exposes six tools via the Model Context Protocol (MCP): \texttt{brainbox\_record}, \texttt{brainbox\_recall}, \texttt{brainbox\_error}, \texttt{brainbox\_predict\_next}, \texttt{brainbox\_stats}, and \texttt{brainbox\_decay}.
-
-Two Claude Code hooks enable zero-config passive learning:
-\begin{itemize}
-    \item \textbf{PostToolUse $\to$ \texttt{hook.ts}}: Records every Read/Edit/Write/Grep/Glob
-    \item \textbf{UserPromptSubmit $\to$ \texttt{prompt-hook.ts}}: Injects neural recall into every prompt
-\end{itemize}
-
-\section{NeuroVault Adaptation Matrix}
-\label{app:neurovault}
-
-\begin{table}[H]
-\centering
-\small
-\begin{tabularx}{\textwidth}{l l X}
-\toprule
-\textbf{Integration Point} & \textbf{Claude Code} & \textbf{OpenClaw (NeuroVault)} \\
-\midrule
-Tool names & PascalCase & Lowercase \\
-File path param & \texttt{file\_path} & \texttt{path} \\
-Tool results & Plain strings & \texttt{.content[].text} objects \\
-Context injection & \texttt{UserPromptSubmit} hook & \texttt{before\_agent\_start} \\
-Learning trigger & \texttt{PostToolUse} hook & \texttt{after\_tool\_call} lifecycle \\
-Embeddings & all-MiniLM-L6-v2 & Not available (keyword-only) \\
-Confidence gate & 0.4 & 0.3 \\
-Keyword weight & 40\% & 50\% \\
-Fact capture & Not implemented & \texttt{agent\_end} hook \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\section{Reproducibility}
-\label{app:reproducibility}
-
-The full BrainBox implementation, test suite, and benchmark scenarios are available at:
-
-\begin{center}
-\url{https://github.com/thebasedcapital/brainbox}
-\end{center}
-
-\textbf{Running the test suite} (requires Node.js $\geq$ 18 and npm):
-
-\begin{lstlisting}[basicstyle=\ttfamily\small,frame=single,numbers=none]
-git clone https://github.com/thebasedcapital/brainbox.git
-cd brainbox
-npm install
-npx tsx src/test.ts          # 59 tests, ~2s
-\end{lstlisting}
-
-All 59 tests run against in-memory SQLite databases and are fully deterministic---no external services, API keys, or GPU required.
-
-\textbf{Running the benchmark suite:}
-
-\begin{lstlisting}[basicstyle=\ttfamily\small,frame=single,numbers=none]
-npx tsx src/benchmark.ts     # 6 scenarios, ~10s
-\end{lstlisting}
-
-This reproduces Table~\ref{tab:benchmark} (scenarios A1--E1) with identical results.
-
-\textbf{Running the simulation} (visual demonstration of learning over 20 sessions):
-
-\begin{lstlisting}[basicstyle=\ttfamily\small,frame=single,numbers=none]
-npx tsx src/cli.ts simulate  # interactive visualization
-\end{lstlisting}
-
-\textbf{Installing as a Claude Code MCP server} (live deployment):
-
-\begin{lstlisting}[basicstyle=\ttfamily\small,frame=single,numbers=none]
-claude mcp add brainbox -- npx tsx /path/to/brainbox/src/mcp.ts
-\end{lstlisting}
-
-This registers BrainBox as a Model Context Protocol server, exposing \texttt{brainbox\_record}, \texttt{brainbox\_recall}, \texttt{brainbox\_error}, \texttt{brainbox\_predict\_next}, \texttt{brainbox\_stats}, and \texttt{brainbox\_decay} as agent-callable tools. The two Claude Code hooks (\texttt{hook.ts} and \texttt{prompt-hook.ts}) enable passive learning without any agent-side code changes.
+The historical engine loader names commit \texttt{9750d2f}. Current-run
+artifacts record engine mode and options but no source commit hash,
+parser hash, input manifest or dataset revision. Therefore, the
+inspected source revision must not be mistaken for a proven executable
+provenance link to those older runs. Result directories are excluded by
+the repository's ignore rules; a fresh clone does not include them. The
+companion \texttt{paper/evidence.json} preserves the aggregate fields
+used for the manuscript plus original-file SHA-256 hashes, without
+exporting private session text. It is a transcription aid, not a
+replacement for missing per-probe records or original inputs.
+
+The public replay commands, from the repository root, are:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{npm}\NormalTok{ ci }\AttributeTok{{-}{-}ignore{-}scripts}
+\ExtensionTok{npm}\NormalTok{ rebuild better{-}sqlite3}
+\ExtensionTok{npm}\NormalTok{ run eval }\AttributeTok{{-}{-}} \AttributeTok{{-}{-}source}\NormalTok{ nebius }\AttributeTok{{-}{-}repos}\NormalTok{ 5 }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}{-}max{-}tasks{-}per{-}repo}\NormalTok{ 20 }\AttributeTok{{-}{-}split}\NormalTok{ test }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}{-}embeddings}\NormalTok{ off }\AttributeTok{{-}{-}engine}\NormalTok{ new }\AttributeTok{{-}{-}seed}\NormalTok{ 42 }\AttributeTok{{-}{-}json}
+\ExtensionTok{npm}\NormalTok{ run eval }\AttributeTok{{-}{-}} \AttributeTok{{-}{-}source}\NormalTok{ nebius }\AttributeTok{{-}{-}repos}\NormalTok{ 5 }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}{-}max{-}tasks{-}per{-}repo}\NormalTok{ 20 }\AttributeTok{{-}{-}split}\NormalTok{ test }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}{-}embeddings}\NormalTok{ off }\AttributeTok{{-}{-}engine}\NormalTok{ old }\AttributeTok{{-}{-}seed}\NormalTok{ 42 }\AttributeTok{{-}{-}json}
+\end{Highlighting}
+\end{Shaded}
+
+Skipping install scripts avoids automatically configuring an editor or
+downloading a model during evaluation setup. Native dependencies still
+require a working platform toolchain. The historical mode prepares a
+legacy worktree and may need network/dependency access. Public data
+selection uses a cache and dataset catalog, so future reruns can differ
+if that source changes. The local command uses \texttt{-\/-source\ omp}
+and omits \texttt{-\/-split}, reading the invoking user's session
+directory; it cannot reproduce the private cohort on another machine.
+
+No new benchmark run was performed for this writing revision.
+Compilation and numerical consistency checks validate the manuscript
+artifact, not the system's scientific claims. Before an archival
+submission, frozen public input manifests, a source-pinned rerun,
+explicit ablations and an online task-success experiment would
+materially strengthen the evidence. Their absence is a limitation of
+this completed draft, not an experiment reported as done.
+
+\section{9. Conclusion}\label{conclusion}
+
+BrainBox implements local behavioral memory from coding-agent traces
+without modifying a language model or requiring LLM calls for memory
+maintenance. In the stored, coverage-conditioned replay results, its
+most consistent advantage is next-tool prediction. File retrieval is
+less decisive: frequency wins an important local point comparison,
+recency remains competitive, and novel files fall outside the measured
+universe. These findings motivate a narrower research claim than
+universal memory superiority: lightweight operational history can
+improve prediction of repeated tool use, while its value for end-to-end
+software engineering remains to be established.
+
+\section{Appendix A. All heuristic point
+comparisons}\label{appendix-a.-all-heuristic-point-comparisons}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Cohort / probe
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+BrainBox
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Recency
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Frequency
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+BM25
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Co-session
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Random
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+SWE P1-edit & 0.307 & 0.167 & 0.100 & 0.216 & 0.100 & 0.030 \\
+SWE P1-read & 0.267 & 0.071 & 0.173 & 0.206 & 0.075 & 0.113 \\
+SWE P2 & 0.409 & 0.430 & 0.156 & 0.254 & 0.274 & 0.035 \\
+SWE P3 & 0.767 & 0.691 & 0.748 & 0.671 & 0.743 & 0.357 \\
+Local P1-edit & 0.703 & 0.577 & 0.791 & 0.447 & 0.158 & 0.138 \\
+Local P1-read & 0.555 & 0.397 & 0.431 & 0.547 & 0.011 & 0.142 \\
+Local P2 & 0.702 & 0.701 & 0.587 & 0.495 & 0.485 & 0.049 \\
+Local P3 & 0.686 & 0.662 & 0.590 & 0.595 & 0.440 & 0.161 \\
+\end{longtable}
+}
+
+Table 5. Stored current-run conditional MRR values rounded to three
+decimals. File and tool cutoffs differ as specified in Section 5.3; no
+inference should compare them as identical tasks.
+
+\section{Appendix B. Implementation-to-claim
+map}\label{appendix-b.-implementation-to-claim-map}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Implementation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Manuscript role
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidenced by ranking replay?
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{src/hebbian.ts} & Access updates, graph recall, temporal
+features, fusion, tool prediction & Yes, as a combined system; no
+isolated attribution \\
+\texttt{src/policy.ts} & Injection decisions, attribution and reward &
+No \\
+\texttt{src/procedures.ts} & Error-fix and workflow mining & No \\
+\texttt{src/snippets.ts}, \texttt{src/codegraph.ts} & Optional source
+retrieval and structural priors & No populated source index in these
+runs \\
+\texttt{src/embeddings.ts} & Optional CPU embedding profiles & Disabled
+in principal runs \\
+\texttt{src/eval/} & Selection, parsing, probe timing, comparators and
+uncertainty & Defines the replay protocol \\
+\end{longtable}
+}
+
+\section*{References}\label{references}
+\addcontentsline{toc}{section}{References}
+
+\protect\phantomsection\label{refs}
+\begin{CSLReferences}{1}{1}
+\bibitem[\citeproctext]{ref-rrf2009}
+Cormack, Gordon V., Charles L. A. Clarke, and Stefan Buettcher. 2009.
+{``Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank
+Learning Methods.''} \emph{Proceedings of SIGIR}, 758--59.
+\url{https://doi.org/10.1145/1571941.1572114}.
+
+\bibitem[\citeproctext]{ref-heuristics2025}
+Cornell, Filip, Oleg Smirnov, Gabriela Zarzar Gandler, and Lele Cao.
+2025. {``On the Power of Heuristics in Temporal Graphs.''} \emph{arXiv
+Preprint arXiv:2502.04910}. \url{https://arxiv.org/abs/2502.04910}.
+
+\bibitem[\citeproctext]{ref-macla2025}
+Forouzandeh, Saman, Wei Peng, Parham Moradi, Xinghuo Yu, and Mahdi
+Jalili. 2025. {``Learning Hierarchical Procedural Memory for {LLM}
+Agents Through Bayesian Selection and Contrastive Refinement.''}
+\emph{arXiv Preprint arXiv:2512.18950}.
+\url{https://arxiv.org/abs/2512.18950}.
+
+\bibitem[\citeproctext]{ref-actr2025}
+Innerebner, Kevin, Dominik Kowald, Markus Schedl, and Elisabeth Lex.
+2025. {``Hybrid Personalization Using Declarative and Procedural Memory
+Modules of the Cognitive Architecture {ACT-R}.''} \emph{arXiv Preprint
+arXiv:2505.05083}. \url{https://arxiv.org/abs/2505.05083}.
+
+\bibitem[\citeproctext]{ref-magma2026}
+Jiang, Dongming, Yi Li, Guanpeng Li, and Bingzhe Li. 2026. {``{MAGMA}: A
+Multi-Graph Based Agentic Memory Architecture for {AI} Agents.''}
+\emph{arXiv Preprint arXiv:2601.03236}.
+\url{https://arxiv.org/abs/2601.03236}.
+
+\bibitem[\citeproctext]{ref-synapse2026}
+Jiang, Hanqi, Junhao Chen, Yi Pan, et al. 2026. {``{SYNAPSE}: Empowering
+{LLM} Agents with Episodic-Semantic Memory via Spreading Activation.''}
+\emph{arXiv Preprint arXiv:2601.02744}.
+\url{https://arxiv.org/abs/2601.02744}.
+
+\bibitem[\citeproctext]{ref-nemori2025}
+Ma, Wenquan, Jiayan Nan, Wenlong Wu, and Yize Chen. 2025. {``What
+Deserves Memory: Adaptive Memory Distillation for {LLM} Agents.''}
+\emph{arXiv Preprint arXiv:2508.03341}.
+\url{https://arxiv.org/abs/2508.03341}.
+
+\bibitem[\citeproctext]{ref-cortex2025}
+Ruan, Chaoyi, Chao Bi, Kaiwen Zheng, Ziji Shi, Xinyi Wan, and Jialin Li.
+2025. {``Cortex: Achieving Low-Latency, Cost-Efficient Remote Data
+Access for {LLM} via Semantic-Aware Knowledge Caching.''} \emph{arXiv
+Preprint arXiv:2509.17360}. \url{https://arxiv.org/abs/2509.17360}.
+
+\bibitem[\citeproctext]{ref-safa2024}
+Safa, Ali. 2024. {``Continual Learning with Hebbian Plasticity in Sparse
+and Predictive Coding Networks: A Survey and Perspective.''} \emph{arXiv
+Preprint arXiv:2407.17305}. \url{https://arxiv.org/abs/2407.17305}.
+
+\bibitem[\citeproctext]{ref-nebius2025}
+Trofimova, Maria, Anton Shevtsov, Badertdinov Ibragim, Konstantin Pyaev,
+Simon Karasik, and Alexander Golubev. 2025. \emph{{OpenHands}
+Trajectories with {Qwen3-Coder-480B-A35B-Instruct}}. Nebius dataset
+card.
+\url{https://huggingface.co/datasets/nebius/SWE-rebench-openhands-trajectories}.
+
+\bibitem[\citeproctext]{ref-toolmem2025}
+Xiao, Yunzhong, Yangmin Li, Hewei Wang, Yunlong Tang, and Zora Zhiruo
+Wang. 2025. {``{ToolMem}: Enhancing Multimodal Agents with Learnable
+Tool Capability Memory.''} \emph{arXiv Preprint arXiv:2510.06664}.
+\url{https://arxiv.org/abs/2510.06664}.
+
+\bibitem[\citeproctext]{ref-amem2025}
+Xu, Wujiang, Zujie Liang, Kai Mei, Hang Gao, Juntao Tan, and Yongfeng
+Zhang. 2025. {``{A-MEM}: Agentic Memory for {LLM} Agents.''} \emph{arXiv
+Preprint arXiv:2502.12110}. \url{https://arxiv.org/abs/2502.12110}.
+
+\bibitem[\citeproctext]{ref-cast2025}
+Zhang, Yilin, Xinran Zhao, Zora Zhiruo Wang, Chenyang Yang, Jiayi Wei,
+and Tongshuang Wu. 2025. {``{cAST}: Enhancing Code Retrieval-Augmented
+Generation with Structural Chunking via Abstract Syntax Tree.''}
+\emph{arXiv Preprint arXiv:2506.15655}.
+\url{https://arxiv.org/abs/2506.15655}.
+
+\end{CSLReferences}
 
 \end{document}

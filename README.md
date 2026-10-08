@@ -287,7 +287,7 @@ Gemma profiles are subject to the [Gemma Terms of Use](https://ai.google.dev/gem
 | Anti-recall | Ignored recalls weaken only the producing edge; `1 - (1 - 0.1)^streak`, floor 0.1 |
 | Error learning | 2x boosted learning rate; error→fix procedures from failed→edited→passing reruns |
 
-Full details in [WHITEPAPER.md](./WHITEPAPER.md).
+The revised [research-paper draft](./WHITEPAPER.md) describes the implementation and coverage-conditioned replay results, including uncertainty and provenance limitations. See [paper build and evidence notes](./paper/README.md) for the bibliography, aggregate evidence, LaTeX and PDF build.
 
 </details>
 

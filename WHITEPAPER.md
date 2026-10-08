@@ -1,1293 +1,339 @@
-# BrainBox: Zero-Cost Hebbian Memory for AI Coding Agents
-
-**The First Deployed Agent Memory System That Learns Behavioral Patterns for Free — File Access, Error→Fix Pairs, and Tool Sequences Through Synaptic Myelination**
-
-*Bhavesh B* — bhaveshb@proton.me
-
-*February 2026*
-
-**DOI:** [10.5281/zenodo.18664906](https://doi.org/10.5281/zenodo.18664906) (concept DOI — always resolves to latest version)
-
+---
+title: "BrainBox: Local Behavioral Memory for Coding Agents"
+subtitle: "A systems draft with coverage-conditioned replay evaluation"
+author: "Bhavesh B"
+date: "8 October 2026 — revised draft, not a new archival release"
+bibliography: paper/references.bib
+link-citations: true
+lang: en-US
+abstract: |
+  Coding agents repeatedly revisit files and tool sequences, creating an opportunity for external memory without updating language-model parameters. We present BrainBox, a local SQLite-backed system that learns directed co-access associations among files, tools and errors. Its current implementation combines bounded associative updates, query-conditioned graph retrieval, temporal features and reciprocal-rank fusion; a separate sequence model predicts tools. Optional components provide structural code hints, hybrid snippet retrieval, contextual control of prompt injection and deterministic procedure mining. We reassess the system using recorded agent trajectories rather than treating estimated search-token avoidance as measured savings. In a selected 40-task SWE-rebench replay, next-tool MRR@3 is 0.767 versus 0.748 for frequency, with a paired trajectory-bootstrap difference interval of [0.012, 0.027]. Next-file MRR is 0.409 versus 0.430 for recency, with an interval spanning zero. All rank metrics condition on targets already represented in prior-task memory: only 221 of 1,303 SWE next-file opportunities are scored. A separate 97-session local replay shows the same next-tool advantage but lower edited-file MRR than frequency. These results support a narrow claim about repeated-access prediction, not improved task completion, net token savings, biological fidelity or superiority to complete agent-memory products. We make the evaluation's ordering assumptions, coverage limits and incomplete artifact provenance explicit.
 ---
 
-## Abstract
+**Author:** Bhavesh B, independent researcher; bhaveshb@proton.me. ORCID: [0009-0007-9680-3842](https://orcid.org/0009-0007-9680-3842).
 
-We present BrainBox, a novel memory architecture for AI coding agents that learns behavioral patterns using Hebbian learning and synaptic myelination. Unlike declarative memory systems (Mem0, SuperMemory, OpenMemory, Zep, Letta, LangMem), retrieval-augmented generation, and static instruction files (CLAUDE.md), BrainBox implements procedural memory — learning *how agents work* rather than *what they know*. The system records file co-access patterns, error→fix associations, and tool usage sequences, strengthening neural pathways through repeated use and weakening them through multiplicative decay.
+**Draft status.** This revision describes the v0.2 source tree and recorded replay runs. It replaces the earlier manuscript's central synthetic-token-savings argument. The existing concept DOI, [10.5281/zenodo.18664906](https://doi.org/10.5281/zenodo.18664906), identifies the prior publication record; this draft has not been deposited as a new version. Code: [thebasedcapital/brainbox](https://github.com/thebasedcapital/brainbox). Manuscript license: CC BY 4.0; code license: MIT.
 
-We introduce three key innovations: (1) cross-type Hebbian synapses connecting file, tool, and error neurons, (2) error→fix pair learning that creates a "debugging immune system," and (3) tool sequence myelination that builds agent muscle memory. Mathematical verification confirms all learning dynamics match established neuroscience models (BCM diminishing returns, Ebbinghaus forgetting curves, Collins & Loftus spreading activation).
+**Keywords:** coding agents; behavioral memory; associative retrieval; tool prediction; rank fusion; offline replay.
 
-We survey seven prominent agent memory systems and demonstrate that all operate at Layer 2 (declarative knowledge) — storing facts, preferences, and conversations. BrainBox operates at Layer 3 (agent behavioral learning) in our proposed four-layer framework for Hebbian learning in AI — a layer where prior research exists (MACLA, SYNAPSE, Cortex, MAGMA) but no deployed system integrates Hebbian behavioral learning with production agent platforms. Production evaluation on a network of 79 neurons and 3,554 synapses shows 8.9% gross token savings in the first 5 hours, with SNAP saturation curves confirming BCM-inspired diminishing returns in real usage. Benchmark evaluation achieves 67% top-1 recall accuracy (5x over baseline) on a 2,276-neuron production network.
+# 1. Introduction
 
-**Keywords:** Hebbian learning, agent memory, myelination, spreading activation, procedural memory, token optimization, Mem0, SuperMemory, OpenMemory
+Repeated work on a repository produces a trace of operational associations: files are read together, edits follow errors, and familiar tool sequences recur. A coding agent can use this history to propose likely resources before repeating a broad search. This is a prediction problem as well as a retrieval problem. The file most often used after a test failure may be useful even when its contents do not closely match the next task description; conversely, a strong lexical query must be able to override a habitual but irrelevant file.
 
----
+BrainBox stores these associations outside the language model. Adapters translate tool activity into local events; an indexed SQLite graph retains resources, directed associations and access history. Recall combines query evidence and behavioral priors rather than relying on either alone. The model's parameters are unchanged. Learning and recall require no LLM inference call, although optional dense retrieval uses a downloaded embedding model on the CPU. This removes an API dependency, not computational or storage cost.
 
-## 1. Introduction
+We use *behavioral memory* for historical file/tool/error associations and *procedural memory* more narrowly for mined action sequences with observed verification outcomes. Neither term implies that observing a frequently used action proves it useful or correct. In particular, access frequency is not a causal estimate of utility.
 
-### 1.1 The Problem: Stateless Agents Are Inefficient
+This revision makes three contributions:
 
-Current AI agent frameworks treat each session as *tabula rasa*. When a coding agent starts a new session, it has no memory of which files it accessed yesterday, which errors it debugged last week, or which tool chains it uses most frequently. Every session rediscovers the same patterns through expensive search operations.
+1. **An inspectable local implementation** combining directed co-access learning, temporal retrieval, query-aware rank fusion and suffix-based tool prediction, with optional code retrieval and procedure mining.
+2. **A prior-history replay protocol** that fixes candidate universes before each target task, separates edited-file, read-file, next-file and next-tool probes, and reports both coverage and ranking quality.
+3. **A bounded empirical finding:** next-tool prediction exceeds the strongest measured heuristic baseline in the stored runs; file-retrieval comparisons are mixed, and low historical coverage limits the claim.
 
-Consider a developer who works on an authentication module daily. The agent reads `auth.ts`, `session.ts`, and `encryption.ts` together in 80% of sessions. Without memory, each session begins with a grep for "authentication," reads search results, then opens files one by one — consuming ~2,000 tokens per rediscovery. With Hebbian memory, the agent would recall these three files instantly at ~0 additional search tokens because the synaptic pathway is myelinated.
+We do not claim a new biological learning law or first-in-field status. The main contribution is the concrete system and its evaluation boundary. A useful research outcome includes identifying when simple frequency or recency is competitive with a more elaborate memory system.
 
-The cost is not trivial. At $3 per million input tokens (Claude Sonnet pricing), an agent making 1,000 file accesses per day wastes approximately $6/day on redundant search. Over a year, this amounts to ~$2,000 in unnecessary token expenditure per developer — not counting the latency cost of waiting for searches that could be skipped entirely.
+# 2. Related work and positioning
 
-### 1.2 The Insight: Hardware Prefetching for Software Agents
+**Agent memory.** A-MEM builds linked agent memories, while SYNAPSE uses spreading activation over episodic-semantic memory and MAGMA separates several graph relationships [@amem2025; @synapse2026; @magma2026]. These systems invalidate a simple division in which all existing memory is static or purely declarative. BrainBox emphasizes operational traces from coding tools and deterministic local updates; it does not establish empirical superiority over these systems.
 
-In 1991, Brown University researchers published "Fido: A Cache That Learns to Fetch" — a system that used associative memory to predict which database pages would be needed next based on access patterns. The key insight was simple: **access patterns are learnable, not random.** By recording which pages were co-accessed and strengthening those associations, Fido achieved significant cache hit rate improvements.
+**Procedures and tool experience.** ToolMem studies learned tool-capability memory, and MACLA studies hierarchical procedural memory with Bayesian selection and contrastive refinement [@toolmem2025; @macla2025]. NEMORI addresses adaptive memory distillation [@nemori2025]. BrainBox's procedure compiler instead recognizes constrained patterns in execution traces. Its advantages and disadvantages relative to language-mediated abstraction remain an empirical question: deterministic extraction is easier to inspect but may miss transferable explanations or infer spurious fixes.
 
-Thirty-five years later, hardware CPU prefetchers use sophisticated neural pattern learning to predict memory access sequences. Intel's Stride Prefetcher, AMD's L1/L2 prefetching, and ARM's data-dependent prefetch all learn from past access patterns to predict future ones.
+**Association, temporal history and caching.** Hebbian plasticity is a broad family of learning ideas, not a correctness argument for a particular implementation [@safa2024]. ACT-R-inspired personalization motivates combining recency and recurrence [@actr2025], while temporal-graph research demonstrates the importance of heuristic comparators [@heuristics2025]. Cortex studies semantic-aware knowledge caching for LLM access [@cortex2025]. BrainBox shares the motivation of avoiding repeated discovery but predicts operational resources rather than measuring remote-cache performance.
 
-Yet nobody has applied this principle *up the stack* to software agents. BrainBox fills this gap by treating file paths as neurons, co-access patterns as synapses, and frequently-used pathways as myelinated superhighways — directly mapping biological learning onto agent behavior.
+**Retrieval composition.** Reciprocal-rank fusion combines heterogeneous rankers without requiring comparable raw scores [@rrf2009]. BrainBox uses a weighted variant at the file level and a separate hybrid snippet ranker. Structural chunking is motivated by cAST [@cast2025]. These are adopted design ingredients, not new algorithms claimed by this paper. The replay results below do not evaluate embedding models or code-chunk retrieval.
 
-### 1.3 Contributions
+# 3. System and task definition
 
-1. **BrainBox:** A working Hebbian memory system for AI coding agents with mathematically verified learning dynamics
-2. **Cross-type synapses:** Connections between file, tool, and error neurons enabling multi-modal behavioral learning
-3. **Error→fix pair learning:** A debugging immune system that learns which files fix which errors
-4. **Tool sequence myelination:** Muscle memory for common tool chains (Grep→Read→Edit→Test)
-5. **Layer 3 positioning:** A four-layer framework identifying where Hebbian learning applies in AI systems
-6. **Token budget awareness:** Memory-guided recall that respects context window constraints
+## 3.1 State and interfaces
 
----
+A resource record contains an identifier, type, path or name, accumulated query context, timestamps, access count, activation and a bounded reinforcement scalar. Types include files, tools and errors. Directed edges retain association weights, counts and temporal metadata. Additional tables hold access logs, recall decisions, injection outcomes, code snippets, replay events and procedures.
 
-## 2. Related Work
+The operational flow is:
 
-### 2.1 A Four-Layer Framework for Hebbian Learning in AI
-
-We propose a framework for understanding where Hebbian learning principles apply across AI systems:
-
-| Layer | Domain | What Is Learned | Examples |
-|-------|--------|----------------|----------|
-| **L1: Model Internals** | Transformer architecture | Weight updates, attention patterns | Chaudhary (2025), Szelogowski (2025), CL Survey (2024) |
-| **L2: General Memory** | Declarative knowledge | Facts, episodes, semantic relationships | Mem0, SuperMemory, Zep, Letta, LangMem |
-| **L3: Agent Behavior** | Procedural patterns | File access, tool chains, error→fix pairs | **BrainBox (this work)** |
-| **L4: Collective Intelligence** | Multi-agent systems | Shared behavioral patterns across agent swarms | (proposed, not yet implemented) |
-
-### 2.2 Layer 1: Model Internals
-
-Recent work has explored Hebbian principles within neural network architectures:
-
-- **Chaudhary (2025)** augmented decoder-only transformers with Hebbian plasticity modules that adapt *during inference*, achieving rapid task-specific adaptation on copying, regression, and few-shot classification (arXiv 2510.21908).
-- **Szelogowski (2025)** introduced the Engram Neural Network (ENN) — a recurrent architecture with explicit, differentiable Hebbian memory and sparse attention-driven retrieval, achieving performance comparable to GRU/LSTM on WikiText-103 (arXiv 2507.21474).
-- **Continual Learning Survey (2024)** reviewed Hebbian plasticity and STDP in sparse/predictive coding networks for catastrophic forgetting mitigation, establishing that bio-plausible local learning rules can support continual learning at the edge (arXiv 2407.17305).
-
-These approaches modify model *weights* or apply Hebbian plasticity within the network architecture. BrainBox operates at a higher abstraction level — learning behavioral patterns *outside* the model, in the agent's tool-use layer.
-
-### 2.3 Layer 2: General Memory Systems
-
-A rapidly growing ecosystem of agent memory systems operates at Layer 2, storing declarative knowledge (facts, preferences, conversations) with varying retrieval strategies. We survey the seven most prominent systems and compare their architectures to BrainBox's procedural approach.
-
-**Mem0** (Apache-2.0, 47k+ GitHub stars) implements a hybrid datastore combining graph, vector, and key-value stores. Memory extraction is LLM-driven: a two-phase pipeline ingests conversation exchanges, evaluates them against existing memories via tool calls, and performs dynamic consolidation with conflict resolution. Mem0 reports +26% accuracy over OpenAI Memory on the LOCOMO benchmark and 91% lower p95 latency than full-context retrieval. The enhanced variant **Mem0g** adds entity-relation triplets for graph-based traversal. Mem0 learns *what agents discussed*, not *how they behave* — the 100th retrieval of the same fact returns the same similarity score as the first, with no Hebbian strengthening.
-
-**OpenMemory** (Apache-2.0, by Mem0 team) is a local-first MCP server (FastAPI + Postgres + Qdrant) that captures coding preferences and patterns passively as the developer works. It provides cross-tool context sharing — define preferences in Claude, build in Cursor, debug in Windsurf — via the Model Context Protocol. OpenMemory stores declarative preferences ("always use bun," "prefer functional style"), not behavioral patterns. It has no learning mechanism beyond accumulation.
-
-**SuperMemory** (MIT, supermemory.ai) emphasizes temporal reasoning with dual-layer timestamps (`documentDate` for conversation time, `eventDate` for extracted event time). Built on Postgres and Cloudflare Durable Objects, it scales to 50M tokens per user and 5B tokens daily for enterprise. SuperMemory reports 71.4% multi-session accuracy and 76.7% temporal reasoning accuracy. Its "memory evolution" via graph updates is closer to knowledge graph maintenance than Hebbian learning — edges are explicitly created from extracted facts, not implicitly learned from co-access.
-
-**Zep** (getzep.com, research paper arXiv 2501.13956) introduces **Graphiti**, a temporally-aware knowledge graph engine with three subgraphs: Episode (conversations), Semantic Entity (facts), and Community (relationships). Each fact carries `valid_at`/`invalid_at` timestamps for temporal tracking. Zep reports 94.8% accuracy on the Deep Memory Retrieval benchmark and up to 18.5% improvement on LongMemEval. Its graph-based retrieval uses episode-mention reranking and node-distance scoring. Like MAGMA, Zep organizes declarative knowledge temporally — it does not learn from file access patterns or tool sequences.
-
-**Letta** (Apache-2.0, formerly MemGPT, 21k+ stars) implements an "LLM Operating System" metaphor with virtual memory management: core memory (in-context, self-editing persona/human blocks) and external memory (archival vector DB + recall storage). Uniquely, **agents actively manage their own memory** using built-in tools (`memory_replace`, `memory_insert`, `archival_memory_search`). This is procedural in the sense that the agent decides what to remember, but the *memory itself is declarative* — facts and episodes, not behavioral patterns. Letta's active memory management requires the agent to learn memory management as a skill, adding cognitive overhead absent from BrainBox's passive learning.
-
-**LangMem** (MIT, LangChain ecosystem) provides a two-layer architecture: stateless core (extract/update/consolidate) and stateful integration via LangGraph's BaseStore. It supports semantic memory (collections + profiles), procedural memory (updated instructions in the agent prompt), and episodic memory (few-shot examples from past conversations). LangMem's "procedural memory" updates the agent's system prompt based on learned patterns — the closest approach to behavioral learning among L2 systems, but it operates at the instruction level ("use TypeScript strict mode") rather than the access-pattern level ("auth.ts and session.ts are always accessed together").
-
-**Table 1: Comparison of Agent Memory Systems**
-
-| System | Type | Learning | Retrieval | Hebb. | Behav. |
-|--------|------|----------|-----------|-------|--------|
-| Mem0 | Decl. | LLM extract | Vec+Graph | No | No |
-| OpenMemory | Decl. | Passive | Vec+SQL | No | No |
-| SuperMem | Decl.+Temp | Graph evol. | Hybrid | No | No |
-| Zep | Decl.+Temp | Dyn. synth. | Temp. KG | No | No |
-| Letta | Decl. | Active mgmt | Vec+Struct | No | No |
-| LangMem | Sem.+Proc. | Extract | Sem+Lookup | No | Part.* |
-| **BrainBox** | **Proc.** | **Hebbian** | **Spread** | **Yes** | **Yes** |
-
-\* LangMem updates agent instructions (procedural), but does not learn file access patterns or tool sequences.
-
-All six systems store *what the agent knows or discussed*. None learn *how the agent works* — which files are co-accessed, which tool chains are repeated, which errors are fixed by which files. BrainBox occupies this gap uniquely.
-
-### 2.4 Layer 3: Agent Behavioral Memory
-
-Several systems approach agent behavioral memory without Hebbian learning:
-
-- **Anderson (1983)** established the fan effect in ACT-R: activation spreading from node j to i is inversely proportional to the out-degree (fan) of j. This prevents hub nodes from dominating retrieval. BrainBox's v1.0.0 recall implements this as `spread / sqrt(out_degree)` — a principle absent from all other agent memory systems we surveyed.
-- **SYNAPSE** (arXiv 2601.02744, January 2026) uses spreading activation for episodic-semantic memory in conversational agents with graph-based retrieval, fan effect normalization, and lateral inhibition. SYNAPSE implements Anderson's fan effect and adds lateral inhibition where top-k nodes suppress competitors. We evaluated lateral inhibition in our benchmark and found it provides no accuracy improvement for agent behavioral memory (see Section 3.3). SYNAPSE does not implement myelination or file access pattern learning.
-- **MACLA** (arXiv 2512.18950, December 2025) implements hierarchical procedural memory via Bayesian selection, compressing trajectories into reusable procedures, but learns action sequences rather than file access patterns.
-- **Cortex/Asteria** (arXiv 2509.17360, September 2025) implements semantic-aware caching for agentic tool access with predictive prefetching — the closest system to BrainBox's prefetching framing. However, it uses semantic similarity (ANN + LLM judger) for cache hit detection rather than Hebbian learning, and optimizes cross-region latency rather than learning behavioral patterns.
-- **MAGMA** (arXiv 2601.03236, January 2026) represents memory across orthogonal semantic, temporal, causal, and entity graphs with policy-guided traversal. It achieves 45.5% higher reasoning accuracy on long-context benchmarks while reducing token consumption by 95%. Like BrainBox, it uses graph-based retrieval, but it focuses on declarative memory organization rather than procedural learning of file access patterns.
-
-A comprehensive survey of agent memory systems (arXiv 2512.13564, December 2025) identifies three memory types — token-level, parametric, and latent — but does not discuss Hebbian learning for operational behavioral patterns, confirming the gap.
-
-**BrainBox is the first system to apply Hebbian learning to agent file access patterns, tool sequencing, and error→fix pair association.** The closest historical precedent remains Fido (1991), which operated at the hardware caching layer rather than the agent behavioral layer.
-
-### 2.5 Why the Gap Exists
-
-Four factors explain why Layer 3 Hebbian learning has not been explored:
-
-1. **Misaligned incentives:** Frontier AI labs profit from token consumption, not token efficiency. A system that reduces token usage by 40% directly reduces revenue.
-2. **Benchmark blindness:** Academic benchmarks evaluate general task performance (SWE-bench, HumanEval), not developer workflow efficiency or session-over-session improvement.
-3. **RAG local maximum:** The industry consensus that "just use RAG" solves memory problems prevents exploration of learning-based alternatives.
-4. **Cross-disciplinary gap:** Hardware architects who understand prefetching don't build LLM agents, and agent builders don't read computer architecture papers.
-
----
-
-## 3. Architecture
-
-### 3.1 Core Abstractions
-
-BrainBox models agent behavior as a neural network with four primitives:
-
-**Neurons** represent entities the agent interacts with:
-- `file` neurons: file paths the agent reads or writes
-- `tool` neurons: tools the agent invokes (Grep, Read, Edit, Bash)
-- `error` neurons: normalized error messages encountered during sessions
-- `semantic` neurons: abstract concepts (reserved for future use)
-
-Each neuron maintains:
-- **Activation** (0–1): How recently and strongly the neuron was accessed. Decays multiplicatively over time.
-- **Myelination** (0–0.95): Superhighway status. Increases with repeated access using sigmoid-like diminishing returns. Decays very slowly.
-- **Access count:** Total number of times this neuron has been activated.
-- **Contexts:** JSON array of query strings that triggered this neuron, enabling keyword-based recall.
-
-**Synapses** are directed weighted connections. Co-access learning applies asymmetric STDP credit (default reverse factor 0.5); explicit seed/reconciliation paths preserve direction-specific weights.
-- **Weight** (0–1): Hebbian strength. Increases when neurons fire together, using BCM diminishing returns. Decays multiplicatively when unused.
-- **Co-access count:** How many times the connected neurons were activated within the co-access window.
-
-**Sessions** group accesses within a time window and track token savings.
-
-**The co-access window** (last 25 unique files) defines "firing together." Neurons in the sequential window form or strengthen synapses, with positional proximity determining strength. This maps to the biological concept of spike-timing-dependent plasticity (STDP), adapted from temporal to sequential proximity — what matters is *order of access*, not elapsed time.
-
-### 3.2 Hebbian Learning Algorithm
-
-When the agent accesses a resource, BrainBox executes:
-
-```
-LEARNING_RATE           = 0.1
-MYELIN_RATE             = 0.02
-MYELIN_MAX              = 0.95
-CO_ACCESS_WINDOW_SIZE   = 25      // last 25 unique files (not time-based)
-ERROR_BOOST             = 2.0
-
-function record(path, type, query):
-  neuron = getOrCreate(path, type)
-  neuron.activation = 1.0
-  neuron.myelination += MYELIN_RATE * (1 - neuron.myelination)   // BCM diminishing returns
-  neuron.myelination = min(neuron.myelination, MYELIN_MAX)
-  neuron.contexts.append(query)
-
-  // Sequential window co-access: position in window determines strength
-  for i, recentNeuron in recentAccessWindow:
-    positionFactor = (i + 1) / windowSize    // oldest=weakest, newest=strongest
-    rate = LEARNING_RATE * (ERROR_BOOST if error involved, else 1)
-    delta = rate * positionFactor
-
-    // BCM diminishing returns: harder to strengthen near-saturated synapses
-    synapse(neuron, recentNeuron).weight += delta * (1 - synapse.weight)
-    synapse(recentNeuron, neuron).weight += delta * (1 - synapse.weight)
-
-  // Update window: dedup, move to end, evict oldest if > CO_ACCESS_WINDOW_SIZE
-  recentAccessWindow.remove(neuron)
-  recentAccessWindow.push(neuron)
-  if recentAccessWindow.length > CO_ACCESS_WINDOW_SIZE:
-    recentAccessWindow.shift()
+```text
+Tool events -> event normalization -> resource/edge updates
+                                     |
+Prompt query -> candidate channels -> rank fusion -> injection choice
+                                                       |
+                           observed opens/edits -> outcome attribution
+Session end -> outcome finalization + procedure compilation
 ```
 
-**v0.8.0 design change — sequential window replaces timestamp window:**
+The Claude Code integration observes tool completion, performs pre-prompt recall and finalizes outcomes at session end. An MCP server exposes recording, recall, explanation, error recording, resolution, prediction, statistics and decay. Other adapters use the same observation/recall layer. Platform integration demonstrates an available interface, not a measured benefit on each platform.
 
-The original design used a 60-second temporal window: neurons accessed within 60s of each other formed synapses. This created a "deep work blind spot" — when an agent spends 2+ minutes studying a file before navigating to a related file, the temporal gap exceeds the window and no synapse forms, despite the files being clearly related in the work session.
+## 3.2 Two distinct deployment questions
 
-The sequential window model (inspired by Karpathy's distillation philosophy: "it's not about time, it's about sequential access order") tracks the last 25 unique files regardless of time elapsed. Position within the window determines synapse strength via a smooth gradient, not a cliff:
+The deployed system asks both *which resources should be ranked?* and *whether any of them should be injected?* The former is evaluated here through retrieval and prediction probes. The latter involves a contextual policy, prompt overhead and agent responses; it is not evaluated by the recorded ranking replay. The same separation applies to procedure mining: implementation availability is not evidence that remembered procedures improve debugging success.
 
-- Most recently accessed file: `positionFactor = 1.0` (full strength)
-- Oldest file in window: `positionFactor = 0.04` (4% strength)
+The database is local, but local storage is not a security boundary. Recorded commands, paths and excerpts can be sensitive, and repository-controlled text remains untrusted after it enters memory.
 
-**Cross-invocation seeding:** At constructor time, the last 25 unique accesses are loaded from `access_log` (ordered by timestamp and access_order), ensuring the window persists across agent restarts.
+# 4. Methods
 
-Key properties:
-- **Diminishing returns** (BCM rule): Both myelination and synapse strengthening follow `delta_w = eta * (1 - w)`, preventing saturation and matching Bienenstock-Cooper-Munro (1982) dynamics.
-- **Positional proximity weighting:** Files accessed more recently in the sequential window form stronger synapses. Unlike temporal proximity, this captures deep work patterns where an agent spends minutes on related files.
-- **Window eviction:** Accessing 26+ unique files naturally pushes the oldest out, providing automatic scope limiting without arbitrary time cutoffs.
-- **Re-access deduplication:** Re-accessing a file moves it to the most recent position without duplicating it in the window.
-- **Asymmetric STDP:** Sequential co-access strengthens both directed edges, but the later→earlier edge receives the reverse-factor-scaled update (default `stdpReverseFactor` 0.5), while the earlier→later edge receives the full update. Error-involved learning retains its configured boost.
-- **Error learning boost:** Synapses involving error neurons strengthen at 2x rate because errors are high-signal events in debugging workflows.
+## 4.1 Bounded association learning
 
-### 3.3 Recall Algorithm: Multi-Hop Spreading Activation
+An access resets the resource's activation and updates its counters. The current event is associated with up to 25 distinct recent resources. Let $w_{uv}$ be an existing directed association, $p\in(0,1]$ the relative position of the earlier resource within that window, and $h$ a hub multiplier. The base update uses
 
-Recall uses three-phase spreading activation inspired by Collins & Loftus (1975) and Anderson (1983), with multi-hop BFS traversal, fan effect normalization, and convergence detection:
+$$
+g(w)=\frac{1}{1+\exp(8(w-0.5))},\qquad
+\delta_{uv}=\eta\,p\,h\,d_{uv}\,g(w_{uv}),
+$$
 
-**Phase 1a — Direct Keyword Match:**
-Search neuron contexts for query keywords. Tool neurons (`type = "tool"`) are excluded from all result phases — they participate only as bridges during spreading activation.
+$$
+w'_{uv}=\min\{1,\;w_{uv}+\delta_{uv}(1-w_{uv})\}.
+$$
 
-**Phase 1b — Vector Similarity (optional, requires embeddings):**
-If neurons have embedding vectors under the active profile — default jina-code (`jinaai/jina-embeddings-v2-base-code`, q8, 768d); `BRAINBOX_EMBED_MODEL` supports `minilm|jina-code|gemma|gemma-q4`, and all-MiniLM-L6-v2 remains a named optional profile (see § [v0.2: Research-driven upgrades — Hybrid code retrieval](#v02-research-driven-upgrades)) — compute cosine similarity between the query embedding and all embedded neurons. Neurons with similarity > 0.25 are included as candidates even without keyword overlap. This enables semantic recall: "socket connection" → `websocket.ts`, "sign in password" → `login.ts`.
+The ordinary rate is $\eta=0.1$, doubled when an error participates. The multiplier $h$ is 0.5 when either endpoint has degree greater than 20, otherwise 1. Earlier-to-later associations receive $d_{uv}=1$; the reverse orientation receives 0.5 by default. For a new edge, the inserted weight is the corresponding $\delta$ computed from zero. Additional tagging/capture and maintenance mechanisms can modify stored weights, so this equation describes the ordinary co-access update, not every possible transition.
 
-Embeddings are computed lazily via `embedNeuron()` (path + contexts → single text → one vector sized by the active profile: 384 dims for `minilm`, 768 for `jina-code`/`gemma`), stored as BLOBs in the neurons table. The `embed` CLI command batch-embeds all neurons (~2,276 neurons in 12s on Apple Silicon).
+The code retains the name `myelination` for a resource-level reinforcement scalar $m$. Its ordinary access update is
 
-**Confidence Scoring — context-gated, then rank fusion (current):**
+$$
+\Delta m=0.02\left(1-\frac{m}{0.95}\right)
+\max\left\{\frac{1}{\sqrt{\max(n,1)}},0.1\right\},
+\qquad m'=\min\{0.95,m+\Delta m\},
+$$
 
-Direct confidence is context-gated and combines capped myelination, base-level (or fallback linear) recency, path keyword matching, and filename-stem handling. The final candidate ordering is rank fusion across enabled channels; see [§ v0.2: Research-driven upgrades — Ranking](#v02-research-driven-upgrades) for the current base-level, recurrence and fusion definitions.
+where $n$ is the access count supplied to the update. This is a saturating heuristic. It does not implement the sliding modification threshold of biological BCM theory. Likewise, event-order asymmetry is not continuous-time spike-timing-dependent plasticity, and `myelination` is a software field name, not a model of axonal physiology.
 
-Historically, v1.0.0 computed `confidence = contextScore × (1 + myelinBonus + recencyBonus + pathBonus)` with a linear one-week recency decay and a 0.2 path bonus — that equation is a historical design note, not the current implementation.
+Maintenance supports multiplicative decay and pruning. Daily multipliers are 0.85 for activation, 0.995 for the reinforcement scalar and 0.98 for association weight. These mechanisms require maintenance to run; they do not imply a hard bound on database size or an experimentally verified forgetting curve.
 
-**Myelination soft cap:** Myelination is capped at 0.5 in the confidence formula (not in the stored value). A superhighway at 95% myelination contributes the same confidence boost as one at 50%. This prevents tool-adjacent files from inflating their scores purely through association frequency.
+## 4.2 Retrieval channels and graph traversal
 
-**Phase 2 — Multi-Hop Spreading Activation with Fan Effect (BFS):**
+File candidates come from lexical evidence over stored path/context text, query-conditioned associative retrieval, optional snippet matches, recurrence, recency, frequency and base-level activation. A channel need not contain every candidate. Lexical tokenization and stored context are part of the implementation, not an oracle over repository contents.
 
-Direct matches seed a frontier. The algorithm expands the frontier up to `MAX_SPREAD_HOPS` (default 3) levels deep using breadth-first search, with **fan effect normalization** (Anderson, 1983):
+For resource $i$, the ACT-R-inspired feature uses the last at most 50 access times:
 
-```
-frontier = direct_matches
-for hop = 0 to MAX_SPREAD_HOPS:
-  next_frontier = []
-  for each seed in frontier:
-    // FAN EFFECT (Anderson 1983, ACT-R): divide by sqrt(out_degree)
-    // Neurons with many outgoing synapses dilute their activation.
-    // A tool neuron with 500 synapses spreads 1/√500 ≈ 4.5% per neighbor.
-    // A file neuron with 3 synapses spreads 1/√3 ≈ 58% per neighbor.
-    fan_factor = 1 / sqrt(min(out_degree(seed), 50))
+$$
+B_i(t)=\log\sum_{j\in H_i}
+\max\{(t-t_{ij})/\text{hour},1/60\}^{-0.5}.
+$$
 
-    for each outgoing synapse with weight > 0.3:
-      if target.type == "tool": skip     // tools are bridges, never results
-      spreadConfidence = seed.confidence * synapse.weight
-                       * (1 + min(target.myelination, 0.5))
-                       * fan_factor
-      if spreadConfidence < CONFIDENCE_GATE: skip
+A sigmoid provides a bounded version for some confidence calculations. A bootstrap resource without an access log can use its seed timestamp. This feature is an engineering adaptation; the evaluation uses synthetic event time rather than actual elapsed developer time.
 
-      if target already activated:
-        // Convergence: take MAX confidence across paths (Collins & Loftus)
-        existing.confidence = max(existing.confidence, spreadConfidence)
-      else:
-        add target to results
-        add target to next_frontier
-  frontier = next_frontier
-```
+Associative retrieval traverses up to three hops and at most ten outgoing edges per expanded resource. In the default fan-damped path, a proposed target score is proportional to
 
-The fan effect is the foundational principle from Anderson's ACT-R theory of memory (1983): "The amount of activation an object X passes to each of the n objects it is associated with is inversely proportional to n." In cognitive science, this explains the *fan effect* in human memory — concepts associated with many other concepts are harder to retrieve than those with few associations.
+$$
+a_v=a_u\,w_{uv}\,(1+\min\{m_v,m_{\rm cap}\})
+\left[\max\{1,\min(\deg(u),D_{\rm cap})\}\right]^{-1/2}.
+$$
 
-We use `sqrt(out_degree)` rather than raw `1/out_degree` for softer dampening. Empirically, raw inverse degree is too aggressive — files with 10+ synapses (common after bootstrap) would spread negligible activation. The square root preserves the principle (more connections = more dilution) while remaining practical.
+Only sufficiently strong edges and sufficiently confident targets pass admission gates; candidate-type, universe and budget filters also apply. Already activated targets keep a better discovered score rather than summing every path. The alternative full inverse-degree mode exists but is disabled by default. Because reinforcement can increase an individual transition factor, the hop bound—not a proof of monotonic attenuation—limits traversal depth.
 
-The out-degree cap at 50 prevents near-zero fan factors for extremely connected neurons (tool neurons can have 500+ synapses).
+## 4.3 Query-aware rank fusion
 
-Key properties of multi-hop spreading:
-- **Fan effect normalization** — activation diluted proportionally to source connectivity (Anderson, 1983)
-- **Tool exclusion** — tool neurons traverse synapses but never appear in results
-- **Breadth-first by hop level** — processes all hop-1 nodes before hop-2, ensuring shortest paths are discovered first
-- **Natural confidence decay** — the product `parentConfidence × synapseWeight × (1 + myelination) × fanFactor` decays rapidly across hops. Most weak paths fall below the 0.4 confidence gate by hop 2-3
-- **Convergence detection** — when multiple paths reach the same neuron, the maximum confidence is taken (not summed), preventing inflation while capturing the strongest association
-- **Cycle prevention** — the `activated` set ensures each neuron is added to results only once
-- **Activation path tracking** — each result records its discovery path: `spread(2) via alpha.ts → beta.ts` shows the full hop chain
+For candidate $i$, channel $c$ supplies a one-based rank $r_c(i)$. The default file score is
 
-This multi-hop traversal enables *transitive discovery*: if `auth.ts` is always co-accessed with `session.ts`, and `session.ts` is always co-accessed with `encryption.ts`, a query that directly matches `auth.ts` will discover `encryption.ts` at hop 2 — even if `auth.ts` and `encryption.ts` have never been co-accessed.
+$$
+S(i\mid q)=\sum_{c:i\in L_c(q)}
+\frac{\lambda_c\,\gamma_c(i,q)}{20+r_c(i)},
+$$
 
-**Evaluated but rejected — Lateral Inhibition:**
-SYNAPSE (arXiv 2601.02744) proposes lateral inhibition where top-k activated neurons suppress weaker competitors (`û_i = max(0, u_i - β·Σ(u_k - u_i))`). We implemented and benchmarked this against our 15-query test suite. Result: **zero accuracy improvement** (2/15 → 2/15). The problem was hubs dominating the *top* of the ranking, not noise at the *bottom*. Lateral inhibition suppresses weak results but doesn't dethrone dominant ones. Fan effect + tool exclusion solve the actual problem.
+where $\gamma_c=1$ except for the lexical channel, whose contribution is scaled by distinct query-term coverage matched against raw text. The denominator constant is 20 for file/tool fusion, distinct from the snippet ranker's constant of 60. Table 1 records the inspected defaults.
 
-**Phase 3 — Myelinated Fallback:**
-If fewer than `limit` results found, suggest top myelinated neurons as weak candidates (confidence = myelination × 0.5, gate 0.15). Tool neurons are excluded. These are "you use this a lot" suggestions without query-specific evidence.
+| Channel | Default weight | Qualification |
+|:--|--:|:--|
+| Lexical | 4 | Scaled by query-term coverage |
+| Query-conditioned associative evidence | 4 | Excludes purely popularity-driven evidence from this channel |
+| Snippet | 4 | Requires an available snippet index |
+| Frequency | 2 | Historical access count |
+| Recency | 1 | Replaced by 30 when the query matches recent-session lexical evidence |
+| Base level | 0.5 | Recency/frequency history feature |
+| Recurrence | 0.2 | Recent-resource association candidates |
 
-**Confidence Gating:**
-- >= 0.7 (HIGH): Skip search entirely, use file directly
-- 0.4–0.7 (MEDIUM): Verify with a quick check (0.3–0.7 in keyword-only deployments)
-- < 0.4 (or < 0.3 keyword-only): Rejected, not returned
+Table 1. File-level fusion defaults. The reported replay does not populate every optional channel.
 
-**Token Budget Awareness:**
-Results are returned in confidence order, consuming estimated tokens per file. When the budget is exhausted, spreading stops early. This prevents recall from overwhelming the context window.
+A final score normalization supplies the API field called `confidence`; it is not a calibrated probability of relevance. Results have count and budget limits, and the wrapper can abstain when no supporting evidence is available. Ranking weights were developed using the designated development repositories and product-level query-sensitivity checks. An immutable tuning log and a quantitative channel-ablation study are not present in the evidence used here, so the values should not be described as a reproducibly estimated optimum.
 
-### 3.4 Decay Engine
+## 4.4 Tool-sequence prediction
 
-Unused connections weaken over time following multiplicative decay:
+Tool prediction backs off from the longest supported suffix, up to three tools, to shorter suffixes and then directional associations. Default minimum suffix support is four observations. A rank-fusion stage combines the sequence-derived ranking with frequency: weights are 1 for the sequence channel and 0.5 for frequency; tool recency has weight zero. The API returns at most three predicted tools. This is a small sequence model over observed tool names, not a planner that decides whether the proposed operation is safe or productive.
 
-```
-function decay():
-  for each neuron:
-    activation   *= 0.85    // 15% daily decay
-    myelination  *= 0.995   // 0.5% daily decay (superhighways persist)
+## 4.5 Optional code and procedure components
 
-  for each synapse:
-    weight *= 0.98          // 2% daily decay
+**Code structure and snippets.** Tree-sitter supports extraction of import, call and inheritance hints and syntax-aware code chunks. Structural edges are weak priors; unchanged files are not repeatedly strengthened merely by re-indexing. Snippet retrieval combines FTS5 BM25 and optional local dense similarity using rank fusion. The default embedding profile is Jina code, 768 dimensions with q8 weights; other local profiles are configurable. Hooks do not initiate model downloads, and lexical retrieval remains available when embeddings are disabled or unavailable. A missing vector extension can use a cosine-scan fallback, whose scaling differs from indexed search.
 
-  prune synapses where weight < 0.05
-  prune neurons where activation < 0.01 AND myelination < 0.01 AND accesses < 2
-```
+**Injection policy.** The deployed policy chooses SILENT, TOP1, TOP3 or TOP5 in a context formed from confidence band, query class, project familiarity and session stage. After an initial TOP5 period, it uses a UCB-style bonus:
 
-This matches Ebbinghaus (1885) and Wixted & Ebbesen (1991): forgetting follows exponential/power-law curves, not linear subtraction. Multiplicative decay ensures values approach zero asymptotically without going negative or abruptly disappearing.
+$$
+U(a)=\overline{R}_a+0.15\sqrt{\frac{2\log N}{N_a}}.
+$$
 
-Key property: A synapse accessed 100 times then abandoned retains a faint trace for weeks. A synapse accessed twice then abandoned is pruned within days. This mirrors biological synaptic persistence.
+An unseen arm is explored. For injected suggestions, the implemented reward is
 
-### 3.5 Bootstrap: Cold Start Elimination
+$$
+R=\sum_{i\in\text{used suggestions}}\frac{v_i}{r_i}
+-2\,\frac{\widehat{T}_{\rm injected}}{1000},
+$$
 
-The most common criticism of Hebbian memory is cold start — a new project has zero learned patterns. BrainBox addresses this with a multi-source bootstrap system that seeds the neural network from existing project artifacts:
+where $v_i=1$ for a read and 1.5 for an edit, and $\widehat{T}_{\rm injected}=\lceil\text{characters}/4\rceil$. SILENT receives zero. This does not observe opportunities lost by silence. Reads/edits are attribution signals, not counterfactual evidence that a suggestion helped. Ignored recalls can weaken the producing association rather than indiscriminately weakening every adjacent edge.
 
-```
-brainbox bootstrap --repo /path/to/project --auto
-```
+**Procedures.** A deterministic compiler recognizes failed command → successful edits → similar successful rerun patterns, and workflows supported by at least three sessions. Error-fix candidates may originate from one session. Command outcomes use exit status when available and an error detector otherwise; detector-clean output is weaker evidence than an explicit passing exit. Workflow retrieval requires a matching live prefix and a concrete command-bearing step. Formatting constrains paths and command text and labels output as historical observation. Helpful/harmful counters can deprecate failing procedures. None of these safeguards constitutes a proof against prompt injection or poisoned histories.
 
-**Five independent, additive bootstrap phases:**
+# 5. Evaluation protocol
 
-| Phase | Source | Weight | Quality |
-|-------|--------|--------|---------|
-| 1. Git history | Bipartite co-occurrence | 0.05–0.95 | Strongest |
-| 2. VaultGraph | Wikilink edges | 0.6 | Strong |
-| 3. Import graph | TS/JS imports | 0.5 | Moderate |
-| 4. Directory | Filename matching | 0.3 | Weak |
-| 5. Session replay | Claude Code sessions | 0.4 | Moderate |
+## 5.1 Data and selection
 
-**Git bipartite projection** (Phase 1) is the key innovation. Rather than replaying commits as fake temporal events, it computes a file-file co-occurrence matrix directly from the git history. Weight is calculated as:
+The public source is the Nebius SWE-rebench OpenHands trajectory collection [@nebius2025]. The recorded catalog has 67,074 rows; this is not the evaluation sample size. Selection deduplicates attempts by issue, ranks repositories by distinct issue count, takes a five-repository slice, and assigns alternating global repository ranks to development or test. The reported test slice contains 40 trajectories, at most 20 per repository, from Pillow and conan; sqlglot, dvc and streamlink are the designated development repositories. This is a selected, repository-disjoint evaluation, not a random sample of all SWE-rebench tasks.
 
-```
-weight = 0.05 + (sharedCommits / maxSharedCommits) * 0.9
-```
+The local run selects 97 sessions from up to five project groups in the author's OMP logs. Its loader scanned 715 session files spanning nine source projects; the nine-project metadata describes the scanned corpus, not the selected evaluation cohort. Local inputs were not released, and the recorded run used the all-project split. We treat this as a secondary descriptive cohort, not an independently auditable held-out benchmark.
 
-This is capped at 0.95 and seeded via `HebbianEngine.seedNeuron()` / `seedSynapse()` — dedicated methods for direct DB seeding that bypass the normal learning path.
+For the public data, the loader uses PR-number-like issue order as its chronology proxy and chooses a single attempt per issue. For local data, it uses the parser's session order. Neither is sufficient to establish perfect temporal correspondence with actual repository state. The simulated clock advances one second per event from a fixed epoch. Consequently, the replay does not evaluate real-time forgetting across days or weeks.
 
-**Production bootstrap results:**
-- happy-cli-new: 198 neurons, 19,028 synapses from 76 commits + 180 imports
-- Full production (4 repos): 2,343 neurons, 1.5M synapses from 416 commits
+## 5.2 Candidate universe and probe timing
 
-### 3.6 macOS Daemon: System-Wide Learning
+An in-memory database and baseline indexes are initialized per repository. Selected trajectories are processed in the prescribed order; state persists across tasks within that repository, while per-session transient state is reset. At the beginning of target task $t$, the evaluator freezes file and tool candidate universes $U_t$ to resources observed in earlier tasks. For sequential probes it records prefix events after predicting them, but newly observed resources remain outside $U_t$ until a later task.
 
-BrainBox's learning is most powerful when it observes *all* file access — not just tool calls within Claude Code sessions. The daemon extends learning to VS Code edits, Xcode builds, vim sessions, and shell commands.
+The four reported target labels are:
 
-**Architecture:**
-- Persistent background process using native macOS **FSEvents** (C++ addon, not chokidar)
-- One kernel-level watcher per root path regardless of subdirectory count (5 roots × 90K+ dirs = 5 fds, not 90K)
-- Debounced batch recording: 2-second window, max 50 files/flush, transaction-wrapped
-- Session rotation: new session ID after 15 minutes idle
-- Unix socket server at `~/.brainbox/daemon.sock` for external event sources
+- **P1-edit:** rank the task's edited files from its initial task-text query, before observing target-task events.
+- **P1-read:** the analogous retrieval probe for files read during the task.
+- **P2:** predict each upcoming read/edit file from prefix context, before recording that event.
+- **P3:** predict each upcoming tool from prior tools, before recording that tool event.
 
-**Three signal sources:**
+Gold sets come from parsed trace activity, not independent relevance annotation. At any probe, the scored gold is $G'_t=G_t\cap U_t$. A probe with $G'_t=\varnothing$ contributes to coverage statistics but not ranking metrics. For P1, novel files are also removed from a mixed gold set. Thus the experiment measures **retrieval conditional on prior-resource coverage**, not full-repository localization and not discovery of new files. Prefix-only ordering reduces one source of target leakage but does not remove dataset selection, parser or repository-version biases.
 
-1. **FSEvents with flag parsing** — `created`, `modified`, `deleted`, `moved` events with semantic context. Renames indicate refactoring — a strong signal for file associations.
+## 5.3 Metrics, baselines and uncertainty
 
-2. **Git hooks auto-installer** — On startup, scans watched directories for `.git` repos, installs `post-commit`, `post-checkout`, `post-merge` hooks. Files committed together form synapses with `git:commit` context — the strongest co-access signal available.
+File rankings are truncated at ten; tool rankings at three. Reciprocal rank is the inverse rank of the first eligible relevant item, or zero if absent. We report MRR@10 for files (the stored field is `mrr`) and MRR@3 for tools. For multi-file P1 gold, this measures finding the first relevant file, not retrieving all relevant files.
 
-3. **Frontmost app polling** — Polls every 5 seconds for active app name via `osascript`. Records app switches as tool neurons (`app:Xcode`, `app:Code`), creating temporal associations between files and their editing context.
+All point estimates average over scored probe opportunities. P2 and P3 therefore weight longer trajectories more heavily. Paired intervals resample trajectory clusters 1,000 times with seed 42, retain each sampled cluster's sum and count, and use the 2.5th and 97.5th percentiles of the resulting event-weighted differences. This preserves within-trajectory clustering but not all dependence between trajectories that share a growing repository history. No repository-cluster uncertainty estimate or multiple-comparison correction is provided. Intervals spanning zero indicate insufficient evidence of a difference, not equivalence.
 
-**External integration via Unix socket:**
+Comparators share the candidate universe and parsed history. They are locally implemented heuristics, not complete competing memory products:
+
+- **Recency:** descending last-access order.
+- **Frequency:** descending historical touch count.
+- **BM25:** lexical ranking of accumulated path/context terms, with $k_1=1.2$ and $b=0.75$; it does not index the repository's full source code.
+- **Co-session (EdgeBank-style):** overlap between a candidate's historical sessions and sessions containing current-prefix resources. It is a local co-occurrence baseline, not a reproduction of a complete published EdgeBank evaluation.
+- **Random:** seeded permutation of candidates.
+
+The strongest observed comparator is selected separately per probe and cohort for compact reporting. That selection is post hoc. All baselines are reported in Appendix A to avoid hiding weaker or stronger comparisons.
+
+## 5.4 What was actually exercised
+
+All principal runs have embeddings **off**. Replay calls core recording, error association, recall and tool prediction. It does not populate source-code snippet indexes, scan structural code graphs, run the prompt-injection policy or execute mined procedures. It also does not run an agent with and without suggestions. Accordingly, Tables 2–5 do not establish benefits from code embeddings, static structure, the policy or procedure mining.
+
+Artifact fields labelled injected tokens are character-based estimates for short path lists; they are not tokenizer counts from live prompts and are not net tokens saved. Earlier synthetic scenarios and production counter estimates are not used as evidence of cost reduction in this revision. Historical latency figures are likewise not carried forward as a current controlled benchmark.
+
+# 6. Results
+
+## 6.1 Coverage before ranking quality
+
+| Cohort / probe | Gold occurrences | Eligible gold | Opportunities | Scored |
+|:--|--:|--:|--:|--:|
+| SWE P1-edit | 298 | 28 | 40 | 16 |
+| SWE P1-read | 374 | 92 | 40 | 30 |
+| SWE P2 | 1,303 | 221 | 1,303 | 221 |
+| SWE P3 | 2,727 | 2,625 | 2,727 | 2,625 |
+| Local P1-edit | 693 | 121 | 97 | 38 |
+| Local P1-read | 980 | 343 | 97 | 57 |
+| Local P2 | 5,885 | 2,490 | 5,885 | 2,490 |
+| Local P3 | 9,663 | 7,083 | 9,663 | 7,083 |
+
+Table 2. Eligibility is membership in the frozen prior-task candidate universe. P1 gold counts sum unique targets within each task; they are not corpus-wide unique-file counts. P2/P3 count individual target opportunities.
+
+Only 16.96% of SWE next-file opportunities and 42.31% of local next-file opportunities are eligible. Tool coverage is much higher: 96.26% and 73.30%, respectively. This difference is central to interpretation. A strong conditional file ranker may still remain silent or miss most novel work; the experiment does not score those novel targets as ranking failures.
+
+## 6.2 Selected public trajectories
+
+| Probe | Historical engine | Current run | Best baseline | Difference [95% interval] | Clusters |
+|:--|--:|--:|:--|:--|--:|
+| P1-edit | 0.307 | 0.307 | BM25 0.216 | +0.092 [−0.018, +0.224] | 16 |
+| P1-read | 0.191 | 0.267 | BM25 0.206 | +0.061 [−0.038, +0.165] | 30 |
+| P2 | 0.223 | 0.409 | Recency 0.430 | −0.021 [−0.049, +0.003] | 30 |
+| P3 | 0.479 | 0.767 | Frequency 0.748 | +0.019 [+0.012, +0.027] | 38 |
+
+Table 3. SWE conditional MRR@10 for files and MRR@3 for tools. Difference is current-run minus the indicated heuristic, not current minus historical engine. Historical/current public artifacts have matching declared options, coverage and baseline scores; missing immutable input manifests prevent a stronger identity claim.
+
+The clearest result is tool prediction: its interval against the strongest measured heuristic is positive. The improvement over the historical sequence predictor is descriptive; the artifacts do not include a paired historical-versus-current interval. File results do not support a blanket superiority claim. Both P1 point estimates exceed BM25, but their intervals include zero. Next-file prediction improves over the historical engine while remaining below recency in point estimate, with uncertainty spanning zero.
+
+At three decimal places P1-edit appears unchanged; the raw historical and current values are 0.3067708333 and 0.3072916667. The draft does not interpret this tiny difference as a meaningful improvement.
+
+## 6.3 Local sessions
+
+| Probe | Current run | Best baseline | Difference [95% interval] | Clusters |
+|:--|--:|:--|:--|--:|
+| P1-edit | 0.703 | Frequency 0.791 | −0.089 [−0.185, 0.000] | 38 |
+| P1-read | 0.555 | BM25 0.547 | +0.008 [−0.101, +0.123] | 57 |
+| P2 | 0.702 | Recency 0.701 | +0.001 [−0.003, +0.006] | 64 |
+| P3 | 0.686 | Recency 0.662 | +0.024 [+0.010, +0.036] | 85 |
+
+Table 4. Secondary, private local cohort, scored under the same eligibility rule. The P1-edit upper endpoint is approximately zero (stored floating-point value $1.46\times10^{-19}$), so we do not claim a strictly negative interval.
+
+Tool prediction again has a positive interval against the strongest observed heuristic. Frequency is substantially better on edited-file point estimates. Read-file and next-file differences are small relative to their intervals. These observations caution against adding memory complexity without simple comparators.
+
+A historical local run exists, but its scanned source count differs from the current run (713 versus 715 sessions). Even though aggregate denominators and comparator scores match, neither artifact retains selected input identities. We therefore omit a controlled local version-to-version claim rather than infer exact cohort identity from matching aggregates.
+
+# 7. Discussion and limitations
+
+**Evidence supports prediction, not productivity.** The agent traces are fixed. Better next-tool prediction may reflect repeated interface conventions rather than transferable task knowledge. The evaluator does not show that suggestions are read, that searches are avoided, or that patches become more correct. A deployment study must measure task outcomes, actual tokenizer counts, failed-action rates and wall-clock cost under randomized or otherwise controlled memory-on/off assignment.
+
+**Coverage conditions the headline scores.** Prior-access candidates exclude unseen files even after their first appearance within a target task. This is intentionally conservative about information leakage, but unlike full-repository retrieval. A broader experiment should report unconditional quality and separate known-resource and novel-resource tasks. The current small P1 cluster counts particularly limit precision.
+
+**Selection and adaptation remain risks.** The public cohort covers two selected test repositories, not broad language or repository diversity. PR-number ordering is only a chronology proxy. The local corpus is private and evolving. Development-informed ranking choices do not constitute a preregistered protocol; evaluation results were inspected during engineering. Repository-level separation alone does not establish that all later design decisions were independent of test observations.
+
+**No causal mechanism attribution.** Multiple ranking mechanisms changed together. The available artifacts do not isolate benefits from asymmetric co-access, base-level features, recurrence, query coverage or the sequence-frequency mixture. No quantitative ablation result is claimed. Similarly, a separate small embedding comparison mentioned in project documentation is omitted because the draft's evidence set does not contain its query manifest and raw outcomes.
+
+**Confidence and feedback are heuristic.** A normalized fusion score is not calibrated relevance. Opens and edits can be prompted by existing agent intent, so credit attribution can reward suggestions that did not help. Ignored suggestions are not necessarily wrong. UCB-style exploration also operates under changing task distributions and imperfect rewards; this paper supplies no regret guarantee or online policy result.
+
+**Security and privacy.** A poisoned repository can manufacture co-accesses, misleading error fingerprints or command histories. Labeling procedure text as observation and constraining paths/commands reduces some presentation risk, but does not authenticate the source or make execution safe. Permission checks and tool-execution authorization must remain outside the memory system. Local databases and raw session logs should be treated as sensitive artifacts. Sanitization is not a guarantee that secrets never enter memory.
+
+**Systems scale.** Per-event windows and per-seed graph expansion are bounded, but the number of resources, associations, logs and procedures is not globally capped by those bounds. If $s$ seeds are expanded with fan-out at most ten and depth at most three, the traversal budget has a worst-case shape proportional to $s(10+10^2+10^3)$ before filtering and deduplication; SQL access, candidate generation and indexing add work. This is not an end-to-end complexity or latency guarantee. Vector-scan fallback, growing logs, file renames and multi-process SQLite contention require separate evaluation.
+
+# 8. Reproducibility and artifact scope
+
+The methods were checked against source revision `0edc2ed728f71d4b986a39e5d56a9dca505b0ab3`. The numerical evidence predates this manuscript revision and comes from these result directories under `eval-results/`:
+
+- Public current: `2026-10-08T18-01-31-878Z`.
+- Public historical: `2026-10-08T17-37-06-513Z`.
+- Local current: `2026-10-08T18-06-22-676Z`.
+- Local historical, not used for controlled version comparison: `2026-10-08T17-42-39-240Z`.
+
+The historical engine loader names commit `9750d2f`. Current-run artifacts record engine mode and options but no source commit hash, parser hash, input manifest or dataset revision. Therefore, the inspected source revision must not be mistaken for a proven executable provenance link to those older runs. Result directories are excluded by the repository's ignore rules; a fresh clone does not include them. The companion `paper/evidence.json` preserves the aggregate fields used for the manuscript plus original-file SHA-256 hashes, without exporting private session text. It is a transcription aid, not a replacement for missing per-probe records or original inputs.
+
+The public replay commands, from the repository root, are:
+
 ```bash
-# Shell hook: captures every command as a tool neuron
-echo '{"type":"tool","path":"git push","context":"shell"}' | nc -U ~/.brainbox/daemon.sock
+npm ci --ignore-scripts
+npm rebuild better-sqlite3
+npm run eval -- --source nebius --repos 5 \
+  --max-tasks-per-repo 20 --split test \
+  --embeddings off --engine new --seed 42 --json
+npm run eval -- --source nebius --repos 5 \
+  --max-tasks-per-repo 20 --split test \
+  --embeddings off --engine old --seed 42 --json
 ```
 
-**Deployment:**
-```bash
-brainbox daemon install    # LaunchAgent with RunAtLoad + KeepAlive
-brainbox daemon start      # Foreground (or --bg for background)
-brainbox daemon shell-hook # Print zsh hook for ~/.zshrc
-```
+Skipping install scripts avoids automatically configuring an editor or downloading a model during evaluation setup. Native dependencies still require a working platform toolchain. The historical mode prepares a legacy worktree and may need network/dependency access. Public data selection uses a cache and dataset catalog, so future reruns can differ if that source changes. The local command uses `--source omp` and omits `--split`, reading the invoking user's session directory; it cannot reproduce the private cohort on another machine.
 
----
+No new benchmark run was performed for this writing revision. Compilation and numerical consistency checks validate the manuscript artifact, not the system's scientific claims. Before an archival submission, frozen public input manifests, a source-pinned rerun, explicit ablations and an online task-success experiment would materially strengthen the evidence. Their absence is a limitation of this completed draft, not an experiment reported as done.
 
-## 4. Novel Contributions
+# 9. Conclusion
 
-### 4.1 Error→Fix Pair Learning
+BrainBox implements local behavioral memory from coding-agent traces without modifying a language model or requiring LLM calls for memory maintenance. In the stored, coverage-conditioned replay results, its most consistent advantage is next-tool prediction. File retrieval is less decisive: frequency wins an important local point comparison, recency remains competitive, and novel files fall outside the measured universe. These findings motivate a narrower research claim than universal memory superiority: lightweight operational history can improve prediction of repeated tool use, while its value for end-to-end software engineering remains to be established.
 
-Traditional agent debugging: encounter error → grep codebase → trial and error → eventually find the fix. Each debugging session starts from scratch.
+# Appendix A. All heuristic point comparisons
 
-BrainBox debugging immune system: encounter error → recall known fix files instantly via myelinated error→file synapses.
+| Cohort / probe | BrainBox | Recency | Frequency | BM25 | Co-session | Random |
+|:--|--:|--:|--:|--:|--:|--:|
+| SWE P1-edit | 0.307 | 0.167 | 0.100 | 0.216 | 0.100 | 0.030 |
+| SWE P1-read | 0.267 | 0.071 | 0.173 | 0.206 | 0.075 | 0.113 |
+| SWE P2 | 0.409 | 0.430 | 0.156 | 0.254 | 0.274 | 0.035 |
+| SWE P3 | 0.767 | 0.691 | 0.748 | 0.671 | 0.743 | 0.357 |
+| Local P1-edit | 0.703 | 0.577 | 0.791 | 0.447 | 0.158 | 0.138 |
+| Local P1-read | 0.555 | 0.397 | 0.431 | 0.547 | 0.011 | 0.142 |
+| Local P2 | 0.702 | 0.701 | 0.587 | 0.495 | 0.485 | 0.049 |
+| Local P3 | 0.686 | 0.662 | 0.590 | 0.595 | 0.440 | 0.161 |
 
-**Mechanism:**
-1. Error messages are **normalized** before storage: line numbers, quoted variable names, timestamps, and hex addresses are replaced with placeholders. This ensures `TypeError: cannot read property 'token' of undefined` and `TypeError: cannot read property 'session' of undefined` share the same error neuron.
-2. Error neurons receive a **2x learning rate boost** — errors are high-signal events. A single error-then-fix sequence creates stronger synapses than three file co-accesses.
-3. The `recordError()` method records the error neuron and immediately performs a recall for connected file neurons, returning fix suggestions ranked by confidence.
+Table 5. Stored current-run conditional MRR values rounded to three decimals. File and tool cutoffs differ as specified in Section 5.3; no inference should compare them as identical tasks.
 
-**Example trajectory:**
-- Session 1: Error occurs → agent reads auth.ts and session.ts to fix → error→auth.ts synapse forms (weight 0.17)
-- Session 2: Similar error → agent reads same files → synapse strengthens (weight 0.31)
-- Session 3: Error occurs → `recordError()` returns auth.ts at 62% confidence → agent skips search
+# Appendix B. Implementation-to-claim map
 
-### 4.2 Tool Sequence Myelination
+| Implementation | Manuscript role | Evidenced by ranking replay? |
+|:--|:--|:--|
+| `src/hebbian.ts` | Access updates, graph recall, temporal features, fusion, tool prediction | Yes, as a combined system; no isolated attribution |
+| `src/policy.ts` | Injection decisions, attribution and reward | No |
+| `src/procedures.ts` | Error-fix and workflow mining | No |
+| `src/snippets.ts`, `src/codegraph.ts` | Optional source retrieval and structural priors | No populated source index in these runs |
+| `src/embeddings.ts` | Optional CPU embedding profiles | Disabled in principal runs |
+| `src/eval/` | Selection, parsing, probe timing, comparators and uncertainty | Defines the replay protocol |
 
-Agents execute tool chains repeatedly: Grep→Read→Edit→Bash(test) is the canonical coding loop. Currently, each tool invocation is independent — the agent doesn't know what it will do next.
-
-BrainBox learns tool sequences as muscle memory:
-
-**Mechanism:**
-1. Tool invocations are recorded as `tool` type neurons with the tool name as path.
-2. Sequential tool uses within the co-access window create tool→tool synapses.
-3. After 20 repetitions of Grep→Read, the synapse myelinates and `predictNext("Grep")` returns "Read" with high confidence.
-4. **Cross-type synapses** connect tools to files: after using Read on `auth.ts` many times, the Read→auth.ts synapse strengthens. Calling `predictNext("Read")` returns both the likely next tool AND the likely files.
-
-**Example trajectory:**
-- Sessions 1-5: Agent uses Grep→Read→Edit repeatedly
-- Session 6: `predictNext("Grep")` returns Read (67% confidence)
-- Session 20: `predictNext("Grep")` returns Read (89% confidence) — myelinated pathway
-
-### 4.3 Cross-Type Synapses
-
-The key architectural innovation is that all neuron types share a single synaptic network. This creates emergent behaviors:
-
-- **error → file:** "This error is fixed by editing these files"
-- **tool → tool:** "After Grep, you usually Read"
-- **tool → file:** "When you use Edit, it's usually on these files"
-- **file → file:** "These files are always accessed together"
-- **error → tool:** "This error is usually debugged using Bash(test)"
-
-No other agent memory system supports cross-type learned associations. Vector databases store embeddings per item; graph databases store explicit relationships. BrainBox discovers implicit behavioral relationships through co-access patterns.
-
----
-
-## 5. Evaluation
-
-Evaluation uses two environments: **sandboxed** (isolated in-memory SQLite databases with synthetic data, deterministically seeded for reproducibility) and **production** (real developer usage data from active Claude Code sessions). Each subsection is labeled accordingly.
-
-### 5.1 Mathematical Verification (Sandboxed)
-
-All learning dynamics are verified in isolated in-memory SQLite databases with synthetic data, using direct SQL queries against hand-calculated expected values:
-
-| Test | What It Verifies | Result |
-|------|-----------------|--------|
-| 1. Myelination increments | Sigmoid-like: 0% → 2% → 3.96% → 5.88% (not linear) | PASS |
-| 2. Synapse formation | Directional synapses form in the sequential window; default STDP scales the reverse (later→earlier) credit by 0.5 | PASS |
-| 3. Window eviction | Sequential window correctly evicts at size 10 | PASS |
-| 4. Synapse strengthening | 5x co-access → 0.382 weight (BCM diminishing returns) | PASS |
-| 5. Confidence gating | Relevant queries pass 0.4 gate; irrelevant ones rejected | PASS |
-| 6. Spreading activation | Direct match → spread to connected neurons via strong synapses | PASS |
-| 7. Token savings | Exact match: 20,000 without → 19,500 with → 500 saved (2.5%) | PASS |
-| 8. Error→fix learning | Error→file synapses form with 2x boost; error clustering works | PASS |
-| 9. Tool sequences | Grep→Read synapse >0.5 after 20 reps; predictNext works | PASS |
-| 10. Multi-hop spreading | 3-hop BFS: alpha→beta→gamma chain discovered via transitive spreading | PASS |
-
-Additionally, 17 raw SQL verification checks confirm engine values match hand calculations exactly. All tests use fresh in-memory databases seeded with minimal synthetic data — no production data is involved. Tests were independently verified by GLM-5 (Fireworks AI) with zero discrepancies.
-
-### 5.2 Recall Precision Benchmark (v1.0.0, Production)
-
-**Setup:** 15 queries spanning 8 projects run against a production network (2,276 neurons, 60,190 synapses, 100% embedding coverage) built from real developer usage. Ground truth: manually verified expected top-1 result for each query. Queries include cross-project searches ("polymarket bot entry price"), specific file recall ("settings.json permissions deny"), and concept-level recall ("prompt caching anthropic").
-
-**Results:**
-
-| Configuration | Top-1 Accuracy | Description |
-|---------------|---------------|-------------|
-| Pre-v1.0 (additive, no fan effect) | 2/15 (13%) | Tool neurons dominate all queries |
-| + Fan effect only | 9/15 (60%) | Biggest single improvement |
-| + Tool exclusion only | 8/15 (53%) | Removes tools from results |
-| + Multiplicative only | 5/15 (33%) | Helps but insufficient alone |
-| + Lateral inhibition only | 2/15 (13%) | No improvement |
-| **All three fixes** | **10/15 (67%)** | **5x improvement over baseline** |
-
-**Remaining misses (5/15) — legacy benchmark:** All embedding quality issues in that historical evaluation — the embedding profile used in that historical evaluation (all-MiniLM-L6-v2) returns similar cosine scores (0.4-0.6) for semantically distinct queries. Example: "runClaude session loop" returns `session_hook_forwarder.cjs` (0.53) instead of `runClaude.ts` (0.42). Both contain "session" in their path/context. Upgrading the embedding model would likely resolve these.
-
-**Key finding:** The fan effect alone accounts for 70% of the total improvement (2→9 out of 2→10). This validates Anderson's (1983) ACT-R theory — inverse degree normalization is the single most important mechanism for preventing hub domination in spreading activation networks.
-
-### 5.3 Token Savings (Sandboxed)
-
-**Simulation (synthetic):** 20 sessions, 3-5 files per session, sequential co-access window (size 25), with tool chain recordings. All data generated in isolated in-memory databases with deterministic seeding for reproducibility.
-
-| Metric | Value |
-|--------|-------|
-| Total file accesses | ~80 |
-| Tokens without BrainBox | ~160,000 |
-| Tokens with BrainBox (session 20) | ~96,000 |
-| **Token savings** | **~40%** |
-| Estimated cost savings at $3/M tokens | ~$0.19 per simulation |
-
-Savings scale with codebase familiarity. A developer working on the same codebase for months would see higher myelination and greater savings. Projected savings for 100,000 file accesses: ~$36 at Claude Sonnet pricing.
-
-### 5.4 Recall Latency (Sandboxed + Production)
-
-BrainBox recall operates on SQLite queries over a small graph (typically <1,000 neurons). Measured latencies (benchmarked on both synthetic in-memory databases and production workloads on Apple Silicon):
-
-| Operation | Latency |
-|-----------|---------|
-| `record()` (single file) | <1ms |
-| `recall()` (5 results, 3-phase) | <5ms |
-| `predictNext()` (tool sequence) | <1ms |
-| `decay()` (full network) | <10ms |
-
-Compared to a typical Grep search (200-500ms) or vector similarity search (50-200ms), BrainBox recall is effectively instant.
-
-### 5.5 Production Deployment Results (Production)
-
-We deployed BrainBox in production on a development workstation running Claude Code with PostToolUse and UserPromptSubmit hooks. After 5 hours of active development (857 total accesses), the network contained 79 neurons (73 file, 6 tool) and 3,554 synapses at 57.6% graph density. Two superhighways emerged: Read (myelination 0.626) and Grep (0.606).
-
-**Token savings:** 150,500 tokens saved out of an estimated 1,694,000 without BrainBox, yielding **8.9% gross savings** in the first 5 hours of production use.
-
-**SNAP saturation curve (production evidence):** Synapse weights follow logarithmic saturation consistent with the BCM diminishing returns formula:
-
-| Co-access bucket | Synapses | Mean weight |
-|------------------|----------|-------------|
-| 1-5 | 2,492 | 0.294 |
-| 6-10 | 428 | 0.339 |
-| 11-25 | 406 | 0.415 |
-| 26-50 | 160 | 0.478 |
-| 51-100 | 128 | 0.655 |
-| 100+ | 28 | 0.707 |
-
-The Grep-to-Read synapse reached weight 0.996 (301 co-accesses) — the system discovered the universal "search then read" developer pattern autonomously.
-
-**Production vs. synthetic benchmark:**
-
-| Metric | Synthetic (20 sessions) | Production (5 hours) |
-|--------|------------------------|---------------------|
-| Neurons | 11 | 79 |
-| Synapses | 110 | 3,554 |
-| Superhighways | 0 | 2 |
-| Gross token savings | 4.5% | 8.9% |
-| Max myelination | 0.261 | 0.626 |
-
-Production outperforms synthetic benchmarks because real usage generates organic co-access patterns with higher repetition density.
-
----
-
-## 6. Why BrainBox Outperforms Existing Memory Systems for Agent Operations
-
-The seven memory systems surveyed in Section 2.3 represent the state of the art in agent memory. Yet for the specific task of **making coding agents faster and more efficient across sessions**, BrainBox outperforms all of them on five critical dimensions: learning cost, retrieval speed, behavioral adaptation, discovery capability, and operational transparency.
-
-### 6.1 The Core Advantage: Zero-Cost Learning
-
-Every existing memory system incurs a cost to learn:
-
-| System | Cost/event | Mechanism | Platforms |
-|--------|-----------|-----------|-----------|
-| Mem0 | ~500 tok | LLM extraction | Any (API) |
-| SuperMemory | ~500 tok | LLM atomize | Any (API) |
-| Zep | ~500 tok | LLM entities | Any (API) |
-| Letta | ~200 tok | Agent tool call | Custom agents |
-| LangMem | ~300 tok | Extraction pipe | LangChain only |
-| OpenMemory | ~100 tok | Passive capture | Claude, Cursor, Windsurf |
-| **BrainBox** | **0 tok** | **SQLite Hebbian** | **Claude Code, OpenClaw, Kilo** |
-
-BrainBox is the only system where learning is truly free. Mem0 *consumes tokens to save tokens* — a fundamental contradiction. At scale (1,000 tool calls/day), Mem0's extraction cost alone exceeds BrainBox's total overhead by orders of magnitude. BrainBox's record() is a single SQLite UPDATE statement: zero LLM calls, zero API roundtrips, zero token cost.
-
-### 6.2 Retrieval Speed: 100x Faster Than Alternatives
-
-| System | Latency | Mechanism | Platforms |
-|--------|---------|-----------|-----------|
-| Mem0 | 50-300ms | Vec+Graph+KV | Any (API) |
-| SuperMemory | 50-300ms | Vec+Temporal | Any (API) |
-| Zep | <200ms | Temporal KG | Any (API) |
-| Letta | 50-200ms | Vector DB | Custom agents |
-| LangMem | 30-100ms | Semantic search | LangChain only |
-| OpenMemory | 30-100ms | Vec+SQL | Claude, Cursor, Windsurf |
-| **BrainBox** | **<5ms** | **SQLite spreading** | **Claude Code, OpenClaw, Kilo** |
-
-BrainBox's recall() completes in <5ms because the entire graph lives in a single SQLite database with WAL mode. There is no network hop, no vector index scan, no LLM reranking. For myelinated pathways (confidence >= 0.7), BrainBox skips search entirely — the answer is recalled instantly from the neural network, the same way a developer "just knows" which file to open. No other system achieves this.
-
-### 6.3 Behavioral Adaptation: Learning Gets Stronger, Not Just Bigger
-
-This is the fundamental architectural gap. Every L2 system treats the 100th retrieval of the same memory identically to the first:
-
-- **Mem0**: "user prefers TypeScript" returns the same similarity score on day 1 and day 100
-- **SuperMemory**: temporal ranking may shift, but the memory itself doesn't strengthen
-- **Zep**: entity validity windows update, but retrieval confidence doesn't grow from use
-- **Letta**: agent re-reads the same archival memory at the same relevance score
-- **LangMem**: prompt instructions are static once written
-
-**BrainBox strengthens with every use.** The auth.ts→session.ts synapse starts at weight 0.1 and grows to 0.64 after 34 co-accesses. The Grep→Read pathway reaches 0.996 after 301 co-accesses, becoming a myelinated superhighway. Conversely, abandoned patterns decay: a synapse unused for a week drops from 0.5 to 0.43, and eventually gets pruned below 0.05. This is Hebbian learning — the system literally gets better at predicting what you need the more you use it. No other agent memory system implements this.
-
-**Concrete example:** An agent debugs authentication bugs across 10 sessions. In sessions 1-3, it searches for "auth error," reads 4-5 files, eventually finds the fix in auth.ts and session.ts. By session 10, the error→auth.ts synapse is myelinated at 0.62 confidence — the agent skips search entirely and opens the right files in <5ms. Mem0 would still return "user works on authentication" as a fact, but couldn't tell the agent *which files to open*.
-
-### 6.4 Transitive Discovery: Finding Files Through Indirect Connections
-
-Vector databases (Mem0, SuperMemory, Letta) can only find memories that are semantically similar to the query. BrainBox discovers files through **graph traversal** — following synaptic connections to find transitively associated files that share zero semantic similarity with the query.
-
-**Example:** Query "fix the login bug." BrainBox's spreading activation:
-1. Phase 1: Direct match → `login.ts` (keyword match in contexts)
-2. Phase 2: Spread from login.ts → `auth.ts` (weight 0.64, co-accessed 34 times)
-3. Phase 2: Spread from auth.ts → `encryption.ts` (weight 0.62, co-accessed 30 times)
-
-The query "fix the login bug" has **zero semantic similarity** with `encryption.ts`. No vector database would surface it. But BrainBox discovers it through 2-hop spreading because these files are behaviorally connected — they are always accessed together when debugging authentication. This is the same principle behind Google's PageRank: relevance propagates through the link graph.
-
-Zep's Graphiti has graph traversal, but its edges are explicit facts ("user works at Acme Corp"), not learned behavioral patterns. It cannot discover that encryption.ts is behaviorally linked to login.ts because it doesn't observe file access.
-
-### 6.5 Operational Transparency: Zero Agent Overhead
-
-| System | Agent awareness | Integration cost |
-|--------|----------------|-----------------|
-| Letta | Agent must learn memory management as a skill | High — adds cognitive overhead |
-| Mem0 SDK | Agent calls memory API explicitly | Medium — requires SDK integration |
-| LangMem | Background manager, but agent sees updated prompts | Medium — prompt changes visible |
-| OpenMemory | MCP tools available but optional | Low — passive capture |
-| **BrainBox** | **Agent has no idea BrainBox exists** | **Zero — fully transparent** |
-
-BrainBox is the only system that is completely invisible to the agent. Learning happens in PostToolUse hooks (after the agent's tool call completes). Recall happens in UserPromptSubmit hooks (before the agent sees the prompt). The agent never makes a memory-related tool call, never decides what to remember, never manages its own memory. This is critical because **agent attention spent on memory management is attention not spent on the user's task.**
-
-Letta's approach — where the agent actively manages its own memory — is architecturally elegant but operationally costly. The agent must learn when to save, what to save, and how to search. This is a meta-skill that competes with the primary task for context window space and reasoning capacity.
-
-### 6.6 vs. Mem0 / OpenMemory: BrainBox Wins on Speed, Cost, and Adaptation
-
-Mem0 is the 800-pound gorilla of agent memory (47k+ GitHub stars). Here is a direct comparison on the dimensions that matter for coding agents:
-
-| Dimension | Mem0 | BrainBox | Winner |
-|-----------|------|----------|--------|
-| Learning cost | ~500 tokens per memory | 0 tokens, <1ms SQLite | **BrainBox** (infinitely cheaper) |
-| Retrieval latency | 50-300ms | <5ms | **BrainBox** (10-60x faster) |
-| Strengthening | None — static relevance scores (historical baseline) | Learned channels strengthen with use — Hebbian co-access plus rank fusion over lexical, recency, frequency and base-level channels | **BrainBox** |
-| Decay | Manual/TTL deletion | Automatic Ebbinghaus curves | **BrainBox** (biologically grounded) |
-| Transitive discovery | Embedding similarity only | Multi-hop graph traversal | **BrainBox** (finds indirect associations) |
-| File co-access patterns | Cannot learn | Core capability | **BrainBox** |
-| Tool chain prediction | Cannot learn | Myelinated tool sequences | **BrainBox** |
-| Error→fix pairs | Cannot learn | Debugging immune system | **BrainBox** |
-| Personal preferences | LLM extraction | Cannot learn from conversations | **Mem0** |
-| Cross-app context | MCP server (OpenMemory) | MCP + hooks + daemon | **BrainBox** (more signal sources) |
-| LLM dependency | Required for extraction | Zero — pure SQLite | **BrainBox** (works offline) |
-
-Mem0 wins on the declarative memory dimension — extracting facts, preferences, entities, and temporal knowledge from conversations — capabilities that BrainBox deliberately excludes in exchange for zero-cost learning. The two approaches are architecturally complementary: BrainBox could run alongside Mem0 without conflict, with BrainBox handling behavioral patterns and Mem0 handling conversational knowledge. For agent operational efficiency specifically — speed, cost, adaptation, and pattern discovery — BrainBox is superior.
-
-### 6.7 vs. SuperMemory: BrainBox Wins on Learning, Loses on Scale
-
-SuperMemory's temporal reasoning (76.7% accuracy) is impressive for conversational memory. But it cannot answer "which files change together when debugging authentication?" because it doesn't observe file access patterns. SuperMemory scales to 50M tokens/user — BrainBox's SQLite graph maxes out around 10K neurons (sufficient for any single developer's codebase). For enterprise scale, BrainBox would need a distributed backend. For individual developer efficiency, BrainBox's <5ms recall on a local SQLite database is unbeatable.
-
-### 6.8 vs. Zep/Graphiti: BrainBox Wins on Implicit Learning
-
-Zep reports 94.8% DMR accuracy — the highest in declarative memory retrieval. Its temporal knowledge graph with episode-mention reranking is state-of-the-art for "what was discussed and when."
-
-But Zep's edges are **explicit facts extracted by LLM**, not **implicit patterns learned from behavior**. BrainBox's edges form automatically — the developer never tells the system "auth.ts and session.ts are related." The system discovers this from 34 co-accesses. Zep cannot discover behavioral patterns because it has no observation layer for file access. BrainBox cannot track temporal fact validity because it doesn't extract facts from conversations. For coding agent efficiency, behavioral patterns matter more than temporal fact tracking.
-
-### 6.9 vs. Letta/MemGPT: BrainBox Wins on Simplicity and Efficiency
-
-Letta's "LLM as Operating System" architecture is intellectually compelling. But it has a fatal flaw for agent efficiency: **the agent must spend tokens managing its own memory.** Every `memory_insert`, `memory_replace`, and `archival_memory_search` call consumes context window space and LLM reasoning cycles. In production, agents using Letta's active memory management spend an estimated 5-15% of their token budget on memory operations rather than the user's task.
-
-BrainBox has zero memory management overhead. The agent performs its task (read files, run searches, edit code) and BrainBox learns passively from the tool calls. No meta-cognitive overhead. No token cost. The 8.9% gross token savings in production is pure gain — unlike Letta, there is no memory management cost to subtract.
-
-### 6.10 vs. LangMem: BrainBox Wins on Granularity and Query Sensitivity
-
-LangMem's "procedural memory" updates the agent's system prompt: "User prefers functional style" or "Use TypeScript strict mode." This is coarse-grained and applies uniformly to all queries.
-
-BrainBox's activations are **query-specific**. The same neural network produces different results for different queries:
-- "authentication bug" → auth.ts (0.82), session.ts (0.71), encryption.ts (0.58)
-- "build system" → package.json (0.76), tsconfig.json (0.68), Makefile (0.54)
-- "test the API" → api.test.ts (0.79), api.ts (0.72), test-utils.ts (0.61)
-
-LangMem cannot differentiate — its prompt instructions apply to all queries equally. BrainBox's spreading activation naturally routes different queries through different subgraphs of the same learned network. This is the fundamental advantage of graph-based behavioral memory over instruction-level procedural memory.
-
-### 6.11 vs. Shodh-Memory: BrainBox Wins on Domain Specialization
-
-Shodh-Memory is the closest system to BrainBox and a key inspiration for this work. Both implement Hebbian learning. But Shodh operates at L2 (general memory associations) while BrainBox operates at L3 (agent file/tool behavior), and this specialization gives BrainBox decisive advantages:
-
-| Capability | Shodh-Memory | BrainBox | Impact |
-|-----------|-------------|----------|--------|
-| Cross-type synapses (file-tool, error-file) | No | **Yes** | Enables error→fix and tool→file prediction |
-| Myelination (superhighways) | No | **Yes** | 10x faster recall for frequent patterns |
-| Error→fix learning (2x boost) | No | **Yes** | Debugging immune system |
-| Tool sequence prediction | No | **Yes** | Agent muscle memory |
-| Fan effect (Anderson 1983) | No | **Yes** | Prevents hub domination (5x accuracy gain) |
-| Multiplicative confidence | No | **Yes** | Context gates score (novel contribution) |
-| 5-source bootstrap | No | **Yes** | Eliminates cold start |
-| macOS daemon (system-wide) | No | **Yes** | Learns from all editors, not just one agent |
-
-Shodh has stronger theoretical foundations (400+ neuroscience-grounded constants vs. BrainBox's 16). For general-purpose memory, Shodh's fidelity to biological models may matter. For the specific domain of agent file access prediction, BrainBox's engineering optimizations and specialized neuron types deliver superior practical results.
-
-### 6.12 Summary: BrainBox's Advantages by Dimension
-
-**Table 2: Head-to-Head Comparison on Agent Operational Efficiency**
-
-| Capability | Mem0 | SuperMem | Zep | Letta | LangMem | OpenMem | **BrainBox** |
-|-----------|------|----------|-----|-------|---------|---------|------------|
-| Zero-cost learning | No | No | No | No | No | No | **Yes** |
-| <5ms retrieval | No | No | No | No | No | No | **Yes** |
-| Strengthens with use | No | No | No | No | No | No | **Yes** |
-| Automatic decay | No | No | Part. | No | No | No | **Yes** |
-| Transitive discovery | No | No | No | No | No | No | **Yes** |
-| File co-access | No | No | No | No | No | No | **Yes** |
-| Tool chain predict | No | No | No | No | No | No | **Yes** |
-| Error→fix learning | No | No | No | No | No | No | **Yes** |
-| Zero agent overhead | No | Part. | No | No | Part. | Part. | **Yes** |
-| System-wide learning | No | No | No | No | No | No | **Yes** |
-| Fan effect normal. | No | No | No | No | No | No | **Yes** |
-| Myelination | No | No | No | No | No | No | **Yes** |
-| Claude Code support | No | No | No | No | No | Yes | **Yes** |
-| OpenClaw support | No | No | No | No | No | No | **Yes** |
-| Kilo support | No | No | No | No | No | No | **Yes** |
-| *L2 capabilities (competitor strengths)* | | | | | | | |
-| Conversational fact extraction | **Yes** | **Yes** | **Yes** | **Yes** | **Yes** | **Yes** | No* |
-| Entity relationship graphs | No | No | **Yes** | No | No | No | No |
-| Temporal fact reasoning | No | **Yes** | **Yes** | No | No | No | No |
-| One-shot preference learning | **Yes** | **Yes** | **Yes** | **Yes** | **Yes** | **Yes** | No* |
-| Cross-session summaries | No | No | No | **Yes** | No | No | No |
-
-\* NeuroVault (Section 8.4) adds regex-based fact capture for explicit trigger statements, partially addressing this gap at zero LLM cost.
-
-BrainBox achieves all fifteen L3 behavioral capabilities — no competitor offers even one. On L2 declarative capabilities, the positions reverse: Mem0 and Zep lead, while BrainBox has no native conversational learning. The two layers are complementary, not competing: a production deployment could run BrainBox for behavioral memory alongside Mem0 for declarative memory with zero conflict.
-
-**The bottom line:** For the specific problem of making AI coding agents faster and more efficient across sessions, BrainBox outperforms every existing memory system. It learns for free, retrieves in <5ms, gets stronger with use, discovers indirect file associations, predicts tool sequences, builds a debugging immune system, and does all of this without the agent even knowing it exists.
-
----
-
-## 7. Limitations and Future Work
-
-### 7.1 Current Limitations
-
-- ~~**Cold start:** BrainBox needs 10-20 sessions to build useful patterns.~~ **RESOLVED in v0.6.0:** Multi-source bootstrap seeds from git history, VaultGraph, imports, directory patterns, and session replay. Production: 2,343 neurons from 416 commits.
-- **Stale paths:** Files that move or are renamed break synaptic connections. No automatic path migration exists.
-- ~~**Finite hop depth:**~~ While spreading activation is limited to 3 hops, this is configurable and confidence decay is self-limiting — most useful results are within 2 hops.
-- **No LTD:** Long-term depression (anti-Hebbian weakening when expected co-access doesn't occur) is not implemented. Only passive decay reduces weights.
-- ~~**Keyword confidence:**~~ **RESOLVED:** Embedding-based confidence. The default profile is jina-code (`jinaai/jina-embeddings-v2-base-code`, q8, 768d); `BRAINBOX_EMBED_MODEL` supports `minilm|jina-code|gemma|gemma-q4`. See § [v0.2: Research-driven upgrades — Hybrid code retrieval](#v02-research-driven-upgrades) for hook deadline, cache and Gemma terms. NeuroVault deployment validates keyword-only fallback with adjusted weights.
-- **No metaplasticity:** Learning rate is fixed regardless of history. BCM theory prescribes a sliding threshold that adjusts based on recent activity.
-- **No conversational learning:** BrainBox observes tool-call behavior exclusively. It cannot extract facts, preferences, or entities from conversation content — capabilities where L2 systems (Mem0, Zep, SuperMemory) excel. This is an intentional architectural boundary: conversational extraction requires LLM calls, which would violate the zero-cost learning principle. NeuroVault's regex-based fact capture (Section 8.4) partially addresses this for explicit trigger statements ("remember X," "I prefer Y") but does not match LLM-based extraction coverage for implicit facts, entity relationships, or temporal reasoning. BrainBox and L2 systems are architecturally complementary and can run simultaneously without conflict.
-- ~~**Deep work blind spot:**~~ **RESOLVED in v0.8.0:** Sequential window co-access model replaces 60-second temporal window. Files accessed in sequence form synapses regardless of time elapsed.
-
-### 7.2 Future Directions
-
-**Near-term:**
-- **LTD implementation:** Weaken synapses when expected co-access patterns break
-- **Path migration:** Detect renamed/moved files and transfer synaptic connections
-- **NeuroVault embeddings:** Add all-MiniLM-L6-v2 to OpenClaw deployment for semantic matching
-- **Sleep/wake session boundaries:** IOKit power management for natural session cuts
-
-**Medium-term:**
-- **Declarative memory bridge:** NeuroVault's regex-based fact capture (Section 8.4) demonstrates that conversational learning can coexist with zero-cost behavioral learning. The next step is upgrading fact extraction using a small, local language model (e.g., Qwen-2.5-1B, Phi-3-mini) that runs on-device — capturing implicit facts ("the client needs HIPAA compliance"), entity relationships, and temporal knowledge without API calls. The key constraint: extraction must remain local and cost-free, preserving BrainBox's core architectural advantage. The extracted facts would be stored as `semantic` neurons and participate in the same synaptic graph, enabling cross-type connections between behavioral patterns and declarative knowledge (e.g., "HIPAA compliance" ↔ `encryption.ts` via co-occurrence in the same session). This would close the L2 capability gap with Mem0/Zep while maintaining the zero-token-cost principle.
-- **Layer 4 — Collective Intelligence:** Shared synaptic networks across agent teams, where one agent's learned patterns bootstrap another's
-- **Cross-session transfer:** Universal patterns (package.json ↔ node_modules, test files ↔ source files) bootstrapping new projects
-- **Thrashing detection:** Recognize when activation patterns show cycles instead of convergence, triggering automatic re-planning
-- **Menubar app:** "Related Files" consumer UI for non-AI users, powered by daemon's learned graph
-
-**Long-term:**
-- **Real-time benchmarking:** Instrument Claude Code sessions to measure actual token savings and prediction accuracy in production
-- **User intent mapping:** Learn what abstract requests ("make it faster," "fix the tests") mean for specific codebases
-- **Trading parameter tuning:** Apply Hebbian reinforcement to parameter optimization where P&L provides a reward signal
-- **Circadian patterns:** Learn time-of-day variations in tool and file usage
-
----
-
-## 8. NeuroVault: Cross-Platform Deployment
-
-OpenClaw, an open-source AI agent platform, ships with two built-in memory plugins: **memory-core** (BM25 + vector search over markdown files, requiring paid OpenAI/Gemini API keys) and **memory-lancedb** (experimental auto-capture of user statements into LanceDB, also requiring OpenAI keys). Neither plugin learns from agent behavior — when the agent reads files, runs searches, and fixes errors across 50 sessions, OpenClaw's built-in memory retains zero information about these operational patterns. Each session starts from scratch.
-
-This limitation motivated the development of **NeuroVault** — a full memory slot plugin that replaces both built-in plugins with BrainBox's Hebbian learning, combined with VaultGraph for knowledge graph context. NeuroVault demonstrates that BrainBox's approach is not only portable across agent platforms, but strictly superior to conventional embedding-based memory for the specific problem of agent operational efficiency.
-
-### 8.1 Plugin Architecture
-
-NeuroVault registers three lifecycle hooks and two agent-callable tools:
-
-| Hook / Tool | Direction | Purpose |
-|------------|-----------|---------|
-| `before_agent_start` | READ | Inject VaultGraph context + BrainBox recall into agent prompt |
-| `after_tool_call` | WRITE | Record file accesses and tool usage (Hebbian learning) |
-| `agent_end` | WRITE | Capture facts/preferences from conversations as semantic neurons |
-| `neurovault_recall` | TOOL | Manual memory query (agent-initiated) |
-| `neurovault_stats` | TOOL | Memory dashboard (neurons, synapses, superhighways) |
-
-Context injection uses `prependContext` — a structured field that OpenClaw prepends to the agent's system prompt. This is functionally equivalent to Claude Code's `UserPromptSubmit` hook but operates at a different integration point.
-
-### 8.2 Adaptation Challenges
-
-Porting BrainBox to a different agent platform revealed several integration assumptions:
-
-**Tool name normalization:** Claude Code uses PascalCase (`Read`, `Bash`), OpenClaw uses lowercase (`read`, `exec`). The plugin handles both via a case-insensitive tool name set.
-
-**Parameter name differences:** Claude Code uses `file_path`, OpenClaw uses `path`. Path extractors check both fields.
-
-**Result object structure:** Claude Code tool results are plain strings. OpenClaw returns structured objects with `.content[].text` arrays. The plugin cascades through: string → `.text` → `.content[].text` → JSON stringify fallback.
-
-**No embeddings available:** OpenClaw's plugin environment doesn't support the `@huggingface/transformers` pipeline. NeuroVault compensates with:
-- **Boosted keyword weight** (50% vs 40%) for confidence scoring
-- **Lower confidence gate** (0.3 vs 0.4) to allow weaker matches through
-- **Keyword enrichment** — `extractResultKeywords()` extracts identifiers (camelCase, PascalCase, UPPER_CASE, snake_case) from tool results and stores them on neurons, giving Phase 1 keyword matching richer signal
-
-### 8.3 Myelinated Fallback Bug
-
-During porting, we discovered a bug in the original BrainBox's myelinated fallback gate that had been present since v0.1:
-
-```
-// Original (unreachable):
-confidence = myelination * 0.3
-gate = 0.4
-// A neuron would need myelination > 1.33, but MYELIN_MAX = 0.95
-
-// Fixed:
-confidence = myelination * 0.5
-gate = 0.15
-```
-
-This fix was deployed to both NeuroVault and the original Claude Code BrainBox. It demonstrates the value of cross-platform porting as a verification strategy — the fresh context made a long-standing bug obvious.
-
-### 8.4 Fact Capture System
-
-NeuroVault adds a capability not present in the original BrainBox: automatic capture of facts, preferences, and decisions from conversations. The `agent_end` hook filters messages through two stages:
-
-1. **Trigger detection** (`shouldCapture()`): matches on keywords like "remember," "prefer," "always/never," "decided," email/phone patterns. Rejects XML, markdown-heavy, and emoji-heavy content.
-2. **Category classification** (`detectCategory()`): preference, decision, entity, fact, or other.
-
-Captured content is stored as `semantic` type neurons with the category as context, enabling recall like "what does the user prefer?" → returns preference neurons by keyword match.
-
-### 8.5 vs. OpenClaw's Built-In Memory: Why NeuroVault is Superior
-
-OpenClaw ships with two official memory plugins, both disabled by default:
-
-**memory-core** provides semantic search over markdown files (`MEMORY.md`, `memory/**/*.md`) using BM25 + vector embeddings. It requires an external embedding API (OpenAI `text-embedding-3-small`, Gemini, or Voyage) — paid, per-call pricing. It indexes only static markdown content that the user manually writes. It has no learning mechanism, no tool usage tracking, and no automatic context injection.
-
-**memory-lancedb** (experimental) adds auto-capture of user statements matching keyword triggers ("remember," "prefer," email/phone patterns) and auto-recall via `before_agent_start`. It stores captured facts in LanceDB with OpenAI embeddings. It captures a maximum of 3 memories per conversation from user messages only.
-
-Neither plugin learns from agent behavior. When the agent reads `auth.ts`, edits `session.ts`, and runs `npm test` across 50 sessions, OpenClaw's built-in memory retains zero information about these patterns. The next session starts with no knowledge of which files are related, which tool chains are common, or which errors have been seen before.
-
-**NeuroVault replaces both plugins** as a single memory slot, providing everything they offer plus Hebbian behavioral learning:
-
-| Capability | memory-core | memory-lancedb | NeuroVault |
-|-----------|------------|----------------|------------|
-| Persistent memory | Markdown files only | LanceDB facts | VaultGraph + BrainBox graph |
-| Learns from tool usage | No | No | **Yes — every Read/Edit/Grep/Bash** |
-| Auto-recall injection | No | Yes (keyword only) | **Yes (Hebbian spreading activation)** |
-| API keys required | **Yes** (OpenAI/Gemini) | **Yes** (OpenAI) | **No — fully local** |
-| Embedding cost per query | ~$0.0001 (API call) | ~$0.0001 (API call) | **$0 (SQLite only)** |
-| Knowledge graph | No | No | **Yes (VaultGraph wikilinks)** |
-| Error-fix learning | No | No | **Yes (2x boost synapses)** |
-| Tool sequence prediction | No | No | **Yes (myelinated chains)** |
-| Fact capture | No | Yes (3/session, user msgs) | **Yes (3/session, filtered)** |
-| Context richness | Markdown snippets | User statements | **Tool context + keywords + errors** |
-
-The inadequacy of OpenClaw's built-in memory is precisely why we built NeuroVault on top of BrainBox. Conventional embedding-based memory (memory-core, memory-lancedb) treats agent memory as a search problem: index text, embed it, retrieve by similarity. BrainBox treats agent memory as a learning problem: observe behavior, strengthen patterns, predict what comes next. The deployment demonstrates that Hebbian learning can replace conventional embedding-based memory in production agent platforms — delivering richer behavioral context at zero API cost. OpenClaw's memory-core requires an OpenAI API key and charges per embedding; NeuroVault learns more from less by observing tool execution patterns that embedding-based systems cannot capture. After deploying NeuroVault, the agent's operational efficiency improved measurably: files relevant to the current task appeared in context before the agent searched for them, error→fix patterns surfaced instantly, and the system learned the codebase's structure without any manual configuration.
-
----
-
-## 9. Conclusion
-
-BrainBox demonstrates that Hebbian learning and synaptic myelination — principles from neuroscience established in 1949 — can dramatically improve AI agent efficiency. By learning file access patterns, error→fix associations, and tool sequences, agents achieve instant recall for myelinated pathways and skip redundant searches.
-
-The v1.0.0 recall overhaul introduced three innovations validated against a 15-query benchmark on a production network of 2,276 neurons and 60,190 synapses:
-
-1. **Multiplicative confidence scoring** — context similarity gates the confidence score rather than contributing additively. High myelination amplifies relevance but cannot substitute for it. This is, to our knowledge, a novel approach not found in ACT-R, SYNAPSE, or MAGMA.
-
-2. **Fan effect normalization** — activation spreading is divided by the square root of the source neuron's out-degree, implementing Anderson's (1983) ACT-R principle for the first time in an agent memory system. This single change improved top-1 recall accuracy from 13% to 60% by preventing hub neurons (tools with 500+ synapses) from dominating results.
-
-3. **Tool neuron bridge architecture** — tool neurons participate as bridges during spreading activation (their outgoing synapses are traversed) but are excluded from all result sets. This architectural separation recognizes that tools are infrastructure, not answers.
-
-We also evaluated lateral inhibition (SYNAPSE, 2026) and found it provides no accuracy improvement for agent behavioral memory — it suppresses weak results but does not dethrone dominant hubs. The combination of fan effect + multiplicative confidence + tool exclusion achieved 67% top-1 accuracy on our benchmark, a 5x improvement over baseline.
-
-The system fills a genuine gap in the agent memory landscape. Static instruction files (CLAUDE.md) cannot capture implicit behavioral patterns. Search systems (QMD, vector databases) retrieve by content similarity, not behavioral association. Knowledge graphs (VaultGraph) require explicit link authoring. BrainBox learns automatically from agent behavior, strengthens with use, decays with disuse, and discovers connections through graph traversal.
-
-The NeuroVault deployment to OpenClaw validates cross-platform portability and demonstrates that Hebbian learning works with keyword-only matching (no embeddings) when compensated by keyword enrichment and adjusted confidence gates. The macOS daemon extends learning beyond AI agent sessions to capture system-wide file access patterns — bringing the vision of "hardware prefetching for software agents" closer to its hardware inspiration.
-
-Three decades after Fido demonstrated associative prefetching for database caches, BrainBox applies the same principle to software agents — proving that the hardware architecture community's insight about learnable access patterns generalizes far beyond its original domain.
-
----
-
-## 10. Roadmap: Dual-Process Memory (v2.0)
-
-### 10.1 The Dual-Process Gap
-
-A survey of agent sessions using BrainBox in production revealed a fundamental limitation: **Hebbian learning excels at recurring patterns but provides minimal value for greenfield tasks.** An agent building a new proxy server and CLI subcommand scored BrainBox at "~5% contribution" — the system kept suggesting irrelevant files from other projects at 50-65% confidence while providing no useful guidance for the novel code being written.
-
-The agent's feedback identified five desired capabilities, which reduce to two missing systems:
-
-1. **Anti-recall (negative signal):** BrainBox only strengthens connections, never weakens them based on ignored suggestions. Files recalled but never opened should have their synapses demoted.
-2. **Semantic code retrieval:** For novel tasks, the system needs to match by *code pattern similarity* and *task intent*, not just co-access history.
-
-These map to the cognitive science concept of **dual-process theory** (Kahneman, 2011): System 1 (fast, associative — current BrainBox) and System 2 (slow, deliberate — semantic search). Both systems are needed; they are complementary, not competing.
-
-### 10.2 Architecture: Confidence-Gated Routing
-
-Both systems run in parallel. The Hebbian path completes first (~10ms). If its confidence is high, the semantic path is cancelled. If low, the semantic path's results are used instead. In the medium-confidence range, results from both systems are merged.
-
-```
-Recall Query
-    ├──► System 1: Hebbian spreading (10ms, existing)
-    │         ├── confidence >= 0.7 → return, cancel System 2
-    │         ├── confidence <= 0.3 → use System 2 only
-    │         └── 0.3-0.7 → merge both systems
-    └──► System 2: Semantic search (100ms, parallel)
-              ├── Snippet index (code patterns)
-              └── Commit neurons (task intent → file sets)
-```
-
-P50 latency: 10ms (Hebbian path, semantic cancelled). P90: 100ms (semantic completes). The merge path adds no latency — semantic was already running in parallel.
-
-### 10.3 Anti-Recall: Negative Hebbian Signal
-
-**Retrieval-induced forgetting** (Anderson, Bjork & Bjork, 1994) establishes that retrieving some items inhibits competing items. BrainBox adapts this: files recalled but never opened during a session receive synapse weakening.
-
-**Session tracking bridge:** The prompt hook records `all_recalled` (files suggested). The PostToolUse hook records `all_opened` (files actually accessed). At session end, the difference set receives decay:
-
-```
-effective_decay = 1 - (1 - 0.1)^consecutive_ignores
-strength = max(0.1, strength * (1 - effective_decay))
-```
-
-| Consecutive Ignores | Decay | 0.85 → |
-|---------------------|-------|--------|
-| 1 | 10% | 0.77 |
-| 3 | 27% | 0.62 |
-| 5 | 41% | 0.50 |
-| 9+ | → floor | 0.10 |
-
-The floor at 0.1 prevents permanent forgetting. A single use resets the ignore counter and boosts by +0.85, recovering the synapse. A file needs 5+ consecutive ignored sessions to reach 50% — but one use brings it back.
-
-### 10.4 Change-Set Learning from Git Commits
-
-Beyond file-to-file co-access, BrainBox can learn which files change together for specific *types* of changes by mining git history. **Commit neurons** embed the commit intent (message + diff summary) and associate it with the modified file set.
-
-At query time, the agent's task description is matched against commit embeddings. Similar commits surface their associated file sets. This bridges from "what changed together" to "you're about to need these files because your task looks like that commit."
-
-Quality bar: commits with <5-character messages or <2 files are excluded. For weak messages ("fix", "wip"), the diff summary carries the signal. Minimum 50 commits required before enabling.
-
-### 10.5 Predictive Pre-Load
-
-Once commit neurons exist, predictive suggestion becomes a 20-line addition to the prompt hook. On the first message in a session, the task description is matched against commit neurons. Results are cross-referenced with Hebbian recall — both systems must agree (or a single system must show 0.85+ confidence). Maximum 2 files suggested. Silence is preferred over wrong noise.
-
-### 10.6 Semantic Code Retrieval via Snippet Neurons
-
-A two-tier architecture keeps Hebbian spreading small and fast while adding a parallel semantic index:
-
-**Snippet neurons** are extracted from source files using tree-sitter: exported functions, public classes, and methods with >10 lines. Each snippet is embedded independently (same model as file neurons). The snippet index is a separate vector store (~20K snippets = 30MB FAISS index), queried in parallel with Hebbian spreading.
-
-Query flow: semantic match on snippets → aggregate to parent file neurons → merge with Hebbian results. This enables "you wrote a createServer+SSE parser before — see server.ts:148" without requiring prior co-access history.
-
-### 10.7 Error Category Matching
-
-Error messages are normalized to fingerprints: paths, line numbers, and timestamps are stripped. The result — `error_type|operation` (e.g., "Connection refused|TCP connect") — clusters semantically similar errors without requiring exact string matches. Hash-based O(1) lookup for known fingerprints; embedding fallback for novel ones.
-
-### 10.8 Architectural Pattern Layer (Future)
-
-Beyond files (L0) and change-sets (L1), a third layer would learn abstract architectural preferences: "user prefers adapter pattern for external API integration," "user writes proxies when APIs are incompatible." Structural inference (naming conventions like `*-adapter.ts`, AST patterns like `class X implements Y`) covers 80% of cases without LLM dependency. Optional LLM module for subtle patterns.
-
-### 10.9 Model-Agnostic Boundary
-
-BrainBox's value proposition includes model-agnosticism — the same system works whether the consumer is Claude, GPT, Gemini, or a 7B local model. The v2.0 roadmap maintains this:
-
-| Component | Dependency | Acceptable? |
-|-----------|-----------|-------------|
-| Tree-sitter extraction | Deterministic | Yes |
-| Embedding (MiniLM) | Swappable | Yes |
-| Error fingerprinting | Regex | Yes |
-| Pattern inference | Optional LLM | Yes (graceful degradation) |
-
-The boundary rule: if output is deterministic or swappable with graceful degradation, it's acceptable. If core functionality breaks without a specific model, it crosses the line.
-
----
-
-## 11. v5.0: Seven Features Inspired by Supermemory and Ars Contexta
-
-After analyzing Supermemory's hook-based memory architecture (Section 2.3) and Ars Contexta's knowledge system generator, we identified and implemented seven features that close gaps in BrainBox's operational awareness. All seven operate at zero LLM cost, maintaining the core architectural principle.
-
-### 11.1 Session Intent Capture
-
-**Problem:** BrainBox tracks *what* files were accessed but not *why* the session existed. "What was I working on yesterday?" has no answer.
-
-**Solution:** `setSessionIntent(intent)` stores a description on the sessions table. The prompt hook captures the first user message (truncated to 200 chars) as intent automatically. `getRecentSessions(days)` returns sessions with their intents for "what happened last week" queries.
-
-**Schema:** `ALTER TABLE sessions ADD COLUMN intent TEXT DEFAULT NULL`
-
-### 11.2 Hub Detection
-
-**Problem:** BrainBox applies hub penalties during learning (Section 3.2) but doesn't expose hub structure for navigation or debugging.
-
-**Solution:** `getHubs(limit)` returns neurons ranked by out-degree with their top 5 connections. This surfaces the codebase's structural "Maps of Content" — files that connect everything. Inspired by Ars Contexta's MOC generation, but discovered from behavior rather than authored.
-
-### 11.3 Staleness Detection and Alerts
-
-**Problem:** Superhighways decay silently. A file at 82% myelination today might be at 71% next week, and the agent has no awareness of this drift.
-
-**Solution:** `detectStale(opts)` finds neurons with high myelination but old `last_accessed` timestamps. It projects future myelination using the daily decay rate (`0.995^days`). `getStalenessAlerts()` formats this into a human-readable string injected into the prompt hook output: `"Stale superhighways: auth.ts (82%→71% myelin, 14d idle)"`. Returns null when nothing is stale (no noise). Inspired by Ars Contexta's Session Orient hook which surfaces maintenance signals.
-
-### 11.4 Project Tagging
-
-**Problem:** BrainBox's project scoping (Section 8.2) operates at recall time via `cwd` path prefix matching — a runtime filter, not persistent knowledge. Files have no durable project association.
-
-**Solution:** `tagProject(root, name)` persistently tags all file neurons under a path prefix. `getProjectNeurons(name)` retrieves tagged neurons. The PostToolUse hook auto-tags from `cwd` on every tool call, deriving the project name from the last path component. Inspired by Supermemory's containerTags for automatic memory routing.
-
-**Schema:** `ALTER TABLE neurons ADD COLUMN project TEXT DEFAULT NULL`
-
-### 11.5 Raw Conversation Capture
-
-**Problem:** BrainBox observes tool calls exclusively (Section 7.1). Session-level context — what the user discussed, what problems were described — is lost.
-
-**Solution:** `captureSessionContext(messages)` extracts keywords from user messages using a stopword-filtered frequency analysis. The keywords are stored as contexts on a `semantic` neuron with path `session:<sessionId>`. No LLM extraction — pure string processing. These session neurons participate in recall, enabling "what was that websocket session about?" queries. Bridges the gap between L2 (declarative) and L3 (behavioral) without violating zero-cost learning.
-
-### 11.6 Anti-Recall Escalation
-
-**Problem:** Earlier anti-recall applied a flat 10% decay regardless of how many times a file had been ignored. Current anti-recall attributes ignored injections to their source edge where available and escalates decay by consecutive ignore streak, with a 0.1 weight floor; see [§ v0.2: Research-driven upgrades — Ranking](#v02-research-driven-upgrades).
-
-**Solution:** `applyAntiRecallEscalated()` tracks consecutive ignore streaks per neuron via the `ignore_streak` column. The effective decay is `1-(1-0.1)^streak`; opened files reset the streak, and affected weights are floored at 0.1. A single use resets the streak to 0 and recovers the synapse — matching retrieval-induced forgetting dynamics (Anderson, Bjork & Bjork, 1994). The adapter hook now uses the escalated version instead of flat anti-recall.
-
-**Schema:** `ALTER TABLE neurons ADD COLUMN ignore_streak INTEGER DEFAULT 0`
-
-| Consecutive Ignores | Effective Decay | 0.80 → |
-|---------------------|----------------|--------|
-| 1 | 10% | 0.72 |
-| 2 | 19% | 0.58 |
-| 3 | 27% | 0.42 |
-| 5 | 41% | 0.29 |
-| 9+ | → floor | 0.10 |
-
-### 11.7 Schema Migration Summary (v5)
-
-Three new columns, backward-compatible (all DEFAULT NULL/0):
-
-```sql
-ALTER TABLE sessions ADD COLUMN intent TEXT DEFAULT NULL;
-ALTER TABLE neurons ADD COLUMN project TEXT DEFAULT NULL;
-ALTER TABLE neurons ADD COLUMN ignore_streak INTEGER DEFAULT 0;
-```
-
-### 11.8 Evaluation
-
-Test harness: `src/testkit.ts` auto-discovers `src/tests/*.test.ts`; run `npx tsx src/test.ts "<filter>"` to select tests. Do not state a test total without a fresh run. The feature coverage below ran in sandbox `:memory:` databases:
-
-| Feature | Tests | Status |
-|---------|-------|--------|
-| Session Intent Capture | 2 | PASS |
-| Hub Detection | 2 | PASS |
-| Staleness Detection | 2 | PASS |
-| Project Tagging | 3 | PASS |
-| Raw Conversation Capture | 2 | PASS |
-| Staleness Alerts | 2 | PASS |
-| Anti-Recall Escalation | 3 | PASS |
-| Existing test suite | 40 | PASS (no regressions) |
-
----
-
-## References
-
-1. Hebb, D.O. (1949). *The Organization of Behavior.* Wiley.
-2. Bienenstock, E.L., Cooper, L.N., & Munro, P.W. (1982). "Theory for the development of neuron selectivity." *Journal of Neuroscience*, 2(1), 32-48.
-3. Ebbinghaus, H. (1885). *Memory: A Contribution to Experimental Psychology.*
-4. Collins, A.M., & Loftus, E.F. (1975). "A spreading-activation theory of semantic processing." *Psychological Review*, 82(6), 407-428.
-5. Anderson, J.R. (1983). "A spreading activation theory of memory." *Journal of Verbal Learning and Verbal Behavior*, 22(3), 261-295.
-6. Wixted, J.T., & Ebbesen, E.B. (1991). "On the form of forgetting." *Psychological Science*, 2(6), 409-415.
-7. Palmer, M., & Zdonik, S. (1991). "Fido: A Cache That Learns to Fetch." *Proceedings of the 17th International Conference on Very Large Data Bases*, 255-264.
-8. Chaudhary, S. (2025). "Enabling Robust In-Context Memory and Rapid Task Adaptation in Transformers with Hebbian and Gradient-Based Plasticity." *arXiv 2510.21908.*
-9. Szelogowski, D. (2025). "Hebbian Memory-Augmented Recurrent Networks: Engram Neurons in Deep Learning." *arXiv 2507.21474.*
-10. Safa, A. (2024). "Continual Learning with Hebbian Plasticity in Sparse and Predictive Coding Networks: A Survey and Perspective." *arXiv 2407.17305.*
-11. SYNAPSE (2026). "Empowering LLM Agents with Episodic-Semantic Memory via Spreading Activation." *arXiv 2601.02744.*
-12. MACLA (2025). "Learning Hierarchical Procedural Memory for LLM Agents through Bayesian Selection and Contrastive Refinement." *arXiv 2512.18950.*
-13. Cortex/Asteria (2025). "Achieving Low-Latency, Cost-Efficient Remote Data Access For LLM via Semantic-Aware Knowledge Caching." *arXiv 2509.17360.*
-14. MAGMA (2026). "A Multi-Graph based Agentic Memory Architecture for AI Agents." *arXiv 2601.03236.*
-15. Liu, S. et al. (2025). "Memory in the Age of AI Agents: A Survey." *arXiv 2512.13564.*
-16. Kahneman, D. (2011). *Thinking, Fast and Slow.* Farrar, Straus and Giroux.
-17. Anderson, M.C., Bjork, R.A., & Bjork, E.L. (1994). "Remembering can cause forgetting: Retrieval dynamics in long-term memory." *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 20(5), 1063-1087.
-18. Kolodner, J. (1993). *Case-Based Reasoning.* Morgan Kaufmann.
-19. Maruf, S. et al. (2025). "FarSight: A Learning-Based Approach for Efficient Far Memory Access." *arXiv 2506.00384.*
-20. Muzammil, S. et al. (2026). "Source Code Hotspots: A Diagnostic Method for Quality Issues." *MSR 2026, arXiv 2602.13170.*
-21. Parisi, G.I. (2017). "Adaptive Synaptic Plasticity: Leak Rate Modulation Based on Temporal Correlation." *arXiv 1703.07655.*
-22. GPTrace (2025). "Effective Crash Deduplication Using LLM Embeddings." *arXiv 2512.01609.*
-23. EcphoryRAG (2025). "Cue-Based Activation of Entity-Centered Memory Traces." *arXiv 2510.08958.*
-24. RepoRift (2024). "LLM Agents Improve Semantic Code Search." *arXiv 2408.11058.*
-25. A-Mem (2026). "Agentic Memory for LLM Agents." *arXiv 2502.12110.*
-26. PAM (2026). "Predictive Associative Memory." *arXiv 2602.11322.*
-27. Chhikara, P. et al. (2025). "Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory." *arXiv 2504.19413.*
-28. Mem0. GitHub: github.com/mem0ai/mem0. Apache-2.0.
-29. OpenMemory MCP. GitHub: github.com/mem0ai/mem0/tree/main/openmemory. Apache-2.0.
-30. SuperMemory. GitHub: github.com/supermemoryai/supermemory. MIT License.
-31. Graphiti/Zep (2025). "Graphiti: Building Real-Time Knowledge Graphs for AI Agents." *arXiv 2501.13956.*
-32. Letta (2024). "MemGPT: Towards LLMs as Operating Systems." *arXiv 2310.08560.*
-33. LangMem. GitHub: github.com/langchain-ai/langmem. MIT License.
-
----
-
-## Appendix A: Constants and Hyperparameters
-
-| Constant | Value | Rationale |
-|----------|-------|-----------|
-| `LEARNING_RATE` | 0.1 | Moderate strengthening per co-access; avoids oscillation |
-| `MYELIN_RATE` | 0.02 | Slow superhighway formation; requires sustained repeated access |
-| `MYELIN_MAX` | 0.95 | Asymptotic ceiling prevents full saturation |
-| `CO_ACCESS_WINDOW_SIZE` | 25 | Last 25 unique files form co-access pairs (sequential, not time-based) |
-| `CONFIDENCE_GATE` | 0.4 (0.3 keyword-only) | Balances precision/recall; lower gate compensates for no embeddings |
-| `HIGH_CONFIDENCE` | 0.7 | Above this, skip search entirely — strong neural recall |
-| `ERROR_LEARNING_BOOST` | 2.0 | Errors are high-signal events; accelerated learning justified |
-| `ERROR_FIX_RESOLVE_WEIGHT` | 0.85 | Strong direct wiring from error→fix via `resolveError()` |
-| `TOOL_SPREAD_DAMPENING` | 0.3 | Base dampening multiplier for tool-type neurons in spreading |
-| `MAX_SPREAD_HOPS` | 3 | BFS depth limit for spreading activation; confidence decay is self-limiting |
-| `MAX_SPREAD_FAN_OUT` | 10 | Maximum outgoing synapses explored per node per hop; prevents runaway |
-| `MYELIN_CAP_IN_CONFIDENCE` | 0.5 | Soft cap on myelination's contribution to confidence scoring |
-| `FAN_DEGREE_CAP` | 50 | Max out-degree for fan effect calculation; prevents near-zero fan factors |
-| `MYELIN_GATE` | 0.15 | Lower gate for Phase 3 myelinated fallback |
-| `SYNAPSE_DECAY_RATE` | 0.02/day | Unused connections weaken moderately |
-| `ACTIVATION_DECAY_RATE` | 0.15/day | Short-term activation fades quickly |
-| `MYELIN_DECAY_RATE` | 0.005/day | Superhighways persist ~200 days to halve |
-| `SYNAPSE_PRUNE_THRESHOLD` | 0.05 | Remove near-dead synapses to prevent graph bloat |
-| `TOKENS_PER_FILE_READ` | 1,500 | Conservative estimate for average source file |
-| `TOKENS_PER_SEARCH` | 500 | Estimate for a grep/search operation |
-
-## Appendix B: Database Schema
-
-```sql
-CREATE TABLE neurons (
-  id TEXT PRIMARY KEY,              -- "type:path" (e.g., "file:src/auth.ts")
-  type TEXT NOT NULL,               -- 'file' | 'tool' | 'error' | 'semantic'
-  path TEXT NOT NULL,
-  activation REAL DEFAULT 0,        -- 0-1, decays multiplicatively
-  myelination REAL DEFAULT 0,       -- 0-0.95, sigmoid growth
-  access_count INTEGER DEFAULT 0,
-  last_accessed TEXT,               -- ISO timestamp
-  created_at TEXT NOT NULL,
-  contexts TEXT DEFAULT '[]',       -- JSON array of query strings
-  embedding BLOB DEFAULT NULL,      -- v3: 384-dim float32 vector (1,536 bytes)
-  project TEXT DEFAULT NULL,        -- v5: project name for scoped recall
-  ignore_streak INTEGER DEFAULT 0   -- v5: consecutive anti-recall ignores
-);
-
-CREATE TABLE synapses (
-  source_id TEXT NOT NULL REFERENCES neurons(id),
-  target_id TEXT NOT NULL REFERENCES neurons(id),
-  weight REAL DEFAULT 0.1,          -- 0-1, BCM diminishing returns
-  co_access_count INTEGER DEFAULT 1,
-  last_fired TEXT,
-  created_at TEXT NOT NULL,
-  tagged_at TEXT,                   -- v3.2: synaptic tagging timestamp
-  PRIMARY KEY (source_id, target_id)
-);
-
-CREATE TABLE access_log (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  neuron_id TEXT NOT NULL,
-  session_id TEXT NOT NULL,
-  query TEXT,
-  timestamp TEXT NOT NULL,
-  token_cost INTEGER DEFAULT 0,
-  access_order INTEGER DEFAULT 0    -- v2: sequential order within session
-);
-
-CREATE TABLE sessions (
-  id TEXT PRIMARY KEY,
-  started_at TEXT,
-  total_accesses INTEGER DEFAULT 0,
-  tokens_used INTEGER DEFAULT 0,
-  tokens_saved INTEGER DEFAULT 0,
-  hit_rate REAL DEFAULT 0,
-  intent TEXT DEFAULT NULL           -- v5: session intent (first user message)
-);
-
-CREATE TABLE snippets (
-  id TEXT PRIMARY KEY,
-  parent_neuron_id TEXT NOT NULL REFERENCES neurons(id),
-  name TEXT,                        -- function/class/method name
-  kind TEXT,                        -- 'function' | 'class' | 'method'
-  start_line INTEGER,
-  end_line INTEGER,
-  source TEXT,                      -- raw source code (max 500 chars)
-  embedding BLOB DEFAULT NULL,      -- 384-dim float32 vector
-  content_hash TEXT                  -- v4: dedup hash
-);
-```
-
-## Appendix C: Source Code & Installation
-
-BrainBox is open-source under the MIT license. Installation guides, integration examples, and platform-specific setup instructions are maintained in the repository:
-
-**GitHub:** [github.com/thebasedcapital/brainbox](https://github.com/thebasedcapital/brainbox)
-
-## Appendix D: Verification Results
-
-Test harness: `src/testkit.ts` auto-discovers `src/tests/*.test.ts`; run `npx tsx src/test.ts "<filter>"` to select tests. Do not state a test total without a fresh run. Core tests independently verified by GLM-5 (Fireworks AI) with zero discrepancies.
-
-```
-=== Core Verification (10/10) ===
-TEST 1:  Myelination increments ..................... PASS
-TEST 2:  Synapse formation (sequential window) ...... PASS
-TEST 3:  Window eviction at size 10 ................. PASS
-TEST 4:  Synapse strengthening (BCM) ................ PASS
-TEST 5:  Confidence gating .......................... PASS
-TEST 6:  Spreading activation ....................... PASS
-TEST 7:  Token savings math ......................... PASS
-TEST 8:  Error→fix pair learning .................... PASS
-TEST 9:  Tool sequence myelination .................. PASS
-TEST 10: Multi-hop spreading (3-hop BFS) ............ PASS
-
-=== v5.0 Features (19/19) ===
-TEST 11: Session intent capture (set) ............... PASS
-TEST 12: Session intent capture (get) ............... PASS
-TEST 13: Hub detection (ranking) .................... PASS
-TEST 14: Hub detection (connections) ................ PASS
-TEST 15: Staleness detection ........................ PASS
-TEST 16: Staleness projection ....................... PASS
-TEST 17: Project tagging (tag) ...................... PASS
-TEST 18: Project tagging (query) .................... PASS
-TEST 19: Project tagging (auto from cwd) ............ PASS
-TEST 20: Conversation capture ....................... PASS
-TEST 21: Conversation capture (stopwords) ........... PASS
-TEST 22: Staleness alerts (format) .................. PASS
-TEST 23: Staleness alerts (silence when fresh) ...... PASS
-TEST 24: Anti-recall escalation (streak 1) .......... PASS
-TEST 25: Anti-recall escalation (streak 5) .......... PASS
-TEST 26: Anti-recall escalation (reset on use) ...... PASS
-
-=== Raw SQL Cross-Checks (17/17) ===
-TEST 27-43: All raw SQL verification checks ......... PASS
-```
-
-## Appendix E: NeuroVault Adaptation Matrix
-
-Key differences when deploying BrainBox to a non-Claude Code agent platform:
-
-| Integration Point | Claude Code | OpenClaw (NeuroVault) |
-|------------------|------------|----------------------|
-| Tool names | PascalCase (`Read`, `Bash`) | Lowercase (`read`, `exec`) |
-| File path param | `file_path` | `path` |
-| Tool results | Plain strings | `.content[].text` objects |
-| Context injection | `UserPromptSubmit` hook → stdout | `before_agent_start` → `prependContext` |
-| Learning trigger | `PostToolUse` hook | `after_tool_call` lifecycle hook |
-| Embeddings | BrainBox core default: jina-code (768d; selectable profile via `BRAINBOX_EMBED_MODEL`) | Availability/configuration is deployment-specific |
-| Confidence gate | 0.4 | 0.3 |
-| Keyword weight | 40% | 50% |
-| Fact capture | Not implemented | `agent_end` hook → semantic neurons |
-
----
-
-## v0.2: Research-driven upgrades
-
-BrainBox v0.2 replaces the paper's single hand-described confidence ranking with independently ablatable ranking channels, records whether injected recall was used, adds hybrid code-snippet retrieval and structural priors, compiles repeated work into evidence-backed procedures, and provides chronological replay evaluation. The formulas below describe the implemented behavior.
-
-### Ranking
-
-`EngineOptions` exposes the ranking and learning mechanisms for ablation. Defaults enable base-level activation (`baseLevelActivation`, decay `baseLevelDecay = 0.5`), temporal candidates (`temporalCandidates`), lexical FTS (`lexicalFts`), asymmetric STDP (`stdpReverseFactor = 0.5`), tool n-grams (`toolNgrams`), targeted anti-recall (`targetedAntiRecall`), embeddings (`embeddings`) and rank fusion (`rankFusion`). Degree-normalized spread (`degreeNormalizedSpread`) is an option but defaults off. Main rank-fusion channel weights default to lexical 4 (`lexicalWeight`), recency 1 (`recencyWeight`; 30 via `sessionRecencyWeight` when a topic switch away from the session's recent files is detected), frequency 2 (`frequencyWeight`), base level 0.5 (`baseLevelWeight`), recurrence 0.2 (`recurrenceWeight`) and Hebbian 4 (`hebbianWeight`); tool ranking weights are n-gram 1 (`toolNgramWeight`), frequency 0.5 (`toolFrequencyWeight`) and recency 0 (`toolRecencyWeight`). These are ranking controls, not a claim that all confidence values use one shared score.
-
-**ACT-R base-level activation.** For neuron *i*, over its most recent 50 recorded access times, the engine computes
-
-`B_i = ln( Σ_j max(1/60, Δt_ij)^(-d) )`,
-
-where `Δt_ij` is elapsed time in hours and `d = baseLevelDecay` (default 0.5). Its bounded score is `σ(B_i) = 1/(1+exp(-B_i))`. If there are no access-log observations, a seeded neuron's `last_accessed` timestamp supplies a single fallback observation. With base-level activation disabled, the fallback score is a linear one-week recency decay.
-
-**Temporal candidate blend.** Recent file accesses seed recurrence candidates. For a candidate *i*, recurrence is `min(1, recurrence_i + 0.1 ln(1 + repeats_i))`; popularity is `ln(1 + access_count_i) / maxPopularity / sqrt(max(1, degree_i))`, with `maxPopularity` computed over returned candidates and floored at 1. The candidate confidence is
-
-`T_i = min(0.65, 0.7·recurrence_i + 0.1·popularity_i + 0.2·σ(B_i))`.
-
-Candidates below the 0.4 confidence gate (`CONFIDENCE_GATE`) are omitted. During rank fusion, lexical FTS, Hebbian query evidence, temporal recurrence, recency, frequency and the base-level ordering contribute distinct reciprocal-rank channels; a channel contributes `weight / (20 + rank + 1)` per result (1-based ranks, reciprocal-rank constant 20), so the configured channel weights determine the fused score. The result confidence is calibrated from that score as `min(0.99, 0.4 + 0.6·score/maxScore)`.
-
-**STDP asymmetry.** For an ordered access pair, let `baseDelta` be the existing positional co-access learning increment and `snapPlasticity(w)` the bounded diminishing-returns update factor. The later-to-earlier synapse receives `baseDelta × snapPlasticity(w) × stdpReverseFactor`; the earlier-to-later synapse receives `baseDelta × snapPlasticity(w)`. The default reverse factor is 0.5, clamped to [0,1]. Thus co-access learning is directional rather than symmetric by default: the causal (earlier→later) direction gets the full update and only the back-pointing edge is discounted. Explicit structural or temporal seeding paths may have their own direction rules.
-
-**Tool n-gram backoff.** The engine records suffixes of length 1 through 3 from tool history. Prediction tries the longest available suffix first, then shorter suffixes; a suffix is eligible when its total support meets `toolNgramMinSupport` (default 4). For a matching next-tool candidate, confidence is its occurrence count divided by the total occurrences for that suffix. In fused tool ranking, the n-gram channel is combined with recency and frequency by weighted reciprocal rank (constant 20); default channel weights are 1, 0 and 0.5 respectively. When n-gram prediction returns a result, the classic predictor does not also fill the tool result list from directional transitions.
-
-**Targeted anti-recall.** Ignored injected files weaken only the supporting edge(s) attributed to that recalled result when source-edge attribution is available; the non-targeted mode can fall back to connected synapses. The escalated ignore rule uses `streak = consecutive ignores` and `effective_decay = 1 - (1 - 0.1)^streak`; each affected weight becomes `max(0.1, weight × (1-effective_decay))`. Opening a recalled file resets its ignore streak. This is outcome-driven negative feedback, not a flat confidence penalty.
-
-### Attribution & policy
-
-The `recall_events` table records each candidate's session, query hash/snippet, neuron, rank, confidence, activation path, source edge, injection status, arm and decision. Injected candidates receive 1-based ranks in presentation order; non-injected candidates continue after the injected block and do not occupy its citation ranks. Opening or editing an injected result updates its event while its policy decision remains unfinalized. `policy_decisions` stores context, selected arm, injected-token estimate, learning flag and finalization/reward state.
-
-The contextual arms are `SILENT`, `TOP1`, `TOP3` and `TOP5` (limits 0, 1, 3 and 5). The first 12 decisions for a context (`POLICY_PRIOR_PULLS`) conservatively choose TOP5. Thereafter selection is UCB1:
-
-`UCB(a) = reward_sum(a)/pulls(a) + 0.15·sqrt(2·ln(total_pulls)/pulls(a))`.
-
-An untried arm receives infinite score. `BRAINBOX_POLICY=off` disables learning/selection and uses TOP5. For each finalized non-silent decision, opened injected results earn `1/rank`, edited injected results earn `1.5/rank`, and the cost is `POLICY_TOKEN_COST` = 2 reward units per 1,000 injected tokens:
-
-`reward = Σ_injected (1.5/rank if edited; else 1/rank if opened; else 0) − 2·injected_tokens/1000`.
-
-SILENT reward is zero. Finalization and reward updates are once-only and transactional. Injection text uses the compact `path:start-end — why` form when snippet evidence exists, under an 1,800-character budget (`INJECTION_CHAR_BUDGET`); stale/deleted files are skipped and results refilled. The MCP interface supports `brainbox_recall` detail `compact|full` (default `full`) and `brainbox_explain` for attribution/history inspection.
-
-### Hybrid code retrieval
-
-Code is indexed as cAST-style tree-sitter chunks with a stored `chunker_version` (`CHUNKER_VERSION`); the current version is `cast-v1-1500` and the character budget is 1,500 (`CHUNK_CHAR_BUDGET`). Content hashes allow unchanged files to be skipped, while a chunker-version or embedding-model change triggers reindexing. Lexical retrieval uses FTS5/BM25; dense retrieval uses sqlite-vec KNN when an embedding is available. The two ranked lists are fused using reciprocal rank fusion with `k=60` (`HYBRID_RRF_K`):
-
-`RRF(x) = Σ_{r ∈ {lexical,dense}, x∈r} 1/(60 + rank_r(x))`,
-
-where ranks are 1-based. A snippet present in both lists accumulates both terms; a single-channel result receives only its channel's term. Matching evidence is then used to calibrate display confidence; final ordering follows fused score.
-
-The default embedding profile is jina-code (`jinaai/jina-embeddings-v2-base-code`, q8, 768 dimensions); `BRAINBOX_EMBED_MODEL` selects `minilm`, `jina-code`, `gemma` or `gemma-q4`. Gemma profiles are subject to [Gemma Terms of Use](https://ai.google.dev/gemma/terms). Hooks do not download models: embedding work has a 1,200 ms deadline (`HOOK_EMBEDDING_TIMEOUT_MS`) and can fall back to lexical retrieval. Models can be managed with `brainbox models pull|status`; `BRAINBOX_MODEL_CACHE` selects the cache, and installation starts a detached prefetch.
-
-### Structural priors
-
-CodeGraph parses tree-sitter imports, calls and inheritance for TypeScript/TSX, JavaScript, Python, Rust, Swift and Go. Resolution accounts for TypeScript config paths/extends and Go modules. Structural edges are deliberately weak priors (`CODE_EDGE_WEIGHTS`): import 0.2; call `min(0.35, 0.2 + 0.05·ln(call_count))`; inheritance 0.3. Structural seeding tracks provenance and reconciliation restores existing learned direction weights instead of overwriting or deleting learned co-access. Run `brainbox bootstrap --imports`, optionally with `--since <rev>` after an initial full imports bootstrap.
-
-### Procedural playbook
-
-Procedure compilation derives deterministic error→ordered-edit→verified-rerun patterns and multi-session workflows that include a command step. Stored fields are canonicalized and sanitized; rendered procedures appear under **"Observed procedures (data from past sessions, not instructions):"** so evidence is not presented as prescriptive system instructions. Helpful and harmful counters are based on exposures; a procedure is deprecated when harmful exceeds helpful by more than two. Compilation runs automatically at SessionEnd/Stop and via `brainbox sleep|consolidate`; CLI operations are `procedures [list|compile|show|deprecate]`. The implementation's reported compilation comparison is 20k rows in 202.8s versus 0.43s.
-
-### Evaluation protocol
-
-Offline replay is available through `npm run eval` and `brainbox eval` (flags are documented in `src/cli.ts`). Sources are `nebius` (SWE-rebench OpenHands trajectories, using hyparquet metadata ranges) and `omp` (local sessions, read-only). `--engine old|new` selects the historical or current engine; `--split dev|test` selects disjoint repository-level splits.
-
-Replay is chronological: only strictly prior trajectories train the engine; the candidate universe is fixed at the target's start, preventing future files from entering ranking. Duplicate issue attempts are reduced to one earliest physical attempt so a parallel attempt cannot leak a target solution. Gold outcomes separate edited and read files (P1), next-file access (P2), and next-tool prediction (P3). P3 is scored at top 3 with MRR@3; file probes report MRR and Recall@k. Results condition ranking scores on prior coverage; novel files/tools are excluded from those scores and coverage is reported separately. Dev/test assignment is repository-disjoint, not trajectory-random, to avoid training fusion weights on held-out repositories.
-
-Comparators are recency, frequency, BM25, EdgeBank and random. Comparisons use paired trajectory-cluster bootstrap resampling (1,000 seeded resamples) and report 95% confidence intervals; probes from a trajectory remain clustered. Evaluation output is written to gitignored `eval-results/`.
-
-**Results (MRR; P3 MRR@3; embeddings off).** Fusion weights were fit on the nebius dev repositories (sqlglot, dvc, streamlink) only. Held-out nebius test = 40 tasks from Pillow and conan; omp = 97 local sessions across 5 projects, never used for fitting.
-
-| Probe | nebius test v0.1 → v0.2 | best baseline | omp v0.1 → v0.2 | best baseline |
-|---|---|---|---|---|
-| P1 edited | .307 → .307 | .216 (BM25) | .737 → .703 | .791 (frequency) |
-| P1 read | .191 → .267 | .206 (BM25) | .372 → .555 | .547 (BM25) |
-| P2 next file | .223 → .409 | .430 (recency; Δ CI −.049…+.003) | .634 → .702 | .701 (recency; Δ CI −.003…+.006) |
-| P3 next tool | .479 → .767 | .748 (frequency; Δ CI +.012…+.027) | .257 → .686 | .662 (recency; Δ CI +.010…+.036) |
-
-The largest v0.1 failure was next-file prediction: it was significantly worse than plain recency (nebius test Δ −0.207, 95% CI −0.312…−0.118). v0.2 closes that gap to a statistical tie. The remaining loss is omp P1-edited versus edit frequency (Δ −.089, CI −.185…0). Fitting the lexical and Hebbian channel weights to zero raised dev MRR (P1-edit .442 vs .381) but made recall ignore the query, which failed the product regressions for explicit-topic recall and co-access partners. The shipped weights keep both channels at 4 and accept that dev-metric cost.
-
+# References

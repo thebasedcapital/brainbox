@@ -1,0 +1,3389 @@
+{
+  "schema": 1,
+  "purpose": "Aggregate evidence transcribed for the revised BrainBox paper; no private session text or selected task IDs. Original runs are not source-pinned.",
+  "inspected_source_revision": "0edc2ed728f71d4b986a39e5d56a9dca505b0ab3",
+  "runs": {
+    "swe": {
+      "original_path": "eval-results/2026-10-08T18-01-31-878Z/results.json",
+      "sha256": "dcb2d9b0e0dc67292c0a6fb560dbba2c74b6783cc9d9a2c55dc2dafde32bb88a",
+      "timestamp": "2026-10-08T18-01-31-878Z",
+      "options": {
+        "source": "nebius",
+        "repos": 5,
+        "maxTasksPerRepo": 20,
+        "limitTrajectories": 100,
+        "embeddings": false,
+        "probes": [
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "seed": 42,
+        "json": false,
+        "engineOpts": {},
+        "engine": "new",
+        "split": "test",
+        "reposOffset": 0
+      },
+      "protocol": {
+        "history": "strict prior trajectories; candidate universe fixed at target start",
+        "duplicate_issues": "one attempt per instance",
+        "gold": "edited and read files separately; prefix-only next access and next tool",
+        "confidence_intervals": "paired trajectory-cluster bootstrap",
+        "file_rank_limit": 10,
+        "file_token_budget": 15000,
+        "tool_rank_limit": 3,
+        "metrics_conditioned_on_prior_coverage": true,
+        "seed": 42
+      },
+      "source": {
+        "dataset": "nebius/SWE-rebench-openhands-trajectories",
+        "catalog_rows": 67074,
+        "split": "test",
+        "split_method": "alternate global repository rank",
+        "repos_offset": 0,
+        "selected_resolved": 10,
+        "selected_unresolved": 30,
+        "selection": "global distinct instance counts; one earliest physical attempt per issue; PR-number ordering"
+      },
+      "trajectories": 40,
+      "summary": {
+        "coverage": {
+          "p1-edit": {
+            "gold": 298,
+            "eligible": 28,
+            "probes": 40,
+            "scored": 16
+          },
+          "p1-read": {
+            "gold": 374,
+            "eligible": 92,
+            "probes": 40,
+            "scored": 30
+          },
+          "p3": {
+            "gold": 2727,
+            "eligible": 2625,
+            "probes": 2727,
+            "scored": 2625
+          },
+          "p2": {
+            "gold": 1303,
+            "eligible": 221,
+            "probes": 1303,
+            "scored": 221
+          }
+        },
+        "methods": [
+          {
+            "probe": "p1-edit",
+            "method": "brainbox-off",
+            "samples": 16,
+            "metrics": {
+              "recall1": 0.109375,
+              "recall3": 0.3020833333333333,
+              "recall5": 0.35416666666666663,
+              "recall10": 0.35416666666666663,
+              "mrr": 0.30729166666666663,
+              "ndcg10": 0.2811570008215785,
+              "precision5": 0.125
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 29.610259499998847,
+            "latencyP95Ms": 47.65911425000286,
+            "meanInjectedTokens": 61
+          },
+          {
+            "probe": "p1-edit",
+            "method": "recency",
+            "samples": 16,
+            "metrics": {
+              "recall1": 0.03125,
+              "recall3": 0.08333333333333333,
+              "recall5": 0.22916666666666666,
+              "recall10": 0.421875,
+              "mrr": 0.16726190476190475,
+              "ndcg10": 0.21518627696885173,
+              "precision5": 0.0875
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.05041099999925791,
+            "latencyP95Ms": 0.1150252500001443,
+            "meanInjectedTokens": 59.125
+          },
+          {
+            "probe": "p1-edit",
+            "method": "frequency",
+            "samples": 16,
+            "metrics": {
+              "recall1": 0,
+              "recall3": 0.078125,
+              "recall5": 0.21875,
+              "recall10": 0.28125,
+              "mrr": 0.09955357142857142,
+              "ndcg10": 0.13859116228186866,
+              "precision5": 0.0625
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.04242150000027323,
+            "latencyP95Ms": 0.12402525000288733,
+            "meanInjectedTokens": 62.5625
+          },
+          {
+            "probe": "p1-edit",
+            "method": "bm25",
+            "samples": 16,
+            "metrics": {
+              "recall1": 0.046875,
+              "recall3": 0.109375,
+              "recall5": 0.20833333333333331,
+              "recall10": 0.3333333333333333,
+              "mrr": 0.21562499999999996,
+              "ndcg10": 0.20060599330136678,
+              "precision5": 0.08750000000000001
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.38956899999993766,
+            "latencyP95Ms": 1.0083625000015672,
+            "meanInjectedTokens": 55.0625
+          },
+          {
+            "probe": "p1-edit",
+            "method": "edgebank",
+            "samples": 16,
+            "metrics": {
+              "recall1": 0,
+              "recall3": 0.10416666666666666,
+              "recall5": 0.10416666666666666,
+              "recall10": 0.16666666666666669,
+              "mrr": 0.1,
+              "ndcg10": 0.09450990011381724,
+              "precision5": 0.037500000000000006
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.05499649999819667,
+            "latencyP95Ms": 0.15431024999998044,
+            "meanInjectedTokens": 34.6875
+          },
+          {
+            "probe": "p1-edit",
+            "method": "random",
+            "samples": 16,
+            "metrics": {
+              "recall1": 0,
+              "recall3": 0.015625,
+              "recall5": 0.015625,
+              "recall10": 0.09375,
+              "mrr": 0.02976190476190476,
+              "ndcg10": 0.040085531229894965,
+              "precision5": 0.0125
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.017132999997556908,
+            "latencyP95Ms": 0.04858899999908317,
+            "meanInjectedTokens": 56.125
+          },
+          {
+            "probe": "p1-read",
+            "method": "brainbox-off",
+            "samples": 30,
+            "metrics": {
+              "recall1": 0.058333333333333334,
+              "recall3": 0.1392063492063492,
+              "recall5": 0.1495238095238095,
+              "recall10": 0.2342857142857143,
+              "mrr": 0.2667592592592592,
+              "ndcg10": 0.18719392369720278,
+              "precision5": 0.09333333333333334
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 29.424753999999666,
+            "latencyP95Ms": 51.04071289999936,
+            "meanInjectedTokens": 61.46666666666667
+          },
+          {
+            "probe": "p1-read",
+            "method": "recency",
+            "samples": 30,
+            "metrics": {
+              "recall1": 0,
+              "recall3": 0.016666666666666666,
+              "recall5": 0.03888888888888888,
+              "recall10": 0.21111111111111108,
+              "mrr": 0.07119047619047619,
+              "ndcg10": 0.09526577207523797,
+              "precision5": 0.02666666666666667
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.060420000001613516,
+            "latencyP95Ms": 0.15274384999920582,
+            "meanInjectedTokens": 59.43333333333333
+          },
+          {
+            "probe": "p1-read",
+            "method": "frequency",
+            "samples": 30,
+            "metrics": {
+              "recall1": 0.016666666666666666,
+              "recall3": 0.08285714285714287,
+              "recall5": 0.1523015873015873,
+              "recall10": 0.2815079365079365,
+              "mrr": 0.17291005291005296,
+              "ndcg10": 0.16284932727003196,
+              "precision5": 0.09333333333333335
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.04842449999705423,
+            "latencyP95Ms": 0.1296242000003985,
+            "meanInjectedTokens": 61.93333333333333
+          },
+          {
+            "probe": "p1-read",
+            "method": "bm25",
+            "samples": 30,
+            "metrics": {
+              "recall1": 0.010317460317460317,
+              "recall3": 0.14396825396825397,
+              "recall5": 0.26063492063492066,
+              "recall10": 0.3673809523809523,
+              "mrr": 0.2059259259259259,
+              "ndcg10": 0.22963370140221206,
+              "precision5": 0.14666666666666667
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.45161450000068726,
+            "latencyP95Ms": 1.0739627499982811,
+            "meanInjectedTokens": 52.4
+          },
+          {
+            "probe": "p1-read",
+            "method": "edgebank",
+            "samples": 30,
+            "metrics": {
+              "recall1": 0.016666666666666666,
+              "recall3": 0.05555555555555555,
+              "recall5": 0.07222222222222223,
+              "recall10": 0.1111111111111111,
+              "mrr": 0.075,
+              "ndcg10": 0.07082607175188448,
+              "precision5": 0.03333333333333333
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.06651500000225496,
+            "latencyP95Ms": 0.1590112999982011,
+            "meanInjectedTokens": 33.46666666666667
+          },
+          {
+            "probe": "p1-read",
+            "method": "random",
+            "samples": 30,
+            "metrics": {
+              "recall1": 0.005555555555555555,
+              "recall3": 0.026984126984126985,
+              "recall5": 0.06031746031746032,
+              "recall10": 0.1634126984126984,
+              "mrr": 0.11294973544973547,
+              "ndcg10": 0.0909268030637108,
+              "precision5": 0.04666666666666666
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.02160999999705382,
+            "latencyP95Ms": 0.05464974999649709,
+            "meanInjectedTokens": 58.03333333333333
+          },
+          {
+            "probe": "p2",
+            "method": "brainbox-off",
+            "samples": 221,
+            "metrics": {
+              "recall1": 0.34841628959276016,
+              "recall3": 0.42081447963800905,
+              "recall5": 0.5067873303167421,
+              "recall10": 0.5972850678733032,
+              "mrr": 0.4091215973568916,
+              "ndcg10": 0.4530452980429254,
+              "precision5": 0.1013574660633482
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 34.74081000000024,
+            "latencyP95Ms": 52.15635200000179,
+            "meanInjectedTokens": 50.36199095022624
+          },
+          {
+            "probe": "p2",
+            "method": "recency",
+            "samples": 221,
+            "metrics": {
+              "recall1": 0.36199095022624433,
+              "recall3": 0.4660633484162896,
+              "recall5": 0.497737556561086,
+              "recall10": 0.5972850678733032,
+              "mrr": 0.4304621848739497,
+              "ndcg10": 0.4694359618731362,
+              "precision5": 0.09954751131221698
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.06374000000505475,
+            "latencyP95Ms": 0.12298899999950663,
+            "meanInjectedTokens": 49.65610859728507
+          },
+          {
+            "probe": "p2",
+            "method": "frequency",
+            "samples": 221,
+            "metrics": {
+              "recall1": 0.05429864253393665,
+              "recall3": 0.1583710407239819,
+              "recall5": 0.2986425339366516,
+              "recall10": 0.4660633484162896,
+              "mrr": 0.15622890181713706,
+              "ndcg10": 0.2285116700453077,
+              "precision5": 0.05972850678733025
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.06026100000599399,
+            "latencyP95Ms": 0.11249600000155624,
+            "meanInjectedTokens": 61.27149321266968
+          },
+          {
+            "probe": "p2",
+            "method": "bm25",
+            "samples": 221,
+            "metrics": {
+              "recall1": 0.167420814479638,
+              "recall3": 0.3212669683257919,
+              "recall5": 0.38461538461538464,
+              "recall10": 0.4796380090497738,
+              "mrr": 0.25416936005171314,
+              "ndcg10": 0.30752914041587165,
+              "precision5": 0.07692307692307679
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.5217760000014096,
+            "latencyP95Ms": 0.9813209999992978,
+            "meanInjectedTokens": 52.411764705882355
+          },
+          {
+            "probe": "p2",
+            "method": "edgebank",
+            "samples": 221,
+            "metrics": {
+              "recall1": 0.15384615384615385,
+              "recall3": 0.27601809954751133,
+              "recall5": 0.4841628959276018,
+              "recall10": 0.6289592760180995,
+              "mrr": 0.27408065790418745,
+              "ndcg10": 0.35748284015660103,
+              "precision5": 0.09683257918552016
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.08262100000138162,
+            "latencyP95Ms": 0.14904199999728007,
+            "meanInjectedTokens": 45.19457013574661
+          },
+          {
+            "probe": "p2",
+            "method": "random",
+            "samples": 221,
+            "metrics": {
+              "recall1": 0,
+              "recall3": 0.049773755656108594,
+              "recall5": 0.08597285067873303,
+              "recall10": 0.13574660633484162,
+              "mrr": 0.035021187962364426,
+              "ndcg10": 0.058592360767335636,
+              "precision5": 0.01719457013574661
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.022062000003643334,
+            "latencyP95Ms": 0.04606299999795738,
+            "meanInjectedTokens": 53.3710407239819
+          },
+          {
+            "probe": "p3",
+            "method": "brainbox-off",
+            "samples": 2625,
+            "metrics": {
+              "recall1": 0.5687619047619048,
+              "recall3": 0.9805714285714285,
+              "mrrAt3": 0.7674285714285702
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 1.3341660000005504,
+            "latencyP95Ms": 2.4308587999999864,
+            "meanInjectedTokens": 11.338666666666667
+          },
+          {
+            "probe": "p3",
+            "method": "recency",
+            "samples": 2625,
+            "metrics": {
+              "recall1": 0.46095238095238095,
+              "recall3": 0.9493333333333334,
+              "mrrAt3": 0.6914920634920614
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.0039020000003802124,
+            "latencyP95Ms": 0.005582999998296141,
+            "meanInjectedTokens": 11.028190476190476
+          },
+          {
+            "probe": "p3",
+            "method": "frequency",
+            "samples": 2625,
+            "metrics": {
+              "recall1": 0.5310476190476191,
+              "recall3": 0.9782857142857143,
+              "mrrAt3": 0.7480634920634909
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.0013840000028721988,
+            "latencyP95Ms": 0.0022851999998238144,
+            "meanInjectedTokens": 11.000761904761905
+          },
+          {
+            "probe": "p3",
+            "method": "bm25",
+            "samples": 2625,
+            "metrics": {
+              "recall1": 0.40876190476190477,
+              "recall3": 0.9820952380952381,
+              "mrrAt3": 0.6709841269841234
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.0907100000003993,
+            "latencyP95Ms": 0.12537059999885966,
+            "meanInjectedTokens": 11.051047619047619
+          },
+          {
+            "probe": "p3",
+            "method": "edgebank",
+            "samples": 2625,
+            "metrics": {
+              "recall1": 0.5420952380952381,
+              "recall3": 0.9619047619047619,
+              "mrrAt3": 0.7433650793650779
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.005949000000327942,
+            "latencyP95Ms": 0.008931600001233162,
+            "meanInjectedTokens": 11.005333333333333
+          },
+          {
+            "probe": "p3",
+            "method": "random",
+            "samples": 2625,
+            "metrics": {
+              "recall1": 0.19238095238095237,
+              "recall3": 0.588952380952381,
+              "mrrAt3": 0.35726984126984435
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.0009560000034980476,
+            "latencyP95Ms": 0.003685599999880648,
+            "meanInjectedTokens": 10.500571428571428
+          }
+        ],
+        "comparisons": [
+          {
+            "probe": "p1-edit",
+            "baseline": "recency",
+            "metric": "mrr",
+            "delta": 0.1400297619047619,
+            "low": -0.05789992559523808,
+            "high": 0.34371279761904744,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "recency",
+            "metric": "recall5",
+            "delta": 0.125,
+            "low": -0.03125,
+            "high": 0.3132812499999993,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "frequency",
+            "metric": "mrr",
+            "delta": 0.20773809523809522,
+            "low": 0.08125,
+            "high": 0.3669642857142857,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "frequency",
+            "metric": "recall5",
+            "delta": 0.13541666666666666,
+            "low": 0.03125,
+            "high": 0.26041666666666663,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "bm25",
+            "metric": "mrr",
+            "delta": 0.09166666666666665,
+            "low": -0.017786458333333328,
+            "high": 0.22398437499999996,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "bm25",
+            "metric": "recall5",
+            "delta": 0.14583333333333331,
+            "low": 0,
+            "high": 0.3125,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "edgebank",
+            "metric": "mrr",
+            "delta": 0.20729166666666665,
+            "low": -0.020859375000000017,
+            "high": 0.45856770833333316,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "edgebank",
+            "metric": "recall5",
+            "delta": 0.24999999999999992,
+            "low": -0.02083333333333333,
+            "high": 0.5104166666666666,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "random",
+            "metric": "mrr",
+            "delta": 0.27752976190476186,
+            "low": 0.11605282738095236,
+            "high": 0.45985863095238094,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "random",
+            "metric": "recall5",
+            "delta": 0.33854166666666663,
+            "low": 0.15104166666666666,
+            "high": 0.5208333333333333,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "recency",
+            "metric": "mrr",
+            "delta": 0.19556878306878303,
+            "low": 0.08319907407407408,
+            "high": 0.326443783068783,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "recency",
+            "metric": "recall5",
+            "delta": 0.11063492063492064,
+            "low": 0.03450992063492063,
+            "high": 0.20111309523809526,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "frequency",
+            "metric": "mrr",
+            "delta": 0.09384920634920633,
+            "low": 0.005812500000000001,
+            "high": 0.20975595238095227,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "frequency",
+            "metric": "recall5",
+            "delta": -0.002777777777777779,
+            "low": -0.07506944444444444,
+            "high": 0.08895833333333326,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "bm25",
+            "metric": "mrr",
+            "delta": 0.06083333333333333,
+            "low": -0.03768749999999999,
+            "high": 0.16519444444444442,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "bm25",
+            "metric": "recall5",
+            "delta": -0.1111111111111111,
+            "low": -0.21111111111111114,
+            "high": -0.016666666666666666,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "edgebank",
+            "metric": "mrr",
+            "delta": 0.19175925925925924,
+            "low": 0.04859953703703704,
+            "high": 0.349548611111111,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "edgebank",
+            "metric": "recall5",
+            "delta": 0.07730158730158729,
+            "low": -0.011615079365079365,
+            "high": 0.17896825396825392,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "random",
+            "metric": "mrr",
+            "delta": 0.15380952380952376,
+            "low": 0.016672619047619058,
+            "high": 0.30177281746031753,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "random",
+            "metric": "recall5",
+            "delta": 0.08920634920634922,
+            "low": 0.020571428571428574,
+            "high": 0.18257539682539675,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "recency",
+            "metric": "mrr",
+            "delta": -0.0213405875170581,
+            "low": -0.048963405257936514,
+            "high": 0.002500785321810164,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "recency",
+            "metric": "recall5",
+            "delta": 0.00904977375565611,
+            "low": -0.023255813953488372,
+            "high": 0.04302771688067647,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "frequency",
+            "metric": "mrr",
+            "delta": 0.2528926955397544,
+            "low": 0.1611274390511269,
+            "high": 0.3270189536631297,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "frequency",
+            "metric": "recall5",
+            "delta": 0.2081447963800905,
+            "low": 0.11706690221107818,
+            "high": 0.3054028928444481,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "bm25",
+            "metric": "mrr",
+            "delta": 0.15495223730517846,
+            "low": 0.08080218983886986,
+            "high": 0.2432664522197729,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "bm25",
+            "metric": "recall5",
+            "delta": 0.12217194570135746,
+            "low": 0.009075500770416025,
+            "high": 0.2333457711442786,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "edgebank",
+            "metric": "mrr",
+            "delta": 0.13504093945270415,
+            "low": 0.035516969842971584,
+            "high": 0.20176794393296954,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "edgebank",
+            "metric": "recall5",
+            "delta": 0.02262443438914027,
+            "low": -0.06793242710795902,
+            "high": 0.11553716477565755,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "random",
+            "metric": "mrr",
+            "delta": 0.3741004093945271,
+            "low": 0.27753455806144767,
+            "high": 0.45574940906879885,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "random",
+            "metric": "recall5",
+            "delta": 0.42081447963800905,
+            "low": 0.30095833903094943,
+            "high": 0.5304999042329056,
+            "tasks": 30
+          },
+          {
+            "probe": "p3",
+            "baseline": "recency",
+            "metric": "mrrAt3",
+            "delta": 0.07593650793650791,
+            "low": 0.06077556444884112,
+            "high": 0.09292739709215135,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "recency",
+            "metric": "recall3",
+            "delta": 0.03123809523809524,
+            "low": 0.01990245546913013,
+            "high": 0.04150578685518162,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "frequency",
+            "metric": "mrrAt3",
+            "delta": 0.019365079365079373,
+            "low": 0.011695311136784962,
+            "high": 0.02668263764279497,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "frequency",
+            "metric": "recall3",
+            "delta": 0.002285714285714286,
+            "low": -0.0018498650587486876,
+            "high": 0.006250305772994129,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "bm25",
+            "metric": "mrrAt3",
+            "delta": 0.09644444444444406,
+            "low": 0.07920952986505211,
+            "high": 0.11272276128868598,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "bm25",
+            "metric": "recall3",
+            "delta": -0.0015238095238095239,
+            "low": -0.007253937587833398,
+            "high": 0.004101753321997626,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "edgebank",
+            "metric": "mrrAt3",
+            "delta": 0.024063492063492058,
+            "low": 0.015403417581181612,
+            "high": 0.03207248527181452,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "edgebank",
+            "metric": "recall3",
+            "delta": 0.018666666666666668,
+            "low": 0.013721867532905387,
+            "high": 0.02355371134279929,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "random",
+            "metric": "mrrAt3",
+            "delta": 0.4101587301587289,
+            "low": 0.3934736385204357,
+            "high": 0.42748042091795524,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "random",
+            "metric": "recall3",
+            "delta": 0.39161904761904764,
+            "low": 0.3716857365737674,
+            "high": 0.4123428293527241,
+            "tasks": 38
+          }
+        ]
+      }
+    },
+    "old_swe": {
+      "original_path": "eval-results/2026-10-08T17-37-06-513Z/results.json",
+      "sha256": "deafd1d68311d0a9f6a727796e8a6794d30b8fc18be508deada4ce6d7796de96",
+      "timestamp": "2026-10-08T17-37-06-513Z",
+      "options": {
+        "source": "nebius",
+        "repos": 5,
+        "maxTasksPerRepo": 20,
+        "limitTrajectories": 100,
+        "embeddings": false,
+        "probes": [
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "seed": 42,
+        "json": true,
+        "engineOpts": {},
+        "engine": "old",
+        "split": "test",
+        "reposOffset": 0
+      },
+      "protocol": {
+        "history": "strict prior trajectories; candidate universe fixed at target start",
+        "duplicate_issues": "one attempt per instance",
+        "gold": "edited and read files separately; prefix-only next access and next tool",
+        "confidence_intervals": "paired trajectory-cluster bootstrap",
+        "file_rank_limit": 10,
+        "file_token_budget": 15000,
+        "tool_rank_limit": 3,
+        "metrics_conditioned_on_prior_coverage": true,
+        "legacy_commit": "9750d2f",
+        "legacy_overfetch": "inner top50/75k, then outer fixed universe top10/15k; mildly favors old recall",
+        "legacy_clock": "original wall-clock timestamp behavior retained",
+        "seed": 42
+      },
+      "source": {
+        "dataset": "nebius/SWE-rebench-openhands-trajectories",
+        "catalog_rows": 67074,
+        "split": "test",
+        "split_method": "alternate global repository rank",
+        "repos_offset": 0,
+        "selected_resolved": 10,
+        "selected_unresolved": 30,
+        "selection": "global distinct instance counts; one earliest physical attempt per issue; PR-number ordering"
+      },
+      "trajectories": 40,
+      "summary": {
+        "coverage": {
+          "p1-edit": {
+            "gold": 298,
+            "eligible": 28,
+            "probes": 40,
+            "scored": 16
+          },
+          "p1-read": {
+            "gold": 374,
+            "eligible": 92,
+            "probes": 40,
+            "scored": 30
+          },
+          "p3": {
+            "gold": 2727,
+            "eligible": 2625,
+            "probes": 2727,
+            "scored": 2625
+          },
+          "p2": {
+            "gold": 1303,
+            "eligible": 221,
+            "probes": 1303,
+            "scored": 221
+          }
+        },
+        "methods": [
+          {
+            "probe": "p1-edit",
+            "method": "brainbox-off",
+            "samples": 16,
+            "metrics": {
+              "recall1": 0.09895833333333333,
+              "recall3": 0.3020833333333333,
+              "recall5": 0.39583333333333337,
+              "recall10": 0.46874999999999994,
+              "mrr": 0.3067708333333333,
+              "ndcg10": 0.3092148794786534,
+              "precision5": 0.125
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 14.122630500001833,
+            "latencyP95Ms": 29.7277277499943,
+            "meanInjectedTokens": 61.375
+          },
+          {
+            "probe": "p1-edit",
+            "method": "recency",
+            "samples": 16,
+            "metrics": {
+              "recall1": 0.03125,
+              "recall3": 0.08333333333333333,
+              "recall5": 0.22916666666666666,
+              "recall10": 0.421875,
+              "mrr": 0.16726190476190475,
+              "ndcg10": 0.21518627696885173,
+              "precision5": 0.0875
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.054894000000786036,
+            "latencyP95Ms": 0.12724600000365172,
+            "meanInjectedTokens": 59.125
+          },
+          {
+            "probe": "p1-edit",
+            "method": "frequency",
+            "samples": 16,
+            "metrics": {
+              "recall1": 0,
+              "recall3": 0.078125,
+              "recall5": 0.21875,
+              "recall10": 0.28125,
+              "mrr": 0.09955357142857142,
+              "ndcg10": 0.13859116228186866,
+              "precision5": 0.0625
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.04867250000097556,
+            "latencyP95Ms": 0.12000950000583543,
+            "meanInjectedTokens": 62.5625
+          },
+          {
+            "probe": "p1-edit",
+            "method": "bm25",
+            "samples": 16,
+            "metrics": {
+              "recall1": 0.046875,
+              "recall3": 0.109375,
+              "recall5": 0.20833333333333331,
+              "recall10": 0.3333333333333333,
+              "mrr": 0.21562499999999996,
+              "ndcg10": 0.20060599330136678,
+              "precision5": 0.08750000000000001
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.4599190000080853,
+            "latencyP95Ms": 1.0455959999999322,
+            "meanInjectedTokens": 55.0625
+          },
+          {
+            "probe": "p1-edit",
+            "method": "edgebank",
+            "samples": 16,
+            "metrics": {
+              "recall1": 0,
+              "recall3": 0.10416666666666666,
+              "recall5": 0.10416666666666666,
+              "recall10": 0.16666666666666669,
+              "mrr": 0.1,
+              "ndcg10": 0.09450990011381724,
+              "precision5": 0.037500000000000006
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.0635275000022375,
+            "latencyP95Ms": 0.1914954999992915,
+            "meanInjectedTokens": 34.6875
+          },
+          {
+            "probe": "p1-edit",
+            "method": "random",
+            "samples": 16,
+            "metrics": {
+              "recall1": 0,
+              "recall3": 0.015625,
+              "recall5": 0.015625,
+              "recall10": 0.09375,
+              "mrr": 0.02976190476190476,
+              "ndcg10": 0.040085531229894965,
+              "precision5": 0.0125
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.01703300000508534,
+            "latencyP95Ms": 0.0565682500055118,
+            "meanInjectedTokens": 56.125
+          },
+          {
+            "probe": "p1-read",
+            "method": "brainbox-off",
+            "samples": 30,
+            "metrics": {
+              "recall1": 0.03611111111111111,
+              "recall3": 0.06619047619047619,
+              "recall5": 0.09952380952380954,
+              "recall10": 0.22039682539682542,
+              "mrr": 0.19148148148148145,
+              "ndcg10": 0.15005804820118168,
+              "precision5": 0.07333333333333335
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 17.050162500000624,
+            "latencyP95Ms": 33.60943884999578,
+            "meanInjectedTokens": 61.86666666666667
+          },
+          {
+            "probe": "p1-read",
+            "method": "recency",
+            "samples": 30,
+            "metrics": {
+              "recall1": 0,
+              "recall3": 0.016666666666666666,
+              "recall5": 0.03888888888888888,
+              "recall10": 0.21111111111111108,
+              "mrr": 0.07119047619047619,
+              "ndcg10": 0.09526577207523797,
+              "precision5": 0.02666666666666667
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.06840550000197254,
+            "latencyP95Ms": 0.1712492000038764,
+            "meanInjectedTokens": 59.43333333333333
+          },
+          {
+            "probe": "p1-read",
+            "method": "frequency",
+            "samples": 30,
+            "metrics": {
+              "recall1": 0.016666666666666666,
+              "recall3": 0.08285714285714287,
+              "recall5": 0.1523015873015873,
+              "recall10": 0.2815079365079365,
+              "mrr": 0.17291005291005296,
+              "ndcg10": 0.16284932727003196,
+              "precision5": 0.09333333333333335
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.05670900000586698,
+            "latencyP95Ms": 0.12661064999811056,
+            "meanInjectedTokens": 61.93333333333333
+          },
+          {
+            "probe": "p1-read",
+            "method": "bm25",
+            "samples": 30,
+            "metrics": {
+              "recall1": 0.010317460317460317,
+              "recall3": 0.14396825396825397,
+              "recall5": 0.26063492063492066,
+              "recall10": 0.3673809523809523,
+              "mrr": 0.2059259259259259,
+              "ndcg10": 0.22963370140221206,
+              "precision5": 0.14666666666666667
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.5217224999960308,
+            "latencyP95Ms": 1.0871676999988262,
+            "meanInjectedTokens": 52.4
+          },
+          {
+            "probe": "p1-read",
+            "method": "edgebank",
+            "samples": 30,
+            "metrics": {
+              "recall1": 0.016666666666666666,
+              "recall3": 0.05555555555555555,
+              "recall5": 0.07222222222222223,
+              "recall10": 0.1111111111111111,
+              "mrr": 0.075,
+              "ndcg10": 0.07082607175188448,
+              "precision5": 0.03333333333333333
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.07471200000145473,
+            "latencyP95Ms": 0.16795819999751982,
+            "meanInjectedTokens": 33.46666666666667
+          },
+          {
+            "probe": "p1-read",
+            "method": "random",
+            "samples": 30,
+            "metrics": {
+              "recall1": 0.005555555555555555,
+              "recall3": 0.026984126984126985,
+              "recall5": 0.06031746031746032,
+              "recall10": 0.1634126984126984,
+              "mrr": 0.11294973544973547,
+              "ndcg10": 0.0909268030637108,
+              "precision5": 0.04666666666666666
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.022918499998922925,
+            "latencyP95Ms": 0.062323799999285244,
+            "meanInjectedTokens": 58.03333333333333
+          },
+          {
+            "probe": "p2",
+            "method": "brainbox-off",
+            "samples": 221,
+            "metrics": {
+              "recall1": 0.1493212669683258,
+              "recall3": 0.248868778280543,
+              "recall5": 0.31221719457013575,
+              "recall10": 0.4343891402714932,
+              "mrr": 0.22304101127630546,
+              "ndcg10": 0.2721671562585169,
+              "precision5": 0.06244343891402707
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 13.568696000002092,
+            "latencyP95Ms": 23.93018899999879,
+            "meanInjectedTokens": 59.61085972850679
+          },
+          {
+            "probe": "p2",
+            "method": "recency",
+            "samples": 221,
+            "metrics": {
+              "recall1": 0.36199095022624433,
+              "recall3": 0.4660633484162896,
+              "recall5": 0.497737556561086,
+              "recall10": 0.5972850678733032,
+              "mrr": 0.4304621848739497,
+              "ndcg10": 0.4694359618731362,
+              "precision5": 0.09954751131221698
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.0662890000094194,
+            "latencyP95Ms": 0.14958700000715908,
+            "meanInjectedTokens": 49.65610859728507
+          },
+          {
+            "probe": "p2",
+            "method": "frequency",
+            "samples": 221,
+            "metrics": {
+              "recall1": 0.05429864253393665,
+              "recall3": 0.1583710407239819,
+              "recall5": 0.2986425339366516,
+              "recall10": 0.4660633484162896,
+              "mrr": 0.15622890181713706,
+              "ndcg10": 0.2285116700453077,
+              "precision5": 0.05972850678733025
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.0609239999903366,
+            "latencyP95Ms": 0.12546899999142624,
+            "meanInjectedTokens": 61.27149321266968
+          },
+          {
+            "probe": "p2",
+            "method": "bm25",
+            "samples": 221,
+            "metrics": {
+              "recall1": 0.167420814479638,
+              "recall3": 0.3212669683257919,
+              "recall5": 0.38461538461538464,
+              "recall10": 0.4796380090497738,
+              "mrr": 0.25416936005171314,
+              "ndcg10": 0.30752914041587165,
+              "precision5": 0.07692307692307679
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.5352230000135023,
+            "latencyP95Ms": 1.0621640000026673,
+            "meanInjectedTokens": 52.411764705882355
+          },
+          {
+            "probe": "p2",
+            "method": "edgebank",
+            "samples": 221,
+            "metrics": {
+              "recall1": 0.15384615384615385,
+              "recall3": 0.27601809954751133,
+              "recall5": 0.4841628959276018,
+              "recall10": 0.6289592760180995,
+              "mrr": 0.27408065790418745,
+              "ndcg10": 0.35748284015660103,
+              "precision5": 0.09683257918552016
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.08418099999835249,
+            "latencyP95Ms": 0.1583420000024489,
+            "meanInjectedTokens": 45.19457013574661
+          },
+          {
+            "probe": "p2",
+            "method": "random",
+            "samples": 221,
+            "metrics": {
+              "recall1": 0,
+              "recall3": 0.049773755656108594,
+              "recall5": 0.08597285067873303,
+              "recall10": 0.13574660633484162,
+              "mrr": 0.035021187962364426,
+              "ndcg10": 0.058592360767335636,
+              "precision5": 0.01719457013574661
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.022207999994861893,
+            "latencyP95Ms": 0.046738000004552305,
+            "meanInjectedTokens": 53.3710407239819
+          },
+          {
+            "probe": "p3",
+            "method": "brainbox-off",
+            "samples": 2625,
+            "metrics": {
+              "recall1": 0.4441904761904762,
+              "recall3": 0.5173333333333333,
+              "mrrAt3": 0.4786666666666667
+            },
+            "abstentionRate": 0.014476190476190476,
+            "latencyP50Ms": 2.229938000000402,
+            "latencyP95Ms": 5.324857600001268,
+            "meanInjectedTokens": 9.259809523809524
+          },
+          {
+            "probe": "p3",
+            "method": "recency",
+            "samples": 2625,
+            "metrics": {
+              "recall1": 0.46095238095238095,
+              "recall3": 0.9493333333333334,
+              "mrrAt3": 0.6914920634920614
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.005424999995739199,
+            "latencyP95Ms": 0.007259000002522953,
+            "meanInjectedTokens": 11.028190476190476
+          },
+          {
+            "probe": "p3",
+            "method": "frequency",
+            "samples": 2625,
+            "metrics": {
+              "recall1": 0.5310476190476191,
+              "recall3": 0.9782857142857143,
+              "mrrAt3": 0.7480634920634909
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.00153899999713758,
+            "latencyP95Ms": 0.0026159999986703026,
+            "meanInjectedTokens": 11.000761904761905
+          },
+          {
+            "probe": "p3",
+            "method": "bm25",
+            "samples": 2625,
+            "metrics": {
+              "recall1": 0.40876190476190477,
+              "recall3": 0.9820952380952381,
+              "mrrAt3": 0.6709841269841234
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.09781700000007731,
+            "latencyP95Ms": 0.13250659999994235,
+            "meanInjectedTokens": 11.051047619047619
+          },
+          {
+            "probe": "p3",
+            "method": "edgebank",
+            "samples": 2625,
+            "metrics": {
+              "recall1": 0.5420952380952381,
+              "recall3": 0.9619047619047619,
+              "mrrAt3": 0.7433650793650779
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.006642000000283588,
+            "latencyP95Ms": 0.009871200000270617,
+            "meanInjectedTokens": 11.005333333333333
+          },
+          {
+            "probe": "p3",
+            "method": "random",
+            "samples": 2625,
+            "metrics": {
+              "recall1": 0.19238095238095237,
+              "recall3": 0.588952380952381,
+              "mrrAt3": 0.35726984126984435
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.0010929999989457428,
+            "latencyP95Ms": 0.0039657999999690215,
+            "meanInjectedTokens": 10.500571428571428
+          }
+        ],
+        "comparisons": [
+          {
+            "probe": "p1-edit",
+            "baseline": "recency",
+            "metric": "mrr",
+            "delta": 0.1395089285714286,
+            "low": -0.0542075892857143,
+            "high": 0.33743861607142855,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "recency",
+            "metric": "recall5",
+            "delta": 0.16666666666666666,
+            "low": -0.03125,
+            "high": 0.38541666666666663,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "frequency",
+            "metric": "mrr",
+            "delta": 0.20721726190476192,
+            "low": 0.06822916666666666,
+            "high": 0.38007626488095236,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "frequency",
+            "metric": "recall5",
+            "delta": 0.17708333333333331,
+            "low": 0.05208333333333333,
+            "high": 0.3333333333333333,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "bm25",
+            "metric": "mrr",
+            "delta": 0.09114583333333333,
+            "low": -0.06772135416666666,
+            "high": 0.261484375,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "bm25",
+            "metric": "recall5",
+            "delta": 0.1875,
+            "low": 0,
+            "high": 0.375,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "edgebank",
+            "metric": "mrr",
+            "delta": 0.20677083333333335,
+            "low": -0.012031250000000007,
+            "high": 0.4500260416666667,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "edgebank",
+            "metric": "recall5",
+            "delta": 0.2916666666666667,
+            "low": 0.02057291666666669,
+            "high": 0.5520833333333333,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "random",
+            "metric": "mrr",
+            "delta": 0.27700892857142856,
+            "low": 0.12186941964285714,
+            "high": 0.45850260416666644,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "random",
+            "metric": "recall5",
+            "delta": 0.38020833333333337,
+            "low": 0.1875,
+            "high": 0.5833333333333333,
+            "tasks": 16
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "recency",
+            "metric": "mrr",
+            "delta": 0.12029100529100531,
+            "low": 0.026490079365079366,
+            "high": 0.2505876322751322,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "recency",
+            "metric": "recall5",
+            "delta": 0.060634920634920625,
+            "low": 0.01071031746031746,
+            "high": 0.11779563492063491,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "frequency",
+            "metric": "mrr",
+            "delta": 0.018571428571428576,
+            "low": -0.04096792328042328,
+            "high": 0.10394973544973544,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "frequency",
+            "metric": "recall5",
+            "delta": -0.052777777777777785,
+            "low": -0.1361111111111111,
+            "high": 0.01111111111111111,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "bm25",
+            "metric": "mrr",
+            "delta": -0.014444444444444442,
+            "low": -0.12308564814814814,
+            "high": 0.1040833333333333,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "bm25",
+            "metric": "recall5",
+            "delta": -0.16111111111111112,
+            "low": -0.2916666666666667,
+            "high": -0.038819444444444504,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "edgebank",
+            "metric": "mrr",
+            "delta": 0.11648148148148148,
+            "low": -0.009187500000000005,
+            "high": 0.2632013888888889,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "edgebank",
+            "metric": "recall5",
+            "delta": 0.027301587301587292,
+            "low": -0.057144841269841276,
+            "high": 0.10669841269841267,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "random",
+            "metric": "mrr",
+            "delta": 0.07853174603174604,
+            "low": -0.030085317460317455,
+            "high": 0.20390310846560847,
+            "tasks": 30
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "random",
+            "metric": "recall5",
+            "delta": 0.0392063492063492,
+            "low": -0.005555555555555555,
+            "high": 0.08841269841269842,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "recency",
+            "metric": "mrr",
+            "delta": -0.20742117359764414,
+            "low": -0.3117880338978153,
+            "high": -0.11795802428447145,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "recency",
+            "metric": "recall5",
+            "delta": -0.18552036199095023,
+            "low": -0.30478174603174607,
+            "high": -0.06705563349881288,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "frequency",
+            "metric": "mrr",
+            "delta": 0.06681210945916834,
+            "low": 0.007340652065989178,
+            "high": 0.12535267588516885,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "frequency",
+            "metric": "recall5",
+            "delta": 0.013574660633484163,
+            "low": -0.08287364383247932,
+            "high": 0.10734918899216328,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "bm25",
+            "metric": "mrr",
+            "delta": -0.031128348775407585,
+            "low": -0.09194096639396734,
+            "high": 0.03334557538188468,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "bm25",
+            "metric": "recall5",
+            "delta": -0.07239819004524888,
+            "low": -0.15002906976744185,
+            "high": -0.00799157088122606,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "edgebank",
+            "metric": "mrr",
+            "delta": -0.05103964662788194,
+            "low": -0.21239742015333643,
+            "high": 0.07222697137960403,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "edgebank",
+            "metric": "recall5",
+            "delta": -0.17194570135746606,
+            "low": -0.3034454763915049,
+            "high": -0.05461993888464477,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "random",
+            "metric": "mrr",
+            "delta": 0.18801982331394101,
+            "low": 0.07029968786295007,
+            "high": 0.28503828466399345,
+            "tasks": 30
+          },
+          {
+            "probe": "p2",
+            "baseline": "random",
+            "metric": "recall5",
+            "delta": 0.22624434389140272,
+            "low": 0.0876075658175002,
+            "high": 0.3594382391975853,
+            "tasks": 30
+          },
+          {
+            "probe": "p3",
+            "baseline": "recency",
+            "metric": "mrrAt3",
+            "delta": -0.21282539682539686,
+            "low": -0.24782238684044888,
+            "high": -0.17738043356538005,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "recency",
+            "metric": "recall3",
+            "delta": -0.432,
+            "low": -0.4569497030820043,
+            "high": -0.4060069436882491,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "frequency",
+            "metric": "mrrAt3",
+            "delta": -0.2693968253968256,
+            "low": -0.2953000964364599,
+            "high": -0.24357785497317788,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "frequency",
+            "metric": "recall3",
+            "delta": -0.46095238095238095,
+            "low": -0.48811277573992407,
+            "high": -0.4342503873623863,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "bm25",
+            "metric": "mrrAt3",
+            "delta": -0.1923174603174592,
+            "low": -0.22228852730406473,
+            "high": -0.15909440486963342,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "bm25",
+            "metric": "recall3",
+            "delta": -0.46476190476190476,
+            "low": -0.48918517278997176,
+            "high": -0.438891086317766,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "edgebank",
+            "metric": "mrrAt3",
+            "delta": -0.264698412698413,
+            "low": -0.29048912363242113,
+            "high": -0.23952127107916846,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "edgebank",
+            "metric": "recall3",
+            "delta": -0.44457142857142856,
+            "low": -0.47082767637915934,
+            "high": -0.4178732441099416,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "random",
+            "metric": "mrrAt3",
+            "delta": 0.12139682539682536,
+            "low": 0.09526191494341467,
+            "high": 0.15049543686100264,
+            "tasks": 38
+          },
+          {
+            "probe": "p3",
+            "baseline": "random",
+            "metric": "recall3",
+            "delta": -0.07161904761904762,
+            "low": -0.10389370038037227,
+            "high": -0.036900516562145186,
+            "tasks": 38
+          }
+        ]
+      }
+    },
+    "local": {
+      "original_path": "eval-results/2026-10-08T18-06-22-676Z/results.json",
+      "sha256": "aaa0383450b44f9e6baf44750d2f6df95ca9a9c3284af6b07b5300bd1cd2f86f",
+      "timestamp": "2026-10-08T18-06-22-676Z",
+      "options": {
+        "source": "omp",
+        "repos": 5,
+        "maxTasksPerRepo": 20,
+        "limitTrajectories": 100,
+        "embeddings": false,
+        "probes": [
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "seed": 42,
+        "json": false,
+        "engineOpts": {},
+        "engine": "new",
+        "reposOffset": 0
+      },
+      "protocol": {
+        "history": "strict prior trajectories; candidate universe fixed at target start",
+        "duplicate_issues": "one attempt per instance",
+        "gold": "edited and read files separately; prefix-only next access and next tool",
+        "confidence_intervals": "paired trajectory-cluster bootstrap",
+        "file_rank_limit": 10,
+        "file_token_budget": 15000,
+        "tool_rank_limit": 3,
+        "metrics_conditioned_on_prior_coverage": true,
+        "seed": 42
+      },
+      "source": {
+        "files_scanned": 715,
+        "sessions": 715,
+        "split": "all",
+        "split_method": "FNV-1a project hash parity",
+        "repos_offset": 0,
+        "nonempty_sessions": 652,
+        "project_count": 9
+      },
+      "trajectories": 97,
+      "summary": {
+        "coverage": {
+          "p1-edit": {
+            "gold": 693,
+            "eligible": 121,
+            "probes": 97,
+            "scored": 38
+          },
+          "p1-read": {
+            "gold": 980,
+            "eligible": 343,
+            "probes": 97,
+            "scored": 57
+          },
+          "p3": {
+            "gold": 9663,
+            "eligible": 7083,
+            "probes": 9663,
+            "scored": 7083
+          },
+          "p2": {
+            "gold": 5885,
+            "eligible": 2490,
+            "probes": 5885,
+            "scored": 2490
+          }
+        },
+        "methods": [
+          {
+            "probe": "p1-edit",
+            "method": "brainbox-off",
+            "samples": 38,
+            "metrics": {
+              "recall1": 0.32729741019214703,
+              "recall3": 0.42170008354218885,
+              "recall5": 0.5002088554720133,
+              "recall10": 0.584857978279031,
+              "mrr": 0.7026315789473684,
+              "ndcg10": 0.5458947932757182,
+              "precision5": 0.22105263157894747
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 23.207673499996872,
+            "latencyP95Ms": 56.32796670000605,
+            "meanInjectedTokens": 24.894736842105264
+          },
+          {
+            "probe": "p1-edit",
+            "method": "recency",
+            "samples": 38,
+            "metrics": {
+              "recall1": 0.22422723475355055,
+              "recall3": 0.3089807852965748,
+              "recall5": 0.425062656641604,
+              "recall10": 0.5306182121971595,
+              "mrr": 0.5771929824561404,
+              "ndcg10": 0.43894698776509805,
+              "precision5": 0.19473684210526324
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.05493900000874419,
+            "latencyP95Ms": 0.21833699999624512,
+            "meanInjectedTokens": 23.44736842105263
+          },
+          {
+            "probe": "p1-edit",
+            "method": "frequency",
+            "samples": 38,
+            "metrics": {
+              "recall1": 0.376858813700919,
+              "recall3": 0.5063492063492063,
+              "recall5": 0.5776942355889725,
+              "recall10": 0.6788638262322473,
+              "mrr": 0.7913011695906433,
+              "ndcg10": 0.6187472483626205,
+              "precision5": 0.2421052631578947
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.044194499976583757,
+            "latencyP95Ms": 0.2060454500002379,
+            "meanInjectedTokens": 24.710526315789473
+          },
+          {
+            "probe": "p1-edit",
+            "method": "bm25",
+            "samples": 38,
+            "metrics": {
+              "recall1": 0.18157894736842106,
+              "recall3": 0.296157059314954,
+              "recall5": 0.3290517961570593,
+              "recall10": 0.49557226399331655,
+              "mrr": 0.44732664995822885,
+              "ndcg10": 0.3896369299233561,
+              "precision5": 0.17368421052631586
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.25060649997612927,
+            "latencyP95Ms": 1.3060267000008026,
+            "meanInjectedTokens": 23.07894736842105
+          },
+          {
+            "probe": "p1-edit",
+            "method": "edgebank",
+            "samples": 38,
+            "metrics": {
+              "recall1": 0.07894736842105263,
+              "recall3": 0.07894736842105263,
+              "recall5": 0.1557017543859649,
+              "recall10": 0.2945488721804511,
+              "mrr": 0.15792606516290725,
+              "ndcg10": 0.1736726683012929,
+              "precision5": 0.05263157894736842
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.0562249999929918,
+            "latencyP95Ms": 0.24458640000375453,
+            "meanInjectedTokens": 19.473684210526315
+          },
+          {
+            "probe": "p1-edit",
+            "method": "random",
+            "samples": 38,
+            "metrics": {
+              "recall1": 0.08187134502923976,
+              "recall3": 0.1108187134502924,
+              "recall5": 0.1108187134502924,
+              "recall10": 0.15248538011695906,
+              "mrr": 0.13815789473684212,
+              "ndcg10": 0.12114264534463955,
+              "precision5": 0.031578947368421054
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.02025050000520423,
+            "latencyP95Ms": 0.08823844999787979,
+            "meanInjectedTokens": 28.13157894736842
+          },
+          {
+            "probe": "p1-read",
+            "method": "brainbox-off",
+            "samples": 57,
+            "metrics": {
+              "recall1": 0.15555318530034734,
+              "recall3": 0.3232161481258488,
+              "recall5": 0.3981913172444647,
+              "recall10": 0.5483805672789162,
+              "mrr": 0.5551865775549986,
+              "ndcg10": 0.48930173470933336,
+              "precision5": 0.3087719298245615
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 22.932801999999356,
+            "latencyP95Ms": 63.90074179999645,
+            "meanInjectedTokens": 33.6140350877193
+          },
+          {
+            "probe": "p1-read",
+            "method": "recency",
+            "samples": 57,
+            "metrics": {
+              "recall1": 0.06991088833194097,
+              "recall3": 0.20419919491126914,
+              "recall5": 0.2697567854688597,
+              "recall10": 0.41812704743561296,
+              "mrr": 0.39677666388192706,
+              "ndcg10": 0.32848891818939613,
+              "precision5": 0.18947368421052632
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.05062199998064898,
+            "latencyP95Ms": 0.20559480000229083,
+            "meanInjectedTokens": 32.526315789473685
+          },
+          {
+            "probe": "p1-read",
+            "method": "frequency",
+            "samples": 57,
+            "metrics": {
+              "recall1": 0.07880116959064325,
+              "recall3": 0.20509972292738024,
+              "recall5": 0.2580164050107291,
+              "recall10": 0.41251937347138584,
+              "mrr": 0.4307017543859649,
+              "ndcg10": 0.3445932041575347,
+              "precision5": 0.23157894736842105
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.04198399998131208,
+            "latencyP95Ms": 0.19153260000748557,
+            "meanInjectedTokens": 25.228070175438596
+          },
+          {
+            "probe": "p1-read",
+            "method": "bm25",
+            "samples": 57,
+            "metrics": {
+              "recall1": 0.13573985210982115,
+              "recall3": 0.25143396048968797,
+              "recall5": 0.3324690965686836,
+              "recall10": 0.48674374110390617,
+              "mrr": 0.5468810916179337,
+              "ndcg10": 0.4199309396043481,
+              "precision5": 0.2596491228070176
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.25845100000060484,
+            "latencyP95Ms": 1.0405515999969783,
+            "meanInjectedTokens": 32.6140350877193
+          },
+          {
+            "probe": "p1-read",
+            "method": "edgebank",
+            "samples": 57,
+            "metrics": {
+              "recall1": 0,
+              "recall3": 0,
+              "recall5": 0.017543859649122806,
+              "recall10": 0.022765246449456975,
+              "mrr": 0.010721247563352828,
+              "ndcg10": 0.011610919939544327,
+              "precision5": 0.0035087719298245615
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.051183999981731176,
+            "latencyP95Ms": 0.235744600003818,
+            "meanInjectedTokens": 20
+          },
+          {
+            "probe": "p1-read",
+            "method": "random",
+            "samples": 57,
+            "metrics": {
+              "recall1": 0.007702758579951562,
+              "recall3": 0.04070192315806351,
+              "recall5": 0.06861260896348616,
+              "recall10": 0.14110798233605254,
+              "mrr": 0.1424255082149819,
+              "ndcg10": 0.09497659724122118,
+              "precision5": 0.04210526315789474
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.019081000005826354,
+            "latencyP95Ms": 0.08604420000046956,
+            "meanInjectedTokens": 34.56140350877193
+          },
+          {
+            "probe": "p2",
+            "method": "brainbox-off",
+            "samples": 2490,
+            "metrics": {
+              "recall1": 0.6200803212851406,
+              "recall3": 0.7650602409638554,
+              "recall5": 0.8092369477911646,
+              "recall10": 0.8586345381526105,
+              "mrr": 0.7018545611015492,
+              "ndcg10": 0.7398447534735192,
+              "precision5": 0.16184738955822717
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 42.45111500000348,
+            "latencyP95Ms": 116.96975394999606,
+            "meanInjectedTokens": 32.03493975903614
+          },
+          {
+            "probe": "p2",
+            "method": "recency",
+            "samples": 2490,
+            "metrics": {
+              "recall1": 0.6240963855421687,
+              "recall3": 0.7590361445783133,
+              "recall5": 0.7991967871485943,
+              "recall10": 0.8538152610441767,
+              "mrr": 0.7010967680244787,
+              "ndcg10": 0.737949878959493,
+              "precision5": 0.15983935742971322
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.06842199999846343,
+            "latencyP95Ms": 0.2278099000090151,
+            "meanInjectedTokens": 31.59598393574297
+          },
+          {
+            "probe": "p2",
+            "method": "frequency",
+            "samples": 2490,
+            "metrics": {
+              "recall1": 0.5072289156626506,
+              "recall3": 0.6301204819277109,
+              "recall5": 0.6807228915662651,
+              "recall10": 0.7678714859437751,
+              "mrr": 0.5868617326448655,
+              "ndcg10": 0.6298249043280642,
+              "precision5": 0.13614457831324872
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.05932299999767565,
+            "latencyP95Ms": 0.21415239999259938,
+            "meanInjectedTokens": 32.318875502008034
+          },
+          {
+            "probe": "p2",
+            "method": "bm25",
+            "samples": 2490,
+            "metrics": {
+              "recall1": 0.36666666666666664,
+              "recall3": 0.5718875502008032,
+              "recall5": 0.6759036144578313,
+              "recall10": 0.7939759036144578,
+              "mrr": 0.49462883279148356,
+              "ndcg10": 0.566061267742829,
+              "precision5": 0.13518072289156202
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.3615410000056727,
+            "latencyP95Ms": 1.4853384000118228,
+            "meanInjectedTokens": 34.747791164658636
+          },
+          {
+            "probe": "p2",
+            "method": "edgebank",
+            "samples": 2490,
+            "metrics": {
+              "recall1": 0.348995983935743,
+              "recall3": 0.58714859437751,
+              "recall5": 0.623293172690763,
+              "recall10": 0.7224899598393574,
+              "mrr": 0.48527379358704675,
+              "ndcg10": 0.5427852831769152,
+              "precision5": 0.12465863453814897
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.10490450000088458,
+            "latencyP95Ms": 0.2864873500089743,
+            "meanInjectedTokens": 29.716064257028112
+          },
+          {
+            "probe": "p2",
+            "method": "random",
+            "samples": 2490,
+            "metrics": {
+              "recall1": 0.020080321285140562,
+              "recall3": 0.058634538152610445,
+              "recall5": 0.08835341365461848,
+              "recall10": 0.13172690763052208,
+              "mrr": 0.048678523618282704,
+              "ndcg10": 0.06808641977697133,
+              "precision5": 0.017670682730923728
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.024897499999497086,
+            "latencyP95Ms": 0.096056500008126,
+            "meanInjectedTokens": 45.78915662650602
+          },
+          {
+            "probe": "p3",
+            "method": "brainbox-off",
+            "samples": 7083,
+            "metrics": {
+              "recall1": 0.5633206268530284,
+              "recall3": 0.8418749117605534,
+              "mrrAt3": 0.6857734481622688
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 1.4208860000071581,
+            "latencyP95Ms": 3.4237683999977886,
+            "meanInjectedTokens": 5.759706339121841
+          },
+          {
+            "probe": "p3",
+            "method": "recency",
+            "samples": 7083,
+            "metrics": {
+              "recall1": 0.5290131300296484,
+              "recall3": 0.8293096145700974,
+              "mrrAt3": 0.6616311355828524
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.0068609999943873845,
+            "latencyP95Ms": 0.010372899997310014,
+            "meanInjectedTokens": 5.87434702809544
+          },
+          {
+            "probe": "p3",
+            "method": "frequency",
+            "samples": 7083,
+            "metrics": {
+              "recall1": 0.44712692361993506,
+              "recall3": 0.7681773259918114,
+              "mrrAt3": 0.5899101134171063
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.002985999977681786,
+            "latencyP95Ms": 0.004459799996766377,
+            "meanInjectedTokens": 5.741634900465904
+          },
+          {
+            "probe": "p3",
+            "method": "bm25",
+            "samples": 7083,
+            "metrics": {
+              "recall1": 0.4413384159254553,
+              "recall3": 0.795708033319215,
+              "mrrAt3": 0.5954162548825884
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.11392599999089725,
+            "latencyP95Ms": 0.20618480000375708,
+            "meanInjectedTokens": 5.831850910631089
+          },
+          {
+            "probe": "p3",
+            "method": "edgebank",
+            "samples": 7083,
+            "metrics": {
+              "recall1": 0.3676408301567133,
+              "recall3": 0.5353663701821262,
+              "mrrAt3": 0.4404677867193741
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.009791999998924439,
+            "latencyP95Ms": 0.0144309000170324,
+            "meanInjectedTokens": 6.004659042778484
+          },
+          {
+            "probe": "p3",
+            "method": "random",
+            "samples": 7083,
+            "metrics": {
+              "recall1": 0.0841451362417055,
+              "recall3": 0.26867146689255966,
+              "mrrAt3": 0.16097228104852043
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.0014910000027157366,
+            "latencyP95Ms": 0.0029617999995934946,
+            "meanInjectedTokens": 6.02287166454892
+          }
+        ],
+        "comparisons": [
+          {
+            "probe": "p1-edit",
+            "baseline": "recency",
+            "metric": "mrr",
+            "delta": 0.12543859649122807,
+            "low": -0.003146929824561394,
+            "high": 0.24616228070175433,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "recency",
+            "metric": "recall5",
+            "delta": 0.07514619883040936,
+            "low": 0.006834795321637428,
+            "high": 0.1677046783625731,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "frequency",
+            "metric": "mrr",
+            "delta": -0.08866959064327484,
+            "low": -0.18516447368421052,
+            "high": 1.4608197692422983e-19,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "frequency",
+            "metric": "recall5",
+            "delta": -0.07748538011695907,
+            "low": -0.18129020467836257,
+            "high": 0.006308479532163721,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "bm25",
+            "metric": "mrr",
+            "delta": 0.25530492898913953,
+            "low": 0.09838084795321637,
+            "high": 0.40758876357560564,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "bm25",
+            "metric": "recall5",
+            "delta": 0.17115705931495406,
+            "low": 0.05448412698412697,
+            "high": 0.29192094820384296,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "edgebank",
+            "metric": "mrr",
+            "delta": 0.5447055137844611,
+            "low": 0.4032260338345865,
+            "high": 0.6652991854636592,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "edgebank",
+            "metric": "recall5",
+            "delta": 0.34450710108604843,
+            "low": 0.23805451127819546,
+            "high": 0.464329051796157,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "random",
+            "metric": "mrr",
+            "delta": 0.5644736842105263,
+            "low": 0.4153453947368421,
+            "high": 0.6975603070175437,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "random",
+            "metric": "recall5",
+            "delta": 0.389390142021721,
+            "low": 0.2517214912280702,
+            "high": 0.5196642648287385,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "recency",
+            "metric": "mrr",
+            "delta": 0.1584099136730716,
+            "low": 0.03901455026455027,
+            "high": 0.2697486772486773,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "recency",
+            "metric": "recall5",
+            "delta": 0.12843453177560504,
+            "low": 0.04498543600839783,
+            "high": 0.21023520327377396,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "frequency",
+            "metric": "mrr",
+            "delta": 0.12448482316903368,
+            "low": 0.03323604149262043,
+            "high": 0.22677387914230027,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "frequency",
+            "metric": "recall5",
+            "delta": 0.1401749122337357,
+            "low": 0.04284125274450352,
+            "high": 0.2596195707457317,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "bm25",
+            "metric": "mrr",
+            "delta": 0.008305485937064875,
+            "low": -0.10100981620718465,
+            "high": 0.12329852408799771,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "bm25",
+            "metric": "recall5",
+            "delta": 0.06572222067578105,
+            "low": -0.010865691970568131,
+            "high": 0.14226658725691232,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "edgebank",
+            "metric": "mrr",
+            "delta": 0.5444653299916457,
+            "low": 0.440796261487051,
+            "high": 0.6431342244500138,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "edgebank",
+            "metric": "recall5",
+            "delta": 0.3806474575953419,
+            "low": 0.27219316123953635,
+            "high": 0.48278848416232306,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "random",
+            "metric": "mrr",
+            "delta": 0.41276106934001655,
+            "low": 0.29656345725424677,
+            "high": 0.527387566137566,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "random",
+            "metric": "recall5",
+            "delta": 0.32957870828097857,
+            "low": 0.22850562061443128,
+            "high": 0.42978591412027944,
+            "tasks": 57
+          },
+          {
+            "probe": "p2",
+            "baseline": "recency",
+            "metric": "mrr",
+            "delta": 0.0007577930770701862,
+            "low": -0.0026000171367630163,
+            "high": 0.0055558859547329646,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "recency",
+            "metric": "recall5",
+            "delta": 0.010040160642570281,
+            "low": 0.0031849561897273697,
+            "high": 0.018132921355161067,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "frequency",
+            "metric": "mrr",
+            "delta": 0.11499282845668363,
+            "low": 0.06708432924800015,
+            "high": 0.17234142825333446,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "frequency",
+            "metric": "recall5",
+            "delta": 0.1285140562248996,
+            "low": 0.074513210950764,
+            "high": 0.19641695132472586,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "bm25",
+            "metric": "mrr",
+            "delta": 0.2072257283100658,
+            "low": 0.1459538215898918,
+            "high": 0.27353203528751274,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "bm25",
+            "metric": "recall5",
+            "delta": 0.13333333333333333,
+            "low": 0.07361950332808956,
+            "high": 0.20928884177384485,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "edgebank",
+            "metric": "mrr",
+            "delta": 0.2165807675145024,
+            "low": 0.11180723685786273,
+            "high": 0.3020945064342278,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "edgebank",
+            "metric": "recall5",
+            "delta": 0.1859437751004016,
+            "low": 0.07844093830549156,
+            "high": 0.3285836877545984,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "random",
+            "metric": "mrr",
+            "delta": 0.6531760374832671,
+            "low": 0.5525263782091333,
+            "high": 0.7248619420922009,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "random",
+            "metric": "recall5",
+            "delta": 0.7208835341365462,
+            "low": 0.6061725663716815,
+            "high": 0.7852056616447163,
+            "tasks": 64
+          },
+          {
+            "probe": "p3",
+            "baseline": "recency",
+            "metric": "mrrAt3",
+            "delta": 0.024142312579415442,
+            "low": 0.009534742706326559,
+            "high": 0.03562701944612645,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "recency",
+            "metric": "recall3",
+            "delta": 0.012565297190456022,
+            "low": -0.005838842883990613,
+            "high": 0.029160928166405645,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "frequency",
+            "metric": "mrrAt3",
+            "delta": 0.09586333474516469,
+            "low": 0.04731301517113717,
+            "high": 0.1346380399769659,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "frequency",
+            "metric": "recall3",
+            "delta": 0.07369758576874205,
+            "low": 0.040159702284487,
+            "high": 0.09816995190606308,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "bm25",
+            "metric": "mrrAt3",
+            "delta": 0.09035719327968354,
+            "low": 0.05090439901435159,
+            "high": 0.11308165580564028,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "bm25",
+            "metric": "recall3",
+            "delta": 0.04616687844133842,
+            "low": 0.000691895725855887,
+            "high": 0.0777617593003575,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "edgebank",
+            "metric": "mrrAt3",
+            "delta": 0.24530566144289112,
+            "low": 0.08455379409821923,
+            "high": 0.3544617649467555,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "edgebank",
+            "metric": "recall3",
+            "delta": 0.3065085415784272,
+            "low": 0.09840686375266762,
+            "high": 0.4553487961893342,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "random",
+            "metric": "mrrAt3",
+            "delta": 0.524801167113746,
+            "low": 0.4792699461575637,
+            "high": 0.5778634220436282,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "random",
+            "metric": "recall3",
+            "delta": 0.5732034448679938,
+            "low": 0.5411503707788703,
+            "high": 0.6016796752470404,
+            "tasks": 85
+          }
+        ]
+      }
+    },
+    "old_local": {
+      "original_path": "eval-results/2026-10-08T17-42-39-240Z/results.json",
+      "sha256": "850a3f62b04eea9c696fb6dea7aff34e580dd1ef1f75c2211e18b78abcb4d42d",
+      "timestamp": "2026-10-08T17-42-39-240Z",
+      "options": {
+        "source": "omp",
+        "repos": 5,
+        "maxTasksPerRepo": 20,
+        "limitTrajectories": 100,
+        "embeddings": false,
+        "probes": [
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "seed": 42,
+        "json": true,
+        "engineOpts": {},
+        "engine": "old",
+        "reposOffset": 0
+      },
+      "protocol": {
+        "history": "strict prior trajectories; candidate universe fixed at target start",
+        "duplicate_issues": "one attempt per instance",
+        "gold": "edited and read files separately; prefix-only next access and next tool",
+        "confidence_intervals": "paired trajectory-cluster bootstrap",
+        "file_rank_limit": 10,
+        "file_token_budget": 15000,
+        "tool_rank_limit": 3,
+        "metrics_conditioned_on_prior_coverage": true,
+        "legacy_commit": "9750d2f",
+        "legacy_overfetch": "inner top50/75k, then outer fixed universe top10/15k; mildly favors old recall",
+        "legacy_clock": "original wall-clock timestamp behavior retained",
+        "seed": 42
+      },
+      "source": {
+        "files_scanned": 713,
+        "sessions": 713,
+        "split": "all",
+        "split_method": "FNV-1a project hash parity",
+        "repos_offset": 0,
+        "nonempty_sessions": 650,
+        "project_count": 9
+      },
+      "trajectories": 97,
+      "summary": {
+        "coverage": {
+          "p1-edit": {
+            "gold": 693,
+            "eligible": 121,
+            "probes": 97,
+            "scored": 38
+          },
+          "p1-read": {
+            "gold": 980,
+            "eligible": 343,
+            "probes": 97,
+            "scored": 57
+          },
+          "p3": {
+            "gold": 9663,
+            "eligible": 7083,
+            "probes": 9663,
+            "scored": 7083
+          },
+          "p2": {
+            "gold": 5885,
+            "eligible": 2490,
+            "probes": 5885,
+            "scored": 2490
+          }
+        },
+        "methods": [
+          {
+            "probe": "p1-edit",
+            "method": "brainbox-off",
+            "samples": 38,
+            "metrics": {
+              "recall1": 0.29659565580618213,
+              "recall3": 0.5385547201336675,
+              "recall5": 0.5781746031746032,
+              "recall10": 0.5970342522974101,
+              "mrr": 0.7368421052631579,
+              "ndcg10": 0.5571117143209824,
+              "precision5": 0.2578947368421052
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 14.69195550000586,
+            "latencyP95Ms": 42.27850535000107,
+            "meanInjectedTokens": 17.55263157894737
+          },
+          {
+            "probe": "p1-edit",
+            "method": "recency",
+            "samples": 38,
+            "metrics": {
+              "recall1": 0.22422723475355055,
+              "recall3": 0.3089807852965748,
+              "recall5": 0.425062656641604,
+              "recall10": 0.5306182121971595,
+              "mrr": 0.5771929824561404,
+              "ndcg10": 0.43894698776509805,
+              "precision5": 0.19473684210526324
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.06095549998917704,
+            "latencyP95Ms": 0.22288519999856363,
+            "meanInjectedTokens": 23.44736842105263
+          },
+          {
+            "probe": "p1-edit",
+            "method": "frequency",
+            "samples": 38,
+            "metrics": {
+              "recall1": 0.376858813700919,
+              "recall3": 0.5063492063492063,
+              "recall5": 0.5776942355889725,
+              "recall10": 0.6788638262322473,
+              "mrr": 0.7913011695906433,
+              "ndcg10": 0.6187472483626205,
+              "precision5": 0.2421052631578947
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.04715550000901203,
+            "latencyP95Ms": 0.1962186500095413,
+            "meanInjectedTokens": 24.710526315789473
+          },
+          {
+            "probe": "p1-edit",
+            "method": "bm25",
+            "samples": 38,
+            "metrics": {
+              "recall1": 0.18157894736842106,
+              "recall3": 0.296157059314954,
+              "recall5": 0.3290517961570593,
+              "recall10": 0.49557226399331655,
+              "mrr": 0.44732664995822885,
+              "ndcg10": 0.3896369299233561,
+              "precision5": 0.17368421052631586
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.27296849999402184,
+            "latencyP95Ms": 1.2388275500037707,
+            "meanInjectedTokens": 23.07894736842105
+          },
+          {
+            "probe": "p1-edit",
+            "method": "edgebank",
+            "samples": 38,
+            "metrics": {
+              "recall1": 0.07894736842105263,
+              "recall3": 0.07894736842105263,
+              "recall5": 0.1557017543859649,
+              "recall10": 0.2945488721804511,
+              "mrr": 0.15792606516290725,
+              "ndcg10": 0.1736726683012929,
+              "precision5": 0.05263157894736842
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.05856350000249222,
+            "latencyP95Ms": 0.26030970000574594,
+            "meanInjectedTokens": 19.473684210526315
+          },
+          {
+            "probe": "p1-edit",
+            "method": "random",
+            "samples": 38,
+            "metrics": {
+              "recall1": 0.08187134502923976,
+              "recall3": 0.1108187134502924,
+              "recall5": 0.1108187134502924,
+              "recall10": 0.15248538011695906,
+              "mrr": 0.13815789473684212,
+              "ndcg10": 0.12114264534463955,
+              "precision5": 0.031578947368421054
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.021111000009113923,
+            "latencyP95Ms": 0.09166214998986105,
+            "meanInjectedTokens": 28.13157894736842
+          },
+          {
+            "probe": "p1-read",
+            "method": "brainbox-off",
+            "samples": 57,
+            "metrics": {
+              "recall1": 0.045760233918128654,
+              "recall3": 0.23454067671043932,
+              "recall5": 0.2979993256180046,
+              "recall10": 0.3526577491231773,
+              "mrr": 0.3724380395433028,
+              "ndcg10": 0.3060096783982069,
+              "precision5": 0.22807017543859656
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 15.145909999992,
+            "latencyP95Ms": 45.423639999987785,
+            "meanInjectedTokens": 20.789473684210527
+          },
+          {
+            "probe": "p1-read",
+            "method": "recency",
+            "samples": 57,
+            "metrics": {
+              "recall1": 0.06991088833194097,
+              "recall3": 0.20419919491126914,
+              "recall5": 0.2697567854688597,
+              "recall10": 0.41812704743561296,
+              "mrr": 0.39677666388192706,
+              "ndcg10": 0.32848891818939613,
+              "precision5": 0.18947368421052632
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.053198000008706,
+            "latencyP95Ms": 0.21368660000152884,
+            "meanInjectedTokens": 32.526315789473685
+          },
+          {
+            "probe": "p1-read",
+            "method": "frequency",
+            "samples": 57,
+            "metrics": {
+              "recall1": 0.07880116959064325,
+              "recall3": 0.20509972292738024,
+              "recall5": 0.2580164050107291,
+              "recall10": 0.41251937347138584,
+              "mrr": 0.4307017543859649,
+              "ndcg10": 0.3445932041575347,
+              "precision5": 0.23157894736842105
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.04079599998658523,
+            "latencyP95Ms": 0.21020359999383798,
+            "meanInjectedTokens": 25.228070175438596
+          },
+          {
+            "probe": "p1-read",
+            "method": "bm25",
+            "samples": 57,
+            "metrics": {
+              "recall1": 0.13573985210982115,
+              "recall3": 0.25143396048968797,
+              "recall5": 0.3324690965686836,
+              "recall10": 0.48674374110390617,
+              "mrr": 0.5468810916179337,
+              "ndcg10": 0.4199309396043481,
+              "precision5": 0.2596491228070176
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.2699830000055954,
+            "latencyP95Ms": 1.1919830000028013,
+            "meanInjectedTokens": 32.6140350877193
+          },
+          {
+            "probe": "p1-read",
+            "method": "edgebank",
+            "samples": 57,
+            "metrics": {
+              "recall1": 0,
+              "recall3": 0,
+              "recall5": 0.017543859649122806,
+              "recall10": 0.022765246449456975,
+              "mrr": 0.010721247563352828,
+              "ndcg10": 0.011610919939544327,
+              "precision5": 0.0035087719298245615
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.05055200000060722,
+            "latencyP95Ms": 0.23759040000732048,
+            "meanInjectedTokens": 20
+          },
+          {
+            "probe": "p1-read",
+            "method": "random",
+            "samples": 57,
+            "metrics": {
+              "recall1": 0.007702758579951562,
+              "recall3": 0.04070192315806351,
+              "recall5": 0.06861260896348616,
+              "recall10": 0.14110798233605254,
+              "mrr": 0.1424255082149819,
+              "ndcg10": 0.09497659724122118,
+              "precision5": 0.04210526315789474
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.017010999988997355,
+            "latencyP95Ms": 0.085898200009251,
+            "meanInjectedTokens": 34.56140350877193
+          },
+          {
+            "probe": "p2",
+            "method": "brainbox-off",
+            "samples": 2490,
+            "metrics": {
+              "recall1": 0.5409638554216868,
+              "recall3": 0.7024096385542169,
+              "recall5": 0.7791164658634538,
+              "recall10": 0.827710843373494,
+              "mrr": 0.6344023713903248,
+              "ndcg10": 0.6813613832781117,
+              "precision5": 0.15582329317268534
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 17.15193849997013,
+            "latencyP95Ms": 37.819640100005195,
+            "meanInjectedTokens": 25.21164658634538
+          },
+          {
+            "probe": "p2",
+            "method": "recency",
+            "samples": 2490,
+            "metrics": {
+              "recall1": 0.6240963855421687,
+              "recall3": 0.7590361445783133,
+              "recall5": 0.7991967871485943,
+              "recall10": 0.8538152610441767,
+              "mrr": 0.7010967680244787,
+              "ndcg10": 0.737949878959493,
+              "precision5": 0.15983935742971322
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.07557550000638003,
+            "latencyP95Ms": 0.23720230000035364,
+            "meanInjectedTokens": 31.59598393574297
+          },
+          {
+            "probe": "p2",
+            "method": "frequency",
+            "samples": 2490,
+            "metrics": {
+              "recall1": 0.5072289156626506,
+              "recall3": 0.6301204819277109,
+              "recall5": 0.6807228915662651,
+              "recall10": 0.7678714859437751,
+              "mrr": 0.5868617326448655,
+              "ndcg10": 0.6298249043280642,
+              "precision5": 0.13614457831324872
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.059581499990599696,
+            "latencyP95Ms": 0.21125655000359983,
+            "meanInjectedTokens": 32.318875502008034
+          },
+          {
+            "probe": "p2",
+            "method": "bm25",
+            "samples": 2490,
+            "metrics": {
+              "recall1": 0.36666666666666664,
+              "recall3": 0.5718875502008032,
+              "recall5": 0.6759036144578313,
+              "recall10": 0.7939759036144578,
+              "mrr": 0.49462883279148356,
+              "ndcg10": 0.566061267742829,
+              "precision5": 0.13518072289156202
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.3768580000032671,
+            "latencyP95Ms": 1.4505269000001126,
+            "meanInjectedTokens": 34.747791164658636
+          },
+          {
+            "probe": "p2",
+            "method": "edgebank",
+            "samples": 2490,
+            "metrics": {
+              "recall1": 0.348995983935743,
+              "recall3": 0.58714859437751,
+              "recall5": 0.623293172690763,
+              "recall10": 0.7224899598393574,
+              "mrr": 0.48527379358704675,
+              "ndcg10": 0.5427852831769152,
+              "precision5": 0.12465863453814897
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.10582099999373895,
+            "latencyP95Ms": 0.2898427499851094,
+            "meanInjectedTokens": 29.716064257028112
+          },
+          {
+            "probe": "p2",
+            "method": "random",
+            "samples": 2490,
+            "metrics": {
+              "recall1": 0.020080321285140562,
+              "recall3": 0.058634538152610445,
+              "recall5": 0.08835341365461848,
+              "recall10": 0.13172690763052208,
+              "mrr": 0.048678523618282704,
+              "ndcg10": 0.06808641977697133,
+              "precision5": 0.017670682730923728
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.024960499998996966,
+            "latencyP95Ms": 0.09679504999949129,
+            "meanInjectedTokens": 45.78915662650602
+          },
+          {
+            "probe": "p3",
+            "method": "brainbox-off",
+            "samples": 7083,
+            "metrics": {
+              "recall1": 0.18819709162784132,
+              "recall3": 0.3429337851192997,
+              "mrrAt3": 0.2569767989081828
+            },
+            "abstentionRate": 0.012000564732457999,
+            "latencyP50Ms": 1.8071619999827817,
+            "latencyP95Ms": 6.530134499978156,
+            "meanInjectedTokens": 5.511082874488211
+          },
+          {
+            "probe": "p3",
+            "method": "recency",
+            "samples": 7083,
+            "metrics": {
+              "recall1": 0.5290131300296484,
+              "recall3": 0.8293096145700974,
+              "mrrAt3": 0.6616311355828524
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.008977000001323177,
+            "latencyP95Ms": 0.0121227999945404,
+            "meanInjectedTokens": 5.87434702809544
+          },
+          {
+            "probe": "p3",
+            "method": "frequency",
+            "samples": 7083,
+            "metrics": {
+              "recall1": 0.44712692361993506,
+              "recall3": 0.7681773259918114,
+              "mrrAt3": 0.5899101134171063
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.0030640000040875748,
+            "latencyP95Ms": 0.004318999999668449,
+            "meanInjectedTokens": 5.741634900465904
+          },
+          {
+            "probe": "p3",
+            "method": "bm25",
+            "samples": 7083,
+            "metrics": {
+              "recall1": 0.4413384159254553,
+              "recall3": 0.795708033319215,
+              "mrrAt3": 0.5954162548825884
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.1257499999992433,
+            "latencyP95Ms": 0.21374760001526738,
+            "meanInjectedTokens": 5.831850910631089
+          },
+          {
+            "probe": "p3",
+            "method": "edgebank",
+            "samples": 7083,
+            "metrics": {
+              "recall1": 0.3676408301567133,
+              "recall3": 0.5353663701821262,
+              "mrrAt3": 0.4404677867193741
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.010276999993948266,
+            "latencyP95Ms": 0.014881899990723467,
+            "meanInjectedTokens": 6.004659042778484
+          },
+          {
+            "probe": "p3",
+            "method": "random",
+            "samples": 7083,
+            "metrics": {
+              "recall1": 0.0841451362417055,
+              "recall3": 0.26867146689255966,
+              "mrrAt3": 0.16097228104852043
+            },
+            "abstentionRate": 0,
+            "latencyP50Ms": 0.0015050000074552372,
+            "latencyP95Ms": 0.003065799999421869,
+            "meanInjectedTokens": 6.02287166454892
+          }
+        ],
+        "comparisons": [
+          {
+            "probe": "p1-edit",
+            "baseline": "recency",
+            "metric": "mrr",
+            "delta": 0.15964912280701757,
+            "low": 0.051293859649122815,
+            "high": 0.26185307017543863,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "recency",
+            "metric": "recall5",
+            "delta": 0.15311194653299917,
+            "low": 0.058609022556390986,
+            "high": 0.26539473684210524,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "frequency",
+            "metric": "mrr",
+            "delta": -0.05445906432748539,
+            "low": -0.11665752923976608,
+            "high": 0.00878106725146197,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "frequency",
+            "metric": "recall5",
+            "delta": 0.00048036758563074766,
+            "low": -0.06590852130325814,
+            "high": 0.059511278195488716,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "bm25",
+            "metric": "mrr",
+            "delta": 0.28951545530492906,
+            "low": 0.11414943609022556,
+            "high": 0.4471089181286549,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "bm25",
+            "metric": "recall5",
+            "delta": 0.24912280701754383,
+            "low": 0.11869517543859652,
+            "high": 0.3789692982456141,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "edgebank",
+            "metric": "mrr",
+            "delta": 0.5789160401002507,
+            "low": 0.44954495614035095,
+            "high": 0.6880075187969924,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "edgebank",
+            "metric": "recall5",
+            "delta": 0.42247284878863817,
+            "low": 0.3072175229741019,
+            "high": 0.542706244778613,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "random",
+            "metric": "mrr",
+            "delta": 0.5986842105263158,
+            "low": 0.45723684210526316,
+            "high": 0.7302631578947368,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-edit",
+            "baseline": "random",
+            "metric": "recall5",
+            "delta": 0.4673558897243107,
+            "low": 0.3289865288220551,
+            "high": 0.6072947994987469,
+            "tasks": 38
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "recency",
+            "metric": "mrr",
+            "delta": -0.02433862433862436,
+            "low": -0.13858639654692287,
+            "high": 0.08139480646059594,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "recency",
+            "metric": "recall5",
+            "delta": 0.028242540149144898,
+            "low": -0.05247732388631511,
+            "high": 0.10892285520445993,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "frequency",
+            "metric": "mrr",
+            "delta": -0.05826371484266221,
+            "low": -0.12603592314118628,
+            "high": 0.009653299916457804,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "frequency",
+            "metric": "recall5",
+            "delta": 0.039982920607275624,
+            "low": -0.04684504543444172,
+            "high": 0.1300145213212808,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "bm25",
+            "metric": "mrr",
+            "delta": -0.17444305207463098,
+            "low": -0.29391604010025074,
+            "high": -0.055549637983848515,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "bm25",
+            "metric": "recall5",
+            "delta": -0.034469770950679095,
+            "low": -0.13517159234909487,
+            "high": 0.06722122858603767,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "edgebank",
+            "metric": "mrr",
+            "delta": 0.3617167919799499,
+            "low": 0.2621687900306321,
+            "high": 0.44785749094959615,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "edgebank",
+            "metric": "recall5",
+            "delta": 0.28045546596888177,
+            "low": 0.17589341077118426,
+            "high": 0.37489269155194066,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "random",
+            "metric": "mrr",
+            "delta": 0.23001253132832086,
+            "low": 0.11806478000556947,
+            "high": 0.33113878446115275,
+            "tasks": 57
+          },
+          {
+            "probe": "p1-read",
+            "baseline": "random",
+            "metric": "recall5",
+            "delta": 0.22938671665451846,
+            "low": 0.13858790450605465,
+            "high": 0.3169567677549488,
+            "tasks": 57
+          },
+          {
+            "probe": "p2",
+            "baseline": "recency",
+            "metric": "mrr",
+            "delta": -0.06669439663415568,
+            "low": -0.11805301660866173,
+            "high": -0.02513835301053163,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "recency",
+            "metric": "recall5",
+            "delta": -0.020080321285140562,
+            "low": -0.0377292087349778,
+            "high": -0.0008904470035971859,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "frequency",
+            "metric": "mrr",
+            "delta": 0.04754063874545805,
+            "low": 0.030681940484274937,
+            "high": 0.06806329193381619,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "frequency",
+            "metric": "recall5",
+            "delta": 0.09839357429718876,
+            "low": 0.05183403032183532,
+            "high": 0.15354280829532707,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "bm25",
+            "metric": "mrr",
+            "delta": 0.13977353859884017,
+            "low": 0.06525234026304923,
+            "high": 0.22121938313183945,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "bm25",
+            "metric": "recall5",
+            "delta": 0.10321285140562249,
+            "low": 0.05069199106863417,
+            "high": 0.17368287726438034,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "edgebank",
+            "metric": "mrr",
+            "delta": 0.149128577803276,
+            "low": 0.06775774179676722,
+            "high": 0.21324661606748552,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "edgebank",
+            "metric": "recall5",
+            "delta": 0.15582329317269075,
+            "low": 0.05388448485631987,
+            "high": 0.28998959493893967,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "random",
+            "metric": "mrr",
+            "delta": 0.5857238477720418,
+            "low": 0.45578789573060724,
+            "high": 0.6866651247105875,
+            "tasks": 64
+          },
+          {
+            "probe": "p2",
+            "baseline": "random",
+            "metric": "recall5",
+            "delta": 0.6907630522088354,
+            "low": 0.5865742409316994,
+            "high": 0.7585258798839378,
+            "tasks": 64
+          },
+          {
+            "probe": "p3",
+            "baseline": "recency",
+            "metric": "mrrAt3",
+            "delta": -0.4046543366746673,
+            "low": -0.5004597433320244,
+            "high": -0.3346900036522729,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "recency",
+            "metric": "recall3",
+            "delta": -0.48637582945079766,
+            "low": -0.5872010957003514,
+            "high": -0.4132503957393444,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "frequency",
+            "metric": "mrrAt3",
+            "delta": -0.33293331450891644,
+            "low": -0.46244615270350536,
+            "high": -0.23810648437274834,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "frequency",
+            "metric": "recall3",
+            "delta": -0.42524354087251165,
+            "low": -0.5422840072271471,
+            "high": -0.34287623983312726,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "bm25",
+            "metric": "mrrAt3",
+            "delta": -0.33843945597439873,
+            "low": -0.4563864536042971,
+            "high": -0.2600523024696127,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "bm25",
+            "metric": "recall3",
+            "delta": -0.4527742481999153,
+            "low": -0.5822881790698712,
+            "high": -0.3643481131070088,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "edgebank",
+            "metric": "mrrAt3",
+            "delta": -0.18349098781119103,
+            "low": -0.38349198994414424,
+            "high": -0.042769955519164425,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "edgebank",
+            "metric": "recall3",
+            "delta": -0.19243258506282648,
+            "low": -0.43767045683711303,
+            "high": -0.007815054452471454,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "random",
+            "metric": "mrrAt3",
+            "delta": 0.09600451785966359,
+            "low": 0.05417922027767505,
+            "high": 0.12495958513422986,
+            "tasks": 85
+          },
+          {
+            "probe": "p3",
+            "baseline": "random",
+            "metric": "recall3",
+            "delta": 0.07426231822674008,
+            "low": 0.004922877398889515,
+            "high": 0.12110336091411138,
+            "tasks": 85
+          }
+        ]
+      }
+    }
+  }
+}
