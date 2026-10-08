@@ -8,56 +8,16 @@
  * v3.0+ algorithm: Sequential window (not time-based), BCM myelination, SNAP plasticity,
  * synaptic tagging with capture, async recall().
  */
-import { openDb } from "./db.js";
 import { HebbianEngine, normalizeError } from "./hebbian.js";
-import type Database from "better-sqlite3";
-
-// --- Minimal test runner (supports async tests) ---
-
-let suiteCount = 0;
-let passCount = 0;
-let failCount = 0;
-let currentSuite = "";
-
-type TestFn = () => void | Promise<void>;
-const allTests: { suite: string; name: string; fn: TestFn }[] = [];
-let currentSuiteName = "";
-
-function describe(name: string, fn: () => void) {
-  suiteCount++;
-  currentSuiteName = name;
-  fn();
-}
-
-function test(name: string, fn: TestFn) {
-  allTests.push({ suite: currentSuiteName, name, fn });
-}
-
-function eq(actual: number, expected: number, tolerance = 0.005, msg = "") {
-  if (Math.abs(actual - expected) > tolerance) {
-    throw new Error(`${msg}expected ${expected}, got ${actual} (diff: ${Math.abs(actual - expected).toFixed(6)})`);
-  }
-}
-
-function ok(cond: boolean, msg = "assertion failed") {
-  if (!cond) throw new Error(msg);
-}
-
-/** Create a fresh in-memory DB + engine. Fully isolated. */
-function sandbox(sessionId = "test") {
-  const db = openDb(":memory:");
-  const engine = new HebbianEngine(db, sessionId);
-  const reset = () => {
-    db.exec("DELETE FROM neurons; DELETE FROM synapses; DELETE FROM access_log; DELETE FROM sessions;");
-  };
-  return { db, engine, reset, close: () => db.close() };
-}
+import { describe, test, eq, ok, sandbox, runAll } from "./testkit.js";
+import { readdirSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath, pathToFileURL } from "url";
 
 // --- Test suites ---
 
 console.log("BrainBox Test Suite (:memory: sandbox)\n");
 
-const t0 = Date.now();
 
 describe("Myelination (BCM growth with 1/sqrt(n) dampening)", () => {
   test("increments with diminishing returns over 4 accesses", () => {
@@ -1269,34 +1229,18 @@ describe("Anti-Recall Escalation (v5)", () => {
   });
 });
 
-// --- Async test runner ---
+// --- Discover modular suites in src/tests/*.test.ts, then run everything ---
+// Usage: npx tsx src/test.ts [filter]  (filter = substring of "suite › test name")
 
-async function runAll() {
-  let lastSuite = "";
-  for (const t of allTests) {
-    if (t.suite !== lastSuite) {
-      console.log(`\n  ${t.suite}`);
-      lastSuite = t.suite;
-    }
-    try {
-      await t.fn();
-      passCount++;
-      console.log(`    ✅ ${t.name}`);
-    } catch (e: any) {
-      failCount++;
-      console.log(`    ❌ ${t.name}`);
-      console.log(`       ${e.message}`);
-    }
-  }
-
-  const elapsed = Date.now() - t0;
-  console.log(`\n${"─".repeat(50)}`);
-  console.log(`  ${suiteCount} suites, ${passCount + failCount} tests`);
-  console.log(`  ✅ ${passCount} passed  ${failCount > 0 ? `❌ ${failCount} failed` : ""}`);
-  console.log(`  ${elapsed}ms`);
-  console.log(`${"─".repeat(50)}`);
-
-  process.exitCode = failCount > 0 ? 1 : 0;
+const testsDir = join(dirname(fileURLToPath(import.meta.url)), "tests");
+let testFiles: string[] = [];
+try {
+  testFiles = readdirSync(testsDir).filter((f) => f.endsWith(".test.ts")).sort();
+} catch {
+  // no modular suites yet
+}
+for (const f of testFiles) {
+  await import(pathToFileURL(join(testsDir, f)).href);
 }
 
-runAll();
+await runAll(process.argv[2]);
