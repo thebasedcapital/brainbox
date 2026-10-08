@@ -13,9 +13,13 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { openDb } from "./db.js";
 import { HebbianEngine } from "./hebbian.js";
+import { beginPolicyDecision, compactRecall, explainRecall, logRecallEvents, markRecallAccess } from "./policy.js";
+import type { RecallResult } from "./hebbian.js";
 
 const db = openDb();
-const engine = new HebbianEngine(db, `mcp-${Date.now()}`);
+const sessionId = `mcp-${Date.now()}`;
+const engine = new HebbianEngine(db, sessionId);
+let lastRecall: RecallResult[] = [];
 
 const server = new McpServer({
   name: "brainbox",
@@ -39,6 +43,7 @@ server.tool(
   },
   async ({ path, type, query }) => {
     const neuron = engine.record(path, type, query);
+    markRecallAccess(db, sessionId, neuron.id);
     return {
       content: [
         {
@@ -70,6 +75,7 @@ server.tool(
   "Neural recall: find relevant files/tools using Hebbian memory instead of grep. Returns results with confidence scores. Use BEFORE searching — if confidence is high, skip the search entirely to save tokens.",
   {
     query: z.string().describe("What are you looking for?"),
+    detail: z.enum(["compact", "full"]).default("full").describe("Compact file-line list or full ranking details"),
     token_budget: z
       .number()
       .default(10000)
@@ -80,8 +86,16 @@ server.tool(
       .optional()
       .describe("Filter by neuron type"),
   },
-  async ({ query, token_budget, limit, type }) => {
+  async ({ query, token_budget, limit, type, detail }) => {
     const results = await engine.recall({ query, token_budget, limit, type });
+    lastRecall = results;
+    const compact = compactRecall(results, Math.min(1800, token_budget * 4));
+    const surfaced = detail === "compact" ? compact.included : results;
+    const decision = beginPolicyDecision(db, sessionId, query, "explicit:mcp", "TOP5", detail === "compact" ? compact.text.length : JSON.stringify(results).length, false);
+    logRecallEvents(db, decision, sessionId, query, results, new Set(surfaced.map(r => r.neuron.id)), "TOP5");
+    if (detail === "compact" && results.length) {
+      return { content: [{ type: "text" as const, text: compact.text || "No results fit the character budget." }] };
+    }
 
     if (results.length === 0) {
       return {
@@ -126,6 +140,11 @@ server.tool(
                     ? "MEDIUM — verify with quick check"
                     : "LOW — confirm with search",
                 activation_path: r.activation_path,
+                source_edge: r.source_edge,
+                snippets: r.snippets?.map(s => ({
+                  name: s.snippet.name, kind: s.snippet.kind,
+                  start_line: s.snippet.start_line, end_line: s.snippet.end_line,
+                })),
                 myelination: `${(r.neuron.myelination * 100).toFixed(0)}%`,
               })),
               estimated_tokens_saved: totalSaved,
@@ -140,6 +159,20 @@ server.tool(
         },
       ],
     };
+  }
+);
+
+server.tool(
+  "brainbox_explain",
+  "Expand a recalled neuron path or the latest recall rank: activation provenance, co-access counts, access history, and hits/ignores.",
+  {
+    path: z.string().optional().describe("Neuron path"),
+    rank: z.number().int().positive().optional().describe("1-based rank in the latest recall"),
+  },
+  async ({ path, rank }) => {
+    const selected = rank !== undefined ? lastRecall[rank - 1] : undefined;
+    const explanation = explainRecall(db, { path: path ?? selected?.neuron.path, rank });
+    return { content: [{ type: "text" as const, text: JSON.stringify(explanation, null, 2) }] };
   }
 );
 

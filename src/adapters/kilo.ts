@@ -73,6 +73,8 @@ export class KiloAdapter implements DomainAdapter {
         type: "file",
         path: filePath,
         context,
+        access: ["Edit", "Write", "write_file", "NotebookEdit"].includes(toolName) ? "edit"
+          : ["Read", "read_file"].includes(toolName) ? "open" : undefined,
       });
     }
 
@@ -93,9 +95,9 @@ export class KiloAdapter implements DomainAdapter {
    * Enrich a prompt with neural recall results.
    * Returns formatted string or null if no confident results.
    */
-  async enrichPrompt(prompt: string, cwd?: string): Promise<string | null> {
+  async enrichPrompt(prompt: string, cwd?: string, sessionId?: string): Promise<string | null> {
     if (prompt.length < 15) return null;
-    return performRecall(prompt, { cwd });
+    return performRecall(prompt, { cwd, sessionId });
   }
 }
 

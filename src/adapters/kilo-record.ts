@@ -12,7 +12,9 @@
  */
 
 import { KiloAdapter } from "./kilo.js";
-import { recordEvents } from "../adapter.js";
+import { recordEvents, recallSessionId } from "../adapter.js";
+process.env.BRAINBOX_DB_TIMEOUT_MS = "100";
+process.env.BRAINBOX_HOOK = "1";
 
 const adapter = new KiloAdapter();
 
@@ -27,11 +29,11 @@ async function main() {
   try {
     const { event, sessionId } = JSON.parse(raw);
     const events = adapter.extractEvents(event);
-    recordEvents(events, sessionId || `kilo-${Date.now()}`);
+    recordEvents(events, recallSessionId(sessionId));
   } catch {
     // Silent failure — never block Kilo
   }
 }
 
 const timeout = setTimeout(() => process.exit(0), 3000);
-main().finally(() => clearTimeout(timeout));
+main().catch(() => {}).finally(() => clearTimeout(timeout));

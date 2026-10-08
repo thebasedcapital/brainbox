@@ -30,8 +30,9 @@ export class ClaudeCodeAdapter implements DomainAdapter {
    * Returns tool neuron + file neurons for each file path found.
    */
   extractEvents(rawEvent: unknown): AccessEvent[] {
+    if (!rawEvent || typeof rawEvent !== "object") return [];
     const event = rawEvent as ClaudeCodeToolEvent;
-    if (!event?.tool_name) return [];
+    if (typeof event.tool_name !== "string" || !event.tool_input || typeof event.tool_input !== "object") return [];
 
     const context = buildContext(event);
     const events: AccessEvent[] = [];
@@ -50,6 +51,8 @@ export class ClaudeCodeAdapter implements DomainAdapter {
         type: "file",
         path: filePath,
         context,
+        access: ["Edit", "Write", "NotebookEdit"].includes(event.tool_name) ? "edit"
+          : event.tool_name === "Read" ? "open" : undefined,
       });
     }
 
@@ -73,9 +76,9 @@ export class ClaudeCodeAdapter implements DomainAdapter {
    * Enrich a prompt with neural recall results.
    * Returns formatted string or null if no confident results.
    */
-  async enrichPrompt(prompt: string, cwd?: string): Promise<string | null> {
+  async enrichPrompt(prompt: string, cwd?: string, sessionId?: string): Promise<string | null> {
     if (prompt.length < 5) return null;
-    return performRecall(prompt, { cwd });
+    return performRecall(prompt, { cwd, sessionId });
   }
 }
 

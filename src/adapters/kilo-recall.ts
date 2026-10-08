@@ -12,6 +12,8 @@
  */
 
 import { KiloAdapter } from "./kilo.js";
+process.env.BRAINBOX_DB_TIMEOUT_MS = "100";
+process.env.BRAINBOX_HOOK = "1";
 
 const adapter = new KiloAdapter();
 
@@ -34,4 +36,4 @@ async function main() {
 }
 
 const timeout = setTimeout(() => process.exit(0), 3000);
-main().finally(() => clearTimeout(timeout));
+main().catch(() => {}).finally(() => clearTimeout(timeout));

@@ -20,8 +20,11 @@ import type { Plugin } from "@kilocode/plugin";
 import { tool } from "@kilocode/plugin";
 import { openDb } from "./db.js";
 import { HebbianEngine } from "./hebbian.js";
+import { compactRecall, explainRecall, beginPolicyDecision, logRecallEvents, markRecallAccess } from "./policy.js";
+import { performRecall } from "./adapter.js";
+import type Database from "better-sqlite3";
 
-function getEngine(sessionId?: string): { engine: HebbianEngine; db: ReturnType<typeof openDb> } {
+function getEngine(sessionId?: string): { engine: HebbianEngine; db: Database.Database } {
   const db = openDb();
   const engine = new HebbianEngine(db, sessionId || `kilo-${Date.now()}`);
   return { engine, db };
@@ -37,10 +40,11 @@ const brainboxPlugin: Plugin = async (_ctx) => {
           type: tool.schema.enum(["file", "tool", "error", "semantic"]).default("file").describe("Neuron type"),
           query: tool.schema.string().optional().describe("What were you looking for? (context for learning)"),
         },
-        async execute(args) {
-          const { engine, db } = getEngine();
+        async execute(args, context) {
+          const { engine, db } = getEngine(context.sessionID);
           try {
             const neuron = engine.record(args.path, args.type, args.query);
+            markRecallAccess(db, context.sessionID, neuron.id);
             const pct = (neuron.myelination * 100).toFixed(0);
             const msg = neuron.myelination > 0.5
               ? `Superhighway! ${args.path} is deeply myelinated.`
@@ -60,9 +64,14 @@ const brainboxPlugin: Plugin = async (_ctx) => {
           query: tool.schema.string().describe("What are you looking for?"),
           limit: tool.schema.number().default(5).describe("Max results"),
           type: tool.schema.enum(["file", "tool", "error", "semantic"]).optional().describe("Filter by neuron type"),
+          detail: tool.schema.enum(["compact", "full"]).default("compact").describe("Compact file-line citations or complete ranking"),
         },
-        async execute(args) {
-          const { engine, db } = getEngine();
+        async execute(args, context) {
+          if (args.detail === "compact") {
+            return await performRecall(args.query, { type: args.type, limit: args.limit,
+              sessionId: context.sessionID, minConfidence: 0, policy: false }) || `No neural pathways found for "${args.query}". Fall back to grep/search.`;
+          }
+          const { engine, db } = getEngine(context.sessionID);
           try {
             const results = await engine.recall({
               query: args.query,
@@ -70,23 +79,34 @@ const brainboxPlugin: Plugin = async (_ctx) => {
               limit: args.limit,
               token_budget: 10000,
             });
+            const decision = beginPolicyDecision(db, context.sessionID, args.query, "explicit:kilo", "TOP5", JSON.stringify(results).length, false);
+            logRecallEvents(db, decision, context.sessionID, args.query, results, new Set(results.map(r => r.neuron.id)), "TOP5");
 
             if (results.length === 0) {
               return `No neural pathways found for "${args.query}". Fall back to grep/search.`;
             }
 
-            const lines = results.map((r) => {
-              const pct = Math.round(r.confidence * 100);
-              const myelin = Math.round(r.neuron.myelination * 100);
-              const level = pct >= 70 ? "HIGH" : pct >= 40 ? "MEDIUM" : "LOW";
-              return `  ${r.neuron.path} (confidence: ${pct}%, myelin: ${myelin}%, ${level})`;
-            });
-
-            const totalSaved = results.reduce((s, r) => s + r.estimated_tokens_saved, 0);
-            return `Neural recall for "${args.query}":\n${lines.join("\n")}\nEstimated tokens saved: ${totalSaved}`;
+            const formatted = compactRecall(results, 1800).text;
+            return `${formatted}\n${JSON.stringify(results.map(r => ({
+              path: r.neuron.path, confidence: r.confidence, activation_path: r.activation_path,
+              source_edge: r.source_edge, snippets: r.snippets,
+            })), null, 2)}`;
           } finally {
             db.close();
           }
+        },
+      }),
+
+      brainbox_explain: tool({
+        description: "Expand a neuron path or recall rank with activation provenance, co-access, accesses and hits/ignores.",
+        args: {
+          path: tool.schema.string().optional(),
+          rank: tool.schema.number().int().positive().optional(),
+        },
+        async execute(args, context) {
+          const { db } = getEngine(context.sessionID);
+          try { return JSON.stringify(explainRecall(db, { ...args, sessionId: context.sessionID }), null, 2); }
+          finally { db.close(); }
         },
       }),
 

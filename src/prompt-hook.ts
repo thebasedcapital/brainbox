@@ -15,6 +15,8 @@
  */
 
 import { ClaudeCodeAdapter } from "./adapters/claude-code.js";
+process.env.BRAINBOX_DB_TIMEOUT_MS = "100";
+process.env.BRAINBOX_HOOK = "1";
 
 const adapter = new ClaudeCodeAdapter();
 
@@ -30,10 +32,14 @@ async function main() {
 
   let prompt: string;
   let cwd: string | undefined;
+  let sessionId: string | undefined;
   try {
-    const data = JSON.parse(raw);
-    prompt = data.prompt || "";
-    cwd = data.cwd;
+    const data: unknown = JSON.parse(raw);
+    if (!data || typeof data !== "object") return;
+    const payload = data as Record<string, unknown>;
+    prompt = typeof payload.prompt === "string" ? payload.prompt : "";
+    cwd = typeof payload.cwd === "string" ? payload.cwd : undefined;
+    sessionId = typeof payload.session_id === "string" ? payload.session_id : undefined;
   } catch {
     // Not JSON — try raw text (piped directly)
     prompt = raw;
@@ -43,7 +49,7 @@ async function main() {
   if (prompt.length < 5) process.exit(0);
 
   try {
-    const enriched = await adapter.enrichPrompt!(prompt, cwd);
+    const enriched = await adapter.enrichPrompt(prompt, cwd, sessionId);
     if (enriched) {
       console.log(enriched);
     }
@@ -55,4 +61,4 @@ async function main() {
 
 // Safety timeout
 const timeout = setTimeout(() => process.exit(0), 4000);
-main().finally(() => clearTimeout(timeout));
+main().catch(() => {}).finally(() => clearTimeout(timeout));

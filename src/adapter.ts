@@ -16,8 +16,16 @@
 import { openDb } from "./db.js";
 import { HebbianEngine } from "./hebbian.js";
 import type { RecallResult, RecallOptions } from "./hebbian.js";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from "fs";
-import { join } from "path";
+import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
+import { isCommitLearningEnabled, predictChangeSet } from "./commit-learning.js";
+import { matchProcedures, formatProcedures, recordProcedureExposure } from "./procedures.js";
+import {
+  ARM_LIMIT, INJECTION_CHAR_BUDGET, beginPolicyDecision, compactRecall, flushPolicySession,
+  logRecallEvents, markRecallAccess, policyContext, selectPolicyArm,
+} from "./policy.js";
+import type { Neuron } from "./hebbian.js";
+import type Database from "better-sqlite3";
 
 // --- Types ---
 
@@ -26,6 +34,8 @@ export interface AccessEvent {
   path: string;
   context: string;
   timestamp?: number;
+  /** Only actual reads/edits count as recall hits, never search listings. */
+  access?: "open" | "edit";
 }
 
 export interface DomainAdapter {
@@ -36,7 +46,7 @@ export interface DomainAdapter {
   extractEvents(rawEvent: unknown): AccessEvent[];
 
   /** Enrich a prompt with neural recall (optional) */
-  enrichPrompt?(prompt: string, cwd?: string): Promise<string | null>;
+  enrichPrompt?(prompt: string, cwd?: string, sessionId?: string): Promise<string | null>;
 }
 
 // --- Path Filtering (shared across all adapters) ---
@@ -102,15 +112,22 @@ export function resolvePath(p: string): string {
  */
 export function recordEvents(events: AccessEvent[], sessionId: string): void {
   if (events.length === 0) return;
-
-  const db = openDb();
-  const engine = new HebbianEngine(db, sessionId);
-
-  for (const event of events) {
-    engine.record(event.path, event.type, event.context, event.timestamp);
+  let db: Database.Database | undefined;
+  try {
+    db = openDb();
+    db.pragma("busy_timeout = 100");
+    const engine = new HebbianEngine(db, sessionId);
+    for (const event of events) {
+      engine.record(event.path, event.type, event.context, event.timestamp);
+      if (event.type === "file" && event.access) {
+        markRecallAccess(db, sessionId, `file:${event.path}`, event.access === "edit");
+      }
+    }
+  } catch {
+    // Observation must never block the calling agent.
+  } finally {
+    db?.close();
   }
-
-  db.close();
 }
 
 // --- Recall Helper ---
@@ -122,6 +139,10 @@ export interface RecallOpts {
   minConfidence?: number;
   /** Working directory — prioritize files under this path */
   cwd?: string;
+  sessionId?: string;
+  maxChars?: number;
+  /** Explicit user-requested retrieval bypasses automatic injection gating. */
+  policy?: boolean;
 }
 
 /**
@@ -131,217 +152,98 @@ export interface RecallOpts {
  * When `cwd` is set, files under that directory are boosted and
  * files outside are demoted — prevents cross-project contamination.
  */
-export async function performRecall(
-  query: string,
-  opts: RecallOpts = {}
-): Promise<string | null> {
-  const {
-    type = "file",
-    limit = 5,
-    token_budget = 5000,
-    minConfidence = 0.5,
-    cwd,
-  } = opts;
-
-  const db = openDb();
-  const sessionId = `recall-${Date.now()}`;
-  const engine = new HebbianEngine(db, sessionId);
-
-  // --- Predictive pre-load (v2.2): auto-inject 0-2 files on first message ---
-  // Uses consensus: both Hebbian + commit agree, OR single system >= 0.85
-  if (!type || type === "file") {
-    const isFirst = isFirstMessageInSession();
-    if (isFirst) {
-      // v5: Capture session intent from first message
-      try {
-        const intentDb = openDb();
-        const intentEngine = new HebbianEngine(intentDb, sessionId);
-        intentEngine.setSessionIntent(query.slice(0, 200));
-        intentDb.close();
-      } catch {
-        // Intent capture failed — skip silently
-      }
-
-      try {
-        const hebbianResults = await engine.recall({ query, type: "file", limit: 5, token_budget });
-        const { isCommitLearningEnabled, predictChangeSet } = await import("./commit-learning.js");
-        const commitEnabled = isCommitLearningEnabled(db);
-        const commitPreds = commitEnabled
-          ? await predictChangeSet(query, db, 0.5)
-          : [];
-        const commitFiles = new Set(commitPreds.flatMap(p => p.files));
-
-        const preload: RecallResult[] = [];
-        for (const r of hebbianResults) {
-          if (r.neuron.type !== "file") continue;
-          // Single system high confidence
-          if (r.confidence >= 0.85) {
-            preload.push(r);
-          } else if (commitFiles.has(r.neuron.path) && r.confidence >= 0.6) {
-            // Both systems agree
-            preload.push(r);
-          }
-          if (preload.length >= 2) break;
-        }
-
-        if (preload.length > 0) {
-          db.close();
-          const lines = ["[brainbox] Predictive pre-load (first message):"];
-          for (const r of preload) {
-            const pct = Math.round(r.confidence * 100);
-            const myelin = Math.round(r.neuron.myelination * 100);
-            lines.push(`  - ${r.neuron.path} (confidence: ${pct}%, myelin: ${myelin}%)`);
-          }
-          lines.push("These files are predicted to be relevant based on task intent and history.");
-
-          // Track for anti-recall
-          const recalledIds = preload.map(r => r.neuron.id);
-          trackRecalledFiles(sessionId, recalledIds);
-
-          return lines.join("\n");
-        }
-      } catch {
-        // Pre-load failed — fall through to normal recall
-      }
-    }
-  }
-
-  // Fetch extra candidates — we filter down after scoping + noise removal
-  const fetchLimit = limit * 3;
-  const fileResults = await engine.recall({ query, type, limit: fetchLimit, token_budget });
-
-  // Also recall tools — learned MCP/tool preferences for this task type
-  const toolResults = await engine.recall({ query, type: "tool", limit: 10, token_budget: 2000 });
-  db.close();
-
-  // --- File results ---
-  let confident = fileResults.filter((r) => r.confidence >= minConfidence);
-
-  // Remove low-signal files (package.json, .gitignore, etc.)
-  confident = confident.filter((r) => {
-    if (r.neuron.type !== "file") return true;
-    const basename = r.neuron.path.split("/").pop() || "";
-    return !LOW_SIGNAL_BASENAMES.has(basename);
-  });
-
-  // Project scoping: demote out-of-project files by 70%
-  if (cwd) {
-    const prefix = cwd.endsWith("/") ? cwd : cwd + "/";
-    confident = confident
-      .map((r) => ({
-        ...r,
-        confidence:
-          r.neuron.type !== "file" || r.neuron.path.startsWith(prefix)
-            ? r.confidence
-            : r.confidence * 0.3,
-      }))
-      .filter((r) => r.confidence >= minConfidence)
-      .sort((a, b) => b.confidence - a.confidence);
-  }
-
-  confident = confident.slice(0, limit);
-
-  // --- Commit change-set predictions (v2.1) ---
-  // Merge predictions from commit neurons if enough data exists.
-  if ((!type || type === "file") && confident.length < limit) {
-    try {
-      const { isCommitLearningEnabled, predictChangeSet } = await import("./commit-learning.js");
-      const commitDb = openDb();
-      if (isCommitLearningEnabled(commitDb)) {
-        const predictions = await predictChangeSet(query, commitDb, minConfidence);
-        for (const pred of predictions) {
-          for (const filePath of pred.files) {
-            // Skip if already in Hebbian results
-            if (confident.find(r => r.neuron.path === filePath)) continue;
-
-            // Look up the file neuron in DB
-            const neuron = commitDb.prepare(
-              "SELECT * FROM neurons WHERE path = ? AND type = 'file'"
-            ).get(filePath) as any;
-            if (!neuron) continue;
-
-            confident.push({
-              neuron: {
-                ...neuron,
-                contexts: typeof neuron.contexts === "string"
-                  ? JSON.parse(neuron.contexts) : neuron.contexts,
-              },
-              confidence: pred.confidence * 0.9, // slight discount vs Hebbian
-              activation_path: `commit: "${pred.commitMessage.slice(0, 60)}"`,
-              estimated_tokens_saved: 1500,
-            });
-
-            if (confident.length >= limit) break;
-          }
+export async function performRecall(query: string, opts: RecallOpts = {}): Promise<string | null> {
+  const { type = "file", limit = 5, token_budget = 5000, minConfidence = 0.5, cwd } = opts;
+  const sessionId = recallSessionId(opts.sessionId, cwd);
+  const maxChars = Math.max(0, Math.min(opts.maxChars ?? INJECTION_CHAR_BUDGET, token_budget * 4));
+  let db: Database.Database | undefined;
+  try {
+    db = openDb();
+    db.pragma("busy_timeout = 100");
+    // Only idle sessions are flushed implicitly: parallel host sessions retain their feedback window.
+    const idleBefore = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    const priorSessions = db.prepare(`SELECT session_id FROM policy_decisions WHERE finalized=0
+      GROUP BY session_id HAVING MAX(ts)<? AND NOT EXISTS (
+        SELECT 1 FROM access_log WHERE access_log.session_id=policy_decisions.session_id AND timestamp>=?
+      )`).all(idleBefore, idleBefore) as { session_id: string }[];
+    for (const previous of priorSessions) flushRecallSession(db, previous.session_id);
+    const first = !db.prepare("SELECT 1 FROM policy_decisions WHERE session_id=? AND ts>=? LIMIT 1")
+      .get(sessionId, idleBefore);
+    const engine = new HebbianEngine(db, sessionId);
+    if (first) engine.setSessionIntent(query.slice(0, 200));
+    const fileResults = await engine.recall({ query, type, limit: Math.max(5, limit * 3), token_budget });
+    const toolResults = type === "file"
+      ? await engine.recall({ query, type: "tool", limit: 10, token_budget: 2000 }) : [];
+    const prefix = cwd && (cwd.endsWith("/") ? cwd : cwd + "/");
+    let confident = fileResults.map(r => ({
+      ...r,
+      confidence: prefix && r.neuron.type === "file" && !r.neuron.path.startsWith(prefix)
+        ? r.confidence * 0.3 : r.confidence,
+    })).filter(r => r.confidence >= minConfidence &&
+      (r.neuron.type !== "file" || !LOW_SIGNAL_BASENAMES.has(r.neuron.path.split("/").pop() || "")));
+    if (type === "file" && confident.length < limit && isCommitLearningEnabled(db)) {
+      const predictions = await predictChangeSet(query, db, minConfidence);
+      for (const prediction of predictions) {
+        for (const path of prediction.files) {
+          if (prefix && !path.startsWith(prefix) || confident.some(r => r.neuron.path === path)) continue;
+          const row = db.prepare("SELECT * FROM neurons WHERE path=? AND type='file'").get(path) as (Omit<Neuron, "contexts"> & { contexts: string }) | undefined;
+          if (!row || LOW_SIGNAL_BASENAMES.has(path.split("/").pop() || "")) continue;
+          confident.push({ neuron: { ...row, contexts: JSON.parse(row.contexts) as string[] },
+            confidence: prediction.confidence * 0.9, activation_path: `commit: ${prediction.commitMessage.slice(0, 60)}`,
+            estimated_tokens_saved: 1500 });
           if (confident.length >= limit) break;
         }
-        confident.sort((a, b) => b.confidence - a.confidence);
-        confident = confident.slice(0, limit);
+        if (confident.length >= limit) break;
       }
-      commitDb.close();
-    } catch {
-      // Commit learning not available — skip silently
     }
-  }
-
-  // --- Tool results (MCP tool suggestions) ---
-  // Only surface MCP tools (contain "__") with decent confidence and usage
-  const confidentTools = toolResults
-    .filter((r) => r.confidence >= minConfidence)
-    .filter((r) => r.neuron.path.includes("__") || r.neuron.path.startsWith("zsh:"))
-    .filter((r) => r.neuron.access_count >= 3) // must have been used 3+ times
-    .slice(0, 3);
-
-  if (confident.length === 0 && confidentTools.length === 0) return null;
-
-  const lines: string[] = [];
-
-  if (confident.length > 0) {
-    lines.push("[brainbox] Neural recall for this task:");
-    for (const r of confident) {
-      const pct = Math.round(r.confidence * 100);
-      const path = r.neuron.path;
-      const myelin = Math.round(r.neuron.myelination * 100);
-      lines.push(`  - ${path} (confidence: ${pct}%, myelin: ${myelin}%)`);
+    const tools = toolResults.filter(r => r.confidence >= minConfidence && r.neuron.access_count >= 3 &&
+      (r.neuron.path.includes("__") || r.neuron.path.startsWith("zsh:"))).slice(0, 3);
+    confident = [...confident, ...tools].sort((a, b) => b.confidence - a.confidence);
+    const projectKnown = !!prefix && !!db.prepare("SELECT 1 FROM neurons WHERE path>=? AND path<? LIMIT 1").get(prefix, prefix + "\uffff");
+    const contextKey = policyContext(query, confident[0]?.confidence ?? 0, projectKnown, first);
+    const learn = opts.policy !== false && process.env.BRAINBOX_POLICY !== "off";
+    const arm = selectPolicyArm(db, contextKey, learn);
+    const selected: RecallResult[] = [];
+    const injectionLimit = Math.min(limit, ARM_LIMIT[arm]);
+    for (const result of confident) {
+      if (selected.length >= injectionLimit) break;
+      // Check only candidates about to be shown, refilling slots left by deleted files.
+      if (result.neuron.type === "file" && isAbsolutePath(result.neuron.path) &&
+        !existsSync(resolvePath(result.neuron.path))) continue;
+      selected.push(result);
     }
-    lines.push(
-      "These files were frequently accessed together in similar contexts."
-    );
-  }
-
-  if (confidentTools.length > 0) {
-    lines.push("[brainbox] Preferred tools for this task type:");
-    for (const r of confidentTools) {
-      const pct = Math.round(r.confidence * 100);
-      const tool = r.neuron.path;
-      const uses = r.neuron.access_count;
-      lines.push(`  - ${tool} (confidence: ${pct}%, used ${uses}x)`);
+    const formatted = compactRecall(selected, maxChars);
+    let text = formatted.text;
+    if (arm !== "SILENT") {
+      const recentTools = (db.prepare("SELECT tool_name FROM session_replay WHERE session_id=? ORDER BY seq DESC LIMIT 6")
+        .all(sessionId) as { tool_name: string }[]).map(row => row.tool_name).reverse();
+      const matches = matchProcedures(db, { query, recentTools, error: /error|exception|fail/i.test(query) ? query : undefined });
+      // Format individually so exposure attribution cannot include budget-truncated matches.
+      for (const match of matches) {
+        const remaining = maxChars - text.length - (text ? 1 : 0);
+        const output = formatProcedures([match], remaining);
+        if (!output || output.length > remaining) continue;
+        text += `${text ? "\n" : ""}${output}`;
+        recordProcedureExposure(db, match.procedure.id, sessionId);
+      }
     }
-    lines.push(
-      "These tools worked well in similar past contexts. Prefer them over alternatives."
-    );
-  }
-
-  // v5: Staleness alerts — surface decaying superhighways
-  try {
-    const alertDb = openDb();
-    const alertEngine = new HebbianEngine(alertDb, `alert-${Date.now()}`);
-    const stalenessAlert = alertEngine.getStalenessAlerts({ limit: 3, minMyelination: 0.15 });
-    alertDb.close();
-    if (stalenessAlert) {
-      lines.push(`[brainbox] ${stalenessAlert}`);
-    }
+    const injectedIds = new Set(formatted.included.map(r => r.neuron.id));
+    const seen = new Set<string>();
+    const logged = [...confident, ...fileResults, ...toolResults].filter(r => {
+      if (seen.has(r.neuron.id)) return false;
+      seen.add(r.neuron.id);
+      return true;
+    });
+    db.transaction(() => {
+      const decisionId = beginPolicyDecision(db!, sessionId, query, contextKey, arm, text.length, learn);
+      logRecallEvents(db!, decisionId, sessionId, query, logged, injectedIds, arm);
+    })();
+    return text || null;
   } catch {
-    // Staleness check failed — skip silently
+    return null;
+  } finally {
+    db?.close();
   }
-
-  // Anti-recall: track which file neurons were recalled this session
-  const recalledIds = confident.map(r => r.neuron.id);
-  if (recalledIds.length > 0) {
-    trackRecalledFiles(sessionId, recalledIds);
-  }
-
-  return lines.join("\n");
 }
 
 // --- Bash Error Detection (shared across all adapters) ---
@@ -393,156 +295,49 @@ export function detectBashError(output: string): string | null {
   return null;
 }
 
-// --- Predictive Pre-Load Helper (v2.2) ---
 
-/**
- * Detect if this is likely the first message in a session.
- * Uses anti-recall session state age — if stale (>60s) or absent, it's first.
- */
-function isFirstMessageInSession(): boolean {
-  try {
-    const state = loadAntiRecallState();
-    if (!state) return true; // no state = first message
-    const age = Date.now() - state.lastUpdate;
-    return age > 60_000; // >1 minute since last recall = new session
-  } catch {
-    return false; // on error, skip pre-load
-  }
+/** Stable fallback joins prompt and tool hooks when a host omits its session id. */
+export function recallSessionId(sessionId?: string, cwd?: string): string {
+  return sessionId || process.env.BRAINBOX_SESSION_ID ||
+    `local-${createHash("sha256").update(cwd || process.cwd()).digest("hex").slice(0, 16)}`;
 }
 
-// --- Anti-Recall Session State (persisted between hook invocations) ---
+// --- Durable anti-recall and policy session accounting ---
 
-const ANTI_RECALL_DIR = join(process.env.HOME || "~", ".brainbox");
-const ANTI_RECALL_FILE = join(ANTI_RECALL_DIR, "session-state.json");
-
-interface AntiRecallState {
-  sessionId: string;
-  recalled: string[];   // neuron IDs recalled this session
-  opened: string[];     // neuron IDs opened this session
-  lastUpdate: number;   // epoch ms
-}
-
-function loadAntiRecallState(): AntiRecallState | null {
-  try {
-    if (!existsSync(ANTI_RECALL_FILE)) return null;
-    const data = JSON.parse(readFileSync(ANTI_RECALL_FILE, "utf-8"));
-    // Stale if >2 hours old (session probably ended)
-    if (Date.now() - data.lastUpdate > 2 * 60 * 60 * 1000) return null;
-    return data as AntiRecallState;
-  } catch {
-    return null;
-  }
-}
-
-function saveAntiRecallState(state: AntiRecallState): void {
-  try {
-    mkdirSync(ANTI_RECALL_DIR, { recursive: true });
-    writeFileSync(ANTI_RECALL_FILE, JSON.stringify(state));
-  } catch {
-    // Silent — never block hooks
-  }
-}
-
-/**
- * Track recalled files (called from prompt hook after recall).
- * Adds to the session's recalled set.
- */
-export function trackRecalledFiles(sessionId: string, neuronIds: string[]): void {
-  const state = loadAntiRecallState() || {
-    sessionId,
-    recalled: [],
-    opened: [],
-    lastUpdate: Date.now(),
-  };
-
-  // If session changed, apply anti-recall for old session first
-  if (state.sessionId !== sessionId && state.recalled.length > 0) {
-    applyAntiRecallFromState(state);
-    // Start fresh for new session
-    state.sessionId = sessionId;
-    state.recalled = [];
-    state.opened = [];
-  }
-
-  for (const id of neuronIds) {
-    if (!state.recalled.includes(id)) state.recalled.push(id);
-  }
-  state.lastUpdate = Date.now();
-  saveAntiRecallState(state);
-}
-
-/**
- * Track opened files (called from PostToolUse hook on Read/Edit/Write).
- * Adds to the session's opened set.
- */
-export function trackOpenedFile(sessionId: string, neuronId: string): void {
-  const state = loadAntiRecallState() || {
-    sessionId,
-    recalled: [],
-    opened: [],
-    lastUpdate: Date.now(),
-  };
-
-  if (state.sessionId !== sessionId && state.recalled.length > 0) {
-    applyAntiRecallFromState(state);
-    state.sessionId = sessionId;
-    state.recalled = [];
-    state.opened = [];
-  }
-
-  if (!state.opened.includes(neuronId)) state.opened.push(neuronId);
-  state.lastUpdate = Date.now();
-  saveAntiRecallState(state);
-}
-
-/**
- * Apply anti-recall decay from persisted state.
- * Called when session transitions or on explicit flush.
- */
-function applyAntiRecallFromState(state: AntiRecallState): void {
-  const ignored = state.recalled.filter(id => !state.opened.includes(id));
-  if (ignored.length === 0) return;
-
-  try {
-    const db = openDb();
-    const engine = new HebbianEngine(db, `antirecall-${Date.now()}`);
-
-    // Track what was recalled/opened into the engine, then apply escalated anti-recall
-    for (const id of state.recalled) engine.trackRecalled(id);
-    for (const id of state.opened) engine.trackOpened(id);
-    const result = engine.applyAntiRecallEscalated();
-
-    db.close();
-
-    if (result.weakened > 0) {
-      // Log for debugging (file-based, never stdout)
-      const logMsg = `[brainbox] Anti-recall (escalated): weakened ${result.weakened} synapses for ${result.ignored.length} ignored files\n`;
-      try {
-        const logFile = join(ANTI_RECALL_DIR, "antirecall.log");
-        appendFileSync(logFile, `${new Date().toISOString()} ${logMsg}`);
-      } catch { /* */ }
+function flushRecallSession(db: Database.Database, sessionId: string): void {
+  flushPolicySession(db, sessionId, () => {
+    const rows = db.prepare(`SELECT neuron_id, opened, edited, source_from, source_to FROM recall_events
+      WHERE session_id=? AND injected=1 AND decision_id IN (SELECT id FROM policy_decisions WHERE finalized=0 AND session_id=?)`)
+      .all(sessionId, sessionId) as { neuron_id: string; opened: number; edited: number; source_from: string | null; source_to: string | null }[];
+    const engine = new HebbianEngine(db, sessionId);
+    for (const row of rows) {
+      engine.trackRecalled(row.neuron_id, row.source_from && row.source_to ? { from: row.source_from, to: row.source_to } : undefined);
+      if (row.opened || row.edited) engine.trackOpened(row.neuron_id);
     }
-  } catch {
-    // Silent — never block hooks
-  }
+    engine.applyAntiRecallEscalated();
+  });
 }
 
-/**
- * Flush anti-recall state (e.g., on session end).
- * Applies decay for any recalled-but-not-opened files.
- */
-export function flushAntiRecall(): void {
-  const state = loadAntiRecallState();
-  if (state && state.recalled.length > 0) {
-    applyAntiRecallFromState(state);
-    // Clear state
-    saveAntiRecallState({
-      sessionId: state.sessionId,
-      recalled: [],
-      opened: [],
-      lastUpdate: Date.now(),
-    });
-  }
+/** Legacy public entry point now records real, session-scoped SQLite hits. */
+export function trackOpenedFile(sessionId: string, neuronId: string, edited = false): void {
+  let db: Database.Database | undefined;
+  try {
+    db = openDb();
+    db.pragma("busy_timeout = 100");
+    markRecallAccess(db, sessionId, neuronId, edited);
+  } catch { /* Hooks fail closed. */ } finally { db?.close(); }
+}
+
+/** Flush pending sessions exactly once; history remains available for MCP explanation. */
+export function flushAntiRecall(sessionId?: string): void {
+  let db: Database.Database | undefined;
+  try {
+    db = openDb();
+    db.pragma("busy_timeout = 100");
+    const sessions = sessionId ? [{ session_id: sessionId }]
+      : db.prepare("SELECT DISTINCT session_id FROM policy_decisions WHERE finalized=0").all() as { session_id: string }[];
+    for (const session of sessions) flushRecallSession(db, session.session_id);
+  } catch { /* Never block session shutdown. */ } finally { db?.close(); }
 }
 
 // --- v5: Project Auto-Tagging ---

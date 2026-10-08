@@ -2,7 +2,7 @@
  * BrainBox Installer for Claude Code
  *
  * Automates setup of MCP server + hooks in ~/.claude/settings.json.
- * - install(): adds MCP server + PostToolUse + UserPromptSubmit hooks
+ * - install(): adds MCP server + PostToolUse + UserPromptSubmit + SessionEnd hooks
  * - uninstall(): removes them cleanly
  *
  * Hooks use absolute paths (resolved at install time) for stability.
@@ -12,7 +12,7 @@
 import { readFileSync, writeFileSync, existsSync, copyFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 import { homedir } from "node:os";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -87,7 +87,8 @@ function addHook(settings: Settings, hookName: string, command: string): boolean
     return false;
   }
 
-  settings.hooks[hookName].push({ type: "command", command });
+  // Claude Code schema: { matcher?, hooks: [{ type, command }] }; omitted matcher = all tools/events.
+  settings.hooks[hookName].push({ hooks: [{ type: "command", command }] });
   console.log(`  ${hookName}: added`);
   return true;
 }
@@ -136,12 +137,33 @@ export function install(): void {
   console.log("Hooks:");
   changed = addHook(settings, "PostToolUse", `npx tsx ${hookPath}`) || changed;
   changed = addHook(settings, "UserPromptSubmit", `npx tsx ${promptHookPath}`) || changed;
+  // SessionEnd flushes that session's recall outcomes (anti-recall + policy rewards).
+  changed = addHook(settings, "SessionEnd", `npx tsx ${hookPath}`) || changed;
 
   // 4. Write settings
   if (changed) {
     writeSettings(settings);
     console.log("\n  Settings saved to ~/.claude/settings.json");
     console.log("  Backup at ~/.claude/settings.json.brainbox-backup");
+  }
+
+  // Prefetch never holds up installation or runs inside the short-lived hooks.
+  console.log("\nEmbedding model: background prefetch (non-fatal).");
+  console.log("  Manual: brainbox models pull");
+  try {
+    const cliArgs = __filename.endsWith(".js")
+      ? [join(__dirname, "cli.js"), "models", "pull"]
+      : ["--import", "tsx", join(root, "src", "cli.ts"), "models", "pull"];
+    const child = spawn(process.execPath, cliArgs, {
+      cwd: root,
+      detached: true,
+      stdio: "ignore",
+      env: { ...process.env, BRAINBOX_HOOK: "0" },
+    });
+    child.on("error", () => console.log("  Prefetch could not start; use the manual command."));
+    child.unref();
+  } catch {
+    console.log("  Prefetch could not start; use the manual command.");
   }
 
   // 5. Add MCP server
@@ -181,6 +203,7 @@ export function uninstall(): void {
   console.log("Hooks:");
   changed = removeHook(settings, "PostToolUse") || changed;
   changed = removeHook(settings, "UserPromptSubmit") || changed;
+  changed = removeHook(settings, "SessionEnd") || changed;
 
   if (!changed) {
     console.log("  No BrainBox hooks found");
