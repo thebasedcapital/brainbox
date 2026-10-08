@@ -6,10 +6,11 @@ import { header, caption } from "../lib.mjs";
 
 const W = 1280, H = 500;
 
+// One co-access per session at the ordinary rate (η = 0.1): the exact values the update rule gives.
 const panels = [
-  { x: 190, session: "session 1", passes: 1, w: "0.12", note: "co-accessed once" },
-  { x: 480, session: "session 5", passes: 4, w: "0.58", note: "a habit forming" },
-  { x: 770, session: "session 20", passes: 11, w: "0.95", note: "myelinated: recalled first" },
+  { x: 190, session: "session 1", passes: 1, w: "0.10", note: "co-accessed once" },
+  { x: 480, session: "session 5", passes: 4, w: "0.38", note: "a habit forming" },
+  { x: 770, session: "session 20", passes: 11, w: "0.66", note: "a well-worn path" },
 ];
 
 export default function hebbian(k) {
@@ -37,18 +38,18 @@ export default function hebbian(k) {
     if (i < 2) s += k.path(stroke(r, p.x + 118, Y + 84, p.x + 172, Y + 84, 0.6), { c: "thread", w: 1.3, delay: t + 600 });
   });
 
-  // SNAP plasticity, sketched: growth per co-access shrinks near the ceiling.
-  const gx = 960, gy = 380, gw = 250, gh = 200;
+  // The real update, w += 0.1·g(w)·(1 − w) with g a falling sigmoid: fast at first, slower as w grows.
+  const gx = 960, gy = 380, gw = 250, gh = 200, N = 40;
   s += k.path(stroke(r, gx, gy, gx + gw, gy, 0.5) + stroke(r, gx, gy, gx, gy - gh, 0.5), { w: 1.2, delay: 2500 });
-  const curve = [];
-  for (let i = 0; i <= 24; i++) {
-    const x = i / 24;
-    const y = 0.95 / (1 + Math.exp(-8 * (x - 0.42)));
-    curve.push([gx + 6 + x * (gw - 12), gy - 8 - y * (gh - 20)]);
+  const curve = [[gx + 6, gy - 8]];
+  for (let n = 1, w = 0; n <= N; n++) {
+    const g = 0.1 / (1 + Math.exp(8 * (w - 0.5)));
+    w = n === 1 ? g : Math.min(1, w + g * (1 - w));
+    curve.push([gx + 6 + (n / N) * (gw - 12), gy - 8 - w * (gh - 20)]);
   }
   s += k.path(smooth(curve), { c: "accent", w: 1.8, delay: 2700, dur: 1800 });
-  s += k.path(stroke(r, gx, gy - 8 - 0.95 * (gh - 20), gx + gw, gy - 8 - 0.95 * (gh - 20), 0.4), { c: "muted", w: 0.9, dash: "3 4", delay: 2700 });
-  s += k.text(gx + gw, gy - 8 - 0.95 * (gh - 20) - 10, "ceiling 0.95", { font: "mono", size: 12.5, c: "muted", anchor: "end", delay: 3000 });
+  s += k.path(stroke(r, gx, gy - 8 - (gh - 20), gx + gw, gy - 8 - (gh - 20), 0.4), { c: "muted", w: 0.9, dash: "3 4", delay: 2700 });
+  s += k.text(gx + gw, gy - 8 - (gh - 20) - 10, "ceiling 1.0", { font: "mono", size: 12.5, c: "muted", anchor: "end", delay: 3000 });
   s += k.text(gx + gw / 2, gy + 28, "co-accesses →", { font: "hand", size: 20, c: "muted", anchor: "middle", delay: 2600 });
   s += k.text(gx - 12, gy - gh + 12, "w", { font: "mono", size: 14, c: "muted", anchor: "end", delay: 2600 });
   s += k.text(gx + gw / 2, gy - gh - 22, "SNAP: strong links grow slowest", { font: "hand", size: 21, anchor: "middle", delay: 2900 });

@@ -7,7 +7,7 @@
   11pt,
 ]{article}
 \usepackage{xcolor}
-\usepackage[margin=25mm]{geometry}
+\usepackage[margin=26mm]{geometry}
 \usepackage{amsmath,amssymb}
 \setcounter{secnumdepth}{-\maxdimen} % remove section numbering
 \usepackage{iftex}
@@ -23,6 +23,8 @@
 \usepackage{lmodern}
 \ifPDFTeX\else
   % xetex/luatex font selection
+  \setmainfont[Extension=.otf,UprightFont=*-regular,BoldFont=*-bold,ItalicFont=*-italic,BoldItalicFont=*-bolditalic]{texgyrepagella}
+  \setmathfont[]{texgyrepagella-math.otf}
 \fi
 % Use upquote if available, for straight quotes in verbatim environments
 \IfFileExists{upquote.sty}{\usepackage{upquote}}{}
@@ -30,6 +32,7 @@
   \usepackage[]{microtype}
   \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
 }{}
+\usepackage{setspace}
 \makeatletter
 \@ifundefined{KOMAClassName}{% if non-KOMA class
   \IfFileExists{parskip.sty}{%
@@ -89,6 +92,21 @@
 % Allow footnotes in longtable head/foot
 \IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
 \makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
 % definitions for citeproc citations
 \NewDocumentCommand\citeproctext{}{}
 \NewDocumentCommand\citeproc{mm}{%
@@ -127,12 +145,17 @@
 \else
 \usepackage[bidi=default,shorthands=off]{babel}
 \fi
+\ifPDFTeX
+\else
+\babelfont{rm}[Extension=.otf,UprightFont=*-regular,BoldFont=*-bold,ItalicFont=*-italic,BoldItalicFont=*-bolditalic]{texgyrepagella}
+\fi
 \ifLuaTeX
   \usepackage{selnolig} % disable illegal ligatures
 \fi
 \setlength{\emergencystretch}{3em} % prevent overfull lines
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage[font=small,labelfont=bf,margin=1em]{caption}
 \usepackage{bookmark}
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
 \urlstyle{same}
@@ -143,7 +166,7 @@
   colorlinks=true,
   linkcolor={blue},
   filecolor={Maroon},
-  citecolor={Blue},
+  citecolor={blue},
   urlcolor={blue},
   pdfcreator={LaTeX via pandoc}}
 
@@ -154,1009 +177,838 @@
   \apptocmd{\@title}{\par {\large #1 \par}}{}{}
 }
 \makeatother
-\subtitle{A systems draft with coverage-conditioned replay evaluation}
+\subtitle{What an agent's own history predicts, and what it does not}
 \author{Bhavesh B}
-\date{8 October 2026 --- revised draft, not a new archival release}
+\date{Version 2 · 8 October 2026}
 
 \begin{document}
 \maketitle
 \begin{abstract}
-Coding agents repeatedly revisit files and tool sequences, creating an
-opportunity for external memory without updating language-model
-parameters. We present BrainBox, a local SQLite-backed system that
-learns directed co-access associations among files, tools and errors.
-Its current implementation combines bounded associative updates,
-query-conditioned graph retrieval, temporal features and reciprocal-rank
-fusion; a separate sequence model predicts tools. Optional components
-provide structural code hints, hybrid snippet retrieval, contextual
-control of prompt injection and deterministic procedure mining. We
-reassess the system using recorded agent trajectories rather than
-treating estimated search-token avoidance as measured savings. In a
-selected 40-task SWE-rebench replay, next-tool MRR@3 is 0.767 versus
-0.748 for frequency, with a paired trajectory-bootstrap difference
-interval of {[}0.012, 0.027{]}. Next-file MRR is 0.409 versus 0.430 for
-recency, with an interval spanning zero. All rank metrics condition on
-targets already represented in prior-task memory: only 221 of 1,303 SWE
-next-file opportunities are scored. A separate 97-session local replay
-shows the same next-tool advantage but lower edited-file MRR than
-frequency. These results support a narrow claim about repeated-access
-prediction, not improved task completion, net token savings, biological
-fidelity or superiority to complete agent-memory products. We make the
-evaluation's ordering assumptions, coverage limits and incomplete
-artifact provenance explicit.
+A coding agent that returns to a familiar repository usually arrives as a stranger. It searches for files it
+opened yesterday and replays tool sequences it has run a hundred times. BrainBox is a local memory that learns
+these habits from the agent's own activity. It records which files, tools and errors occur together and
+strengthens directed associations through repetition. It then recalls likely files by fusing query matches
+with associative, temporal and frequency evidence, and a short sequence model predicts the next tool. Memory
+lives in SQLite on the developer's machine, and neither learning nor recall calls a language model.
+
+This second version replaces the first paper's estimated token savings with a replay evaluation on recorded
+agent trajectories. Each task is scored using only memory built from earlier tasks, against recency,
+frequency, BM25, co-occurrence and random baselines. On 40 tasks from two held-out SWE-rebench repositories,
+next-tool prediction reaches an MRR@3 of 0.767 against 0.748 for the strongest baseline (paired 95\% interval
+for the difference: +0.012 to +0.027). On 97 local sessions it scores 0.686 against 0.662 (+0.010 to +0.036).
+File retrieval is more modest. Next-file prediction is level with recency, and on local sessions plain
+frequency ranks edited files better than BrainBox. Every score is conditioned on targets that memory could
+have seen, and only 17\% of public next-file targets qualify. The evidence supports a precise claim: from an
+agent's own history, BrainBox reliably predicts the next tool and ranks familiar files about as well as the
+best simple heuristics. Whether that makes real tasks shorter remains to be measured.
 \end{abstract}
 
-\textbf{Author:} Bhavesh B, independent researcher; bhaveshb@proton.me.
-ORCID:
-\href{https://orcid.org/0009-0007-9680-3842}{0009-0007-9680-3842}.
+\setstretch{1.08}
+\textbf{Bhavesh B}, independent researcher · bhaveshb@proton.me · ORCID
+\href{https://orcid.org/0009-0007-9680-3842}{0009-0007-9680-3842}
 
-\textbf{Draft status.} This revision describes the v0.2 source tree and
-recorded replay runs. It replaces the earlier manuscript's central
-synthetic-token-savings argument. The existing concept DOI,
-\href{https://doi.org/10.5281/zenodo.18664906}{10.5281/zenodo.18664906},
-identifies the prior publication record; this draft has not been
-deposited as a new version. Code:
-\href{https://github.com/thebasedcapital/brainbox}{thebasedcapital/brainbox}.
-Manuscript license: CC BY 4.0; code license: MIT.
+\textbf{Version 2.} This version supersedes the February 2026 version deposited under concept DOI
+\href{https://doi.org/10.5281/zenodo.18664906}{10.5281/zenodo.18664906}; Section 7 lists what changed. Code:
+\href{https://github.com/thebasedcapital/brainbox}{thebasedcapital/brainbox} on GitHub (MIT). Text: CC BY 4.0.
 
-\textbf{Keywords:} coding agents; behavioral memory; associative
-retrieval; tool prediction; rank fusion; offline replay.
+\textbf{Keywords:} coding agents · behavioral memory · Hebbian learning · spreading activation · tool
+prediction · rank fusion · offline replay
 
 \section{1. Introduction}\label{introduction}
 
-Repeated work on a repository produces a trace of operational
-associations: files are read together, edits follow errors, and familiar
-tool sequences recur. A coding agent can use this history to propose
-likely resources before repeating a broad search. This is a prediction
-problem as well as a retrieval problem. The file most often used after a
-test failure may be useful even when its contents do not closely match
-the next task description; conversely, a strong lexical query must be
-able to override a habitual but irrelevant file.
+A developer who comes back to a codebase knows where things are. They open the authentication module without
+searching for it, run the tests the way they always do, and remember that a particular import error is fixed
+in the session layer. A coding agent remembers none of this. Each session begins with an empty context, and
+the agent rediscovers the repository through searches whose answers it has, in a sense, found many times
+before.
 
-BrainBox stores these associations outside the language model. Adapters
-translate tool activity into local events; an indexed SQLite graph
-retains resources, directed associations and access history. Recall
-combines query evidence and behavioral priors rather than relying on
-either alone. The model's parameters are unchanged. Learning and recall
-require no LLM inference call, although optional dense retrieval uses a
-downloaded embedding model on the CPU. This removes an API dependency,
-not computational or storage cost.
+That access patterns can be learned is an old idea in systems. Fido, a predictive cache described in 1991,
+learned which database objects tended to be requested together and fetched them before they were asked for
+(\citeproc{ref-fido1991}{Palmer and Zdonik 1991}). The same idea now runs through caches and prefetchers at
+every level of the machine. BrainBox moves it one level higher, into the working life of a coding agent. It
+watches the tools the agent calls and the files it reads and edits. It learns which resources go together, and
+it offers the most likely ones before the agent goes looking.
 
-We use \emph{behavioral memory} for historical file/tool/error
-associations and \emph{procedural memory} more narrowly for mined action
-sequences with observed verification outcomes. Neither term implies that
-observing a frequently used action proves it useful or correct. In
-particular, access frequency is not a causal estimate of utility.
+The learning rule is Hebbian in spirit: resources used together become associated
+(\citeproc{ref-hebb1949}{Hebb 1949}). Recall spreads activation outward from whatever the query matches
+(\citeproc{ref-collins1975}{Collins and Loftus 1975}). Nothing is written into the model's weights. Memory is
+a small SQLite database on the developer's machine, updated by hooks and queried without a single
+language-model call.
 
-This revision makes three contributions:
+The first version of this paper argued for BrainBox mainly through estimated token savings in synthetic
+sessions and a small, hand-labeled recall benchmark. Those estimates assumed the very thing worth testing,
+namely that the recalled files are the ones the agent needed. This version asks a narrower question that can
+actually be answered. Given everything an agent has done in a repository so far, how well does its memory
+predict what it will touch next?
+
+We answer it by replaying recorded agent trajectories in order, letting memory learn only from the past, and
+comparing it with the simple heuristics that any memory must beat. The answer is clearest for tools: BrainBox
+predicts the next tool better than every baseline on both cohorts. For files the picture is mixed. BrainBox
+matches the best heuristic, but on a user's own projects plain frequency is the better guess for the next
+edit. And most of what an agent touches in a new task it has never touched before, which no memory of past
+behavior can predict.
+
+This paper makes three contributions:
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  \textbf{An inspectable local implementation} combining directed
-  co-access learning, temporal retrieval, query-aware rank fusion and
-  suffix-based tool prediction, with optional code retrieval and
-  procedure mining.
+  \textbf{A complete local system} that combines directed co-access learning, spreading activation with fan
+  damping, query-aware rank fusion and suffix-based tool prediction. Around these sit code search, a learned
+  injection policy and mined error-fix procedures (Section 3).
 \item
-  \textbf{A prior-history replay protocol} that fixes candidate
-  universes before each target task, separates edited-file, read-file,
-  next-file and next-tool probes, and reports both coverage and ranking
-  quality.
+  \textbf{A replay protocol without foresight.} Before each task it freezes the set of resources memory could
+  know about, and it reports how many targets fall inside that set as well as how well they are ranked
+  (Section 4).
 \item
-  \textbf{A bounded empirical finding:} next-tool prediction exceeds the
-  strongest measured heuristic baseline in the stored runs;
-  file-retrieval comparisons are mixed, and low historical coverage
-  limits the claim.
+  \textbf{Measured results} against five heuristic baselines with paired confidence intervals, including the
+  comparisons BrainBox loses (Section 5), and an account of what changed since the first version (Section 7).
 \end{enumerate}
 
-We do not claim a new biological learning law or first-in-field status.
-The main contribution is the concrete system and its evaluation
-boundary. A useful research outcome includes identifying when simple
-frequency or recency is competitive with a more elaborate memory system.
+\section{2. Related work}\label{related-work}
 
-\section{2. Related work and
-positioning}\label{related-work-and-positioning}
+\textbf{Memory for language-model agents.} Recent agent memories organize experience in several ways. A-MEM
+keeps it as linked notes, SYNAPSE as episodic and semantic stores joined by spreading activation, and MAGMA as
+several relation graphs at once (\citeproc{ref-amem2025}{Xu et al. 2025}; \citeproc{ref-synapse2026}{H. Jiang
+et al. 2026}; \citeproc{ref-magma2026}{D. Jiang et al. 2026}). Most store what the agent has read or been
+told, mediated by a language model. BrainBox stores what the agent has \emph{done}, through deterministic
+updates from tool events, and it is meant to sit beside such systems rather than replace them. We do not
+compare against them experimentally here.
 
-\textbf{Agent memory.} A-MEM builds linked agent memories, while SYNAPSE
-uses spreading activation over episodic-semantic memory and MAGMA
-separates several graph relationships (\citeproc{ref-amem2025}{Xu et al.
-2025}; \citeproc{ref-synapse2026}{H. Jiang et al. 2026};
-\citeproc{ref-magma2026}{D. Jiang et al. 2026}). These systems
-invalidate a simple division in which all existing memory is static or
-purely declarative. BrainBox emphasizes operational traces from coding
-tools and deterministic local updates; it does not establish empirical
-superiority over these systems.
+\textbf{Procedures and tool experience.} ToolMem learns what tools are capable of. MACLA builds hierarchical
+procedural memory through Bayesian selection and contrastive refinement, and NEMORI distills which experiences
+deserve to be kept (\citeproc{ref-toolmem2025}{Xiao et al. 2025}; \citeproc{ref-macla2025}{Forouzandeh et al.
+2025}; \citeproc{ref-nemori2025}{Ma et al. 2025}). All three use a model to abstract experience. BrainBox's
+procedure miner instead recognizes one fixed shape: a failing command, the edits that followed, and a passing
+rerun. That makes it easy to audit, but it cannot generalize beyond what it has seen.
 
-\textbf{Procedures and tool experience.} ToolMem studies learned
-tool-capability memory, and MACLA studies hierarchical procedural memory
-with Bayesian selection and contrastive refinement
-(\citeproc{ref-toolmem2025}{Xiao et al. 2025};
-\citeproc{ref-macla2025}{Forouzandeh et al. 2025}). NEMORI addresses
-adaptive memory distillation (\citeproc{ref-nemori2025}{Ma et al.
-2025}). BrainBox's procedure compiler instead recognizes constrained
-patterns in execution traces. Its advantages and disadvantages relative
-to language-mediated abstraction remain an empirical question:
-deterministic extraction is easier to inspect but may miss transferable
-explanations or infer spurious fixes.
+\textbf{Association and time.} Hebb's postulate and its many computational descendants
+(\citeproc{ref-hebb1949}{Hebb 1949}; \citeproc{ref-safa2024}{Safa 2024}) motivate learning from co-occurrence.
+ACT-R's base-level activation (\citeproc{ref-actr2025}{Innerebner et al. 2025}) motivates weighting each
+resource by how often and how recently it was used. Research on temporal graphs offers a useful corrective:
+simple recency and popularity heuristics are hard to beat at predicting the next interaction
+(\citeproc{ref-heuristics2025}{Cornell et al. 2025}), which is why they serve as our baselines. Cortex caches
+knowledge for language-model retrieval (\citeproc{ref-cortex2025}{Ruan et al. 2025}), and like Fido it treats
+prediction as a way to avoid repeating work.
 
-\textbf{Association, temporal history and caching.} Hebbian plasticity
-is a broad family of learning ideas, not a correctness argument for a
-particular implementation (\citeproc{ref-safa2024}{Safa 2024}).
-ACT-R-inspired personalization motivates combining recency and
-recurrence (\citeproc{ref-actr2025}{Innerebner et al. 2025}), while
-temporal-graph research demonstrates the importance of heuristic
-comparators (\citeproc{ref-heuristics2025}{Cornell et al. 2025}). Cortex
-studies semantic-aware knowledge caching for LLM access
-(\citeproc{ref-cortex2025}{Ruan et al. 2025}). BrainBox shares the
-motivation of avoiding repeated discovery but predicts operational
-resources rather than measuring remote-cache performance.
+\textbf{Retrieval.} Reciprocal-rank fusion combines rankers whose raw scores cannot be compared
+(\citeproc{ref-rrf2009}{Cormack et al. 2009}), and cAST shows that chunking code along its syntax tree
+improves code retrieval (\citeproc{ref-cast2025}{Zhang et al. 2025}). BrainBox uses both as components.
+Neither is a contribution of this paper.
 
-\textbf{Retrieval composition.} Reciprocal-rank fusion combines
-heterogeneous rankers without requiring comparable raw scores
-(\citeproc{ref-rrf2009}{Cormack et al. 2009}). BrainBox uses a weighted
-variant at the file level and a separate hybrid snippet ranker.
-Structural chunking is motivated by cAST (\citeproc{ref-cast2025}{Zhang
-et al. 2025}). These are adopted design ingredients, not new algorithms
-claimed by this paper. The replay results below do not evaluate
-embedding models or code-chunk retrieval.
+\section{3. BrainBox}\label{brainbox}
 
-\section{3. System and task
-definition}\label{system-and-task-definition}
+\subsection{3.1 Overview}\label{overview}
 
-\subsection{3.1 State and interfaces}\label{state-and-interfaces}
+BrainBox runs as a set of hooks around an agent (Figure 1). After each tool call it records which tool ran and
+which files it touched. Before each prompt it ranks candidate files, decides how many to show the agent, if
+any, and injects a compact list. At the end of a session it scores what became of those suggestions (opened,
+edited or ignored) and compiles repeated fixes into procedures. The same functions are available to any agent
+through an MCP server with eight tools: \texttt{record}, \texttt{recall}, \texttt{explain}, \texttt{error},
+\texttt{resolve}, \texttt{predict\_next}, \texttt{stats} and \texttt{decay}.
 
-A resource record contains an identifier, type, path or name,
-accumulated query context, timestamps, access count, activation and a
-bounded reinforcement scalar. Types include files, tools and errors.
-Directed edges retain association weights, counts and temporal metadata.
-Additional tables hold access logs, recall decisions, injection
-outcomes, code snippets, replay events and procedures.
+\begin{figure}
+\centering
+\includegraphics[width=1\linewidth,height=\textheight,keepaspectratio,alt={The BrainBox loop. Tool events update memory. Each prompt triggers recall, an injection decision and a compact injection. At session end, observed opens and edits become rewards for the injection policy, and ignored suggestions weaken only the association that produced them. Code structure, hybrid snippet search and procedures feed recall. All state stays on the machine.}]{figures/the-loop.pdf}
+\caption{\textbf{The BrainBox loop.} Tool events update memory. Each prompt triggers recall, an injection
+decision and a compact injection. At session end, observed opens and edits become rewards for the injection
+policy, and ignored suggestions weaken only the association that produced them. Code structure, hybrid snippet
+search and procedures feed recall. All state stays on the machine.}
+\end{figure}
 
-The operational flow is:
+Memory is a graph of resources (files, tools and errors) joined by directed, weighted associations. Each
+resource keeps its access count, its last access time, an activation level, context gathered from the queries
+in which it appeared, and a bounded reinforcement value. Each association keeps its weight, its co-access
+count and its timestamps. Logs of accesses, recall decisions and their outcomes sit alongside, as do code
+snippets and procedures when those features are in use.
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{Tool events {-}\textgreater{} event normalization {-}\textgreater{} resource/edge updates}
-\NormalTok{                                     |}
-\NormalTok{Prompt query {-}\textgreater{} candidate channels {-}\textgreater{} rank fusion {-}\textgreater{} injection choice}
-\NormalTok{                                                       |}
-\NormalTok{                           observed opens/edits {-}\textgreater{} outcome attribution}
-\NormalTok{Session end {-}\textgreater{} outcome finalization + procedure compilation}
-\end{Highlighting}
-\end{Shaded}
+\subsection{3.2 Learning from co-access}\label{learning-from-co-access}
 
-The Claude Code integration observes tool completion, performs
-pre-prompt recall and finalizes outcomes at session end. An MCP server
-exposes recording, recall, explanation, error recording, resolution,
-prediction, statistics and decay. Other adapters use the same
-observation/recall layer. Platform integration demonstrates an available
-interface, not a measured benefit on each platform.
-
-\subsection{3.2 Two distinct deployment
-questions}\label{two-distinct-deployment-questions}
-
-The deployed system asks both \emph{which resources should be ranked?}
-and \emph{whether any of them should be injected?} The former is
-evaluated here through retrieval and prediction probes. The latter
-involves a contextual policy, prompt overhead and agent responses; it is
-not evaluated by the recorded ranking replay. The same separation
-applies to procedure mining: implementation availability is not evidence
-that remembered procedures improve debugging success.
-
-The database is local, but local storage is not a security boundary.
-Recorded commands, paths and excerpts can be sensitive, and
-repository-controlled text remains untrusted after it enters memory.
-
-\section{4. Methods}\label{methods}
-
-\subsection{4.1 Bounded association
-learning}\label{bounded-association-learning}
-
-An access resets the resource's activation and updates its counters. The
-current event is associated with up to 25 distinct recent resources. Let
-\(w_{uv}\) be an existing directed association, \(p\in(0,1]\) the
-relative position of the earlier resource within that window, and \(h\)
-a hub multiplier. The base update uses
+When the agent touches a resource, BrainBox looks back over the last 25 distinct resources and strengthens the
+association from each of them to the new one. Let \(w_{uv}\) be the weight from an earlier resource \(u\) to
+the current resource \(v\). The step is
 
 \[
-g(w)=\frac{1}{1+\exp(8(w-0.5))},\qquad
-\delta_{uv}=\eta\,p\,h\,d_{uv}\,g(w_{uv}),
+\delta_{uv}=\eta\,p\,h\,d\,g(w_{uv}),\qquad g(w)=\frac{1}{1+e^{8(w-0.5)}},
 \]
+
+and the weight moves toward 1:
 
 \[
 w'_{uv}=\min\{1,\;w_{uv}+\delta_{uv}(1-w_{uv})\}.
 \]
 
-The ordinary rate is \(\eta=0.1\), doubled when an error participates.
-The multiplier \(h\) is 0.5 when either endpoint has degree greater than
-20, otherwise 1. Earlier-to-later associations receive \(d_{uv}=1\); the
-reverse orientation receives 0.5 by default. For a new edge, the
-inserted weight is the corresponding \(\delta\) computed from zero.
-Additional tagging/capture and maintenance mechanisms can modify stored
-weights, so this equation describes the ordinary co-access update, not
-every possible transition.
+Four factors shape the step:
 
-The code retains the name \texttt{myelination} for a resource-level
-reinforcement scalar \(m\). Its ordinary access update is
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Recency in the window.} The position factor \(p\in(0,1]\) favors resources touched just before the
+  current one.
+\item
+  \textbf{Hubs.} The hub factor \(h\) halves the step when either endpoint already has more than 20
+  associations, so ubiquitous files such as package manifests do not absorb all the credit.
+\item
+  \textbf{Direction.} The earlier-to-later association receives the full step (\(d=1\)) and the reverse
+  association half of it (\(d=0.5\)). If the agent habitually opens a test after its source file, memory
+  learns \emph{source → test} more strongly than \emph{test → source}.
+\item
+  \textbf{Errors.} Errors double the learning rate from its ordinary value of \(\eta=0.1\), because an error
+  and the edits that resolve it are rarer and more informative than ordinary reads.
+\end{itemize}
 
-\[
-\Delta m=0.02\left(1-\frac{m}{0.95}\right)
-\max\left\{\frac{1}{\sqrt{\max(n,1)}},0.1\right\},
-\qquad m'=\min\{0.95,m+\Delta m\},
-\]
+Because the gate \(g\) falls as \(w\) rises, new associations grow quickly and strong ones slowly (Figure 2).
+With one co-access per session at the ordinary rate, a pair of files reaches 0.10 after the first session,
+0.38 after five and 0.66 after twenty. A new association enters with the step computed from zero. Tagging and
+maintenance can adjust stored weights in other ways, so the equation describes the ordinary path rather than
+every transition.
 
-where \(n\) is the access count supplied to the update. This is a
-saturating heuristic. It does not implement the sliding modification
-threshold of biological BCM theory. Likewise, event-order asymmetry is
-not continuous-time spike-timing-dependent plasticity, and
-\texttt{myelination} is a software field name, not a model of axonal
-physiology.
+\begin{figure}
+\centering
+\includegraphics[width=1\linewidth,height=\textheight,keepaspectratio,alt={Co-access learning. The same two files across three sessions with one co-access each. The weights shown are the ones the update rule gives. Right: under repeated co-access, growth slows as the weight approaches its ceiling of 1.}]{figures/hebbian.pdf}
+\caption{\textbf{Co-access learning.} The same two files across three sessions with one co-access each. The
+weights shown are the ones the update rule gives. Right: under repeated co-access, growth slows as the weight
+approaches its ceiling of 1.}
+\end{figure}
 
-Maintenance supports multiplicative decay and pruning. Daily multipliers
-are 0.85 for activation, 0.995 for the reinforcement scalar and 0.98 for
-association weight. These mechanisms require maintenance to run; they do
-not imply a hard bound on database size or an experimentally verified
-forgetting curve.
-
-\subsection{4.2 Retrieval channels and graph
-traversal}\label{retrieval-channels-and-graph-traversal}
-
-File candidates come from lexical evidence over stored path/context
-text, query-conditioned associative retrieval, optional snippet matches,
-recurrence, recency, frequency and base-level activation. A channel need
-not contain every candidate. Lexical tokenization and stored context are
-part of the implementation, not an oracle over repository contents.
-
-For resource \(i\), the ACT-R-inspired feature uses the last at most 50
-access times:
+Each resource also carries a reinforcement value \(m\), which rises with use and saturates below 0.95:
 
 \[
-B_i(t)=\log\sum_{j\in H_i}
-\max\{(t-t_{ij})/\text{hour},1/60\}^{-0.5}.
+\Delta m=0.02\left(1-\frac{m}{0.95}\right)\max\left\{\frac{1}{\sqrt{\max(n,1)}},\;0.1\right\},
 \]
 
-A sigmoid provides a bounded version for some confidence calculations. A
-bootstrap resource without an access log can use its seed timestamp.
-This feature is an engineering adaptation; the evaluation uses synthetic
-event time rather than actual elapsed developer time.
+where \(n\) is the resource's access count. When maintenance runs, activation, reinforcement and association
+weight decay multiplicatively by daily factors of 0.85, 0.995 and 0.98, and weak associations are pruned.
 
-Associative retrieval traverses up to three hops and at most ten
-outgoing edges per expanded resource. In the default fan-damped path, a
-proposed target score is proportional to
+\subsection{3.3 Recall}\label{recall}
+
+Recall turns a query, usually the user's prompt, into a ranked list of files. Candidates arrive through
+several channels (Table 1). Each channel produces its own ranking, and reciprocal-rank fusion combines them.
+
+The associative channel spreads activation outward from the files the query matches directly (Figure 3).
+Activation travels at most three hops and follows at most ten edges out of each node, passing from \(u\) to
+\(v\) as
 
 \[
-a_v=a_u\,w_{uv}\,(1+\min\{m_v,m_{\rm cap}\})
-\left[\max\{1,\min(\deg(u),D_{\rm cap})\}\right]^{-1/2}.
+a_v=a_u\,w_{uv}\,\bigl(1+\min\{m_v,m_{\max}\}\bigr)\,\bigl[\max\{1,\min(\deg u,\,D_{\max})\}\bigr]^{-1/2}.
 \]
 
-Only sufficiently strong edges and sufficiently confident targets pass
-admission gates; candidate-type, universe and budget filters also apply.
-Already activated targets keep a better discovered score rather than
-summing every path. The alternative full inverse-degree mode exists but
-is disabled by default. Because reinforcement can increase an individual
-transition factor, the hop bound---not a proof of monotonic
-attenuation---limits traversal depth.
+The last factor is the fan effect: a file connected to everything says little about any one of its neighbors.
+Only strong edges and confident targets pass, and a target reached along several paths keeps its best score
+rather than their sum. Because reinforcement can raise individual factors, it is the hop limit, not
+attenuation alone, that bounds the spread.
 
-\subsection{4.3 Query-aware rank fusion}\label{query-aware-rank-fusion}
+\begin{figure}
+\centering
+\includegraphics[width=1\linewidth,height=\textheight,keepaspectratio,alt={Spreading activation. A query matches login.ts. Activation spreads over at most three hops, damped at hubs by 1/\textbackslash sqrt\{\textbackslash text\{degree\}\}, and fuses with the other channels into the ranked list on the right. Each result records the channel and edge that produced it, which the brainbox\_explain tool reports. Scores are illustrative.}]{figures/spreading.pdf}
+\caption{\textbf{Spreading activation.} A query matches \protect\texttt{login.ts}. Activation spreads over at
+most three hops, damped at hubs by \(1/\sqrt{\text{degree}}\), and fuses with the other channels into the
+ranked list on the right. Each result records the channel and edge that produced it, which the
+\protect\texttt{brainbox\_explain} tool reports. Scores are illustrative.}
+\end{figure}
 
-For candidate \(i\), channel \(c\) supplies a one-based rank \(r_c(i)\).
-The default file score is
+Two further channels capture time. Base-level activation, adapted from ACT-R, scores each resource by the
+recency and frequency of its last 50 accesses:
 
 \[
-S(i\mid q)=\sum_{c:i\in L_c(q)}
-\frac{\lambda_c\,\gamma_c(i,q)}{20+r_c(i)},
+B_i(t)=\ln\sum_{j}\max\Bigl\{\tfrac{t-t_{ij}}{1\,\mathrm{h}},\;\tfrac{1}{60}\Bigr\}^{-0.5}.
 \]
 
-where \(\gamma_c=1\) except for the lexical channel, whose contribution
-is scaled by distinct query-term coverage matched against raw text. The
-denominator constant is 20 for file/tool fusion, distinct from the
-snippet ranker's constant of 60. Table 1 records the inspected defaults.
+Recurrence proposes resources associated with what was touched recently. Plain recency and frequency are
+channels as well, so BrainBox can always fall back on the heuristics it has to beat.
 
-{\def\LTcaptype{none} % do not increment counter
+For candidate \(i\) ranked \(r_c(i)\) by channel \(c\), the fused score is
+
+\[
+S(i\mid q)=\sum_{c}\frac{\lambda_c\,\gamma_c(i,q)}{20+r_c(i)}.
+\]
+
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}@{}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3478}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1217}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5304}}@{}}
+\caption{Fusion channels and their default weights.}\tabularnewline
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Channel
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-Default weight
+Weight \(\lambda_c\)
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Qualification
+Notes
+\end{minipage} \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Channel
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Weight \(\lambda_c\)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Notes
 \end{minipage} \\
 \midrule\noalign{}
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-Lexical & 4 & Scaled by query-term coverage \\
-Query-conditioned associative evidence & 4 & Excludes purely
-popularity-driven evidence from this channel \\
-Snippet & 4 & Requires an available snippet index \\
+Lexical & 4 & Scaled by the share of query terms matched \\
+Associative (spreading activation) & 4 & Seeded by query matches, not by popularity \\
+Code snippets & 4 & Needs a snippet index \\
 Frequency & 2 & Historical access count \\
-Recency & 1 & Replaced by 30 when the query matches recent-session
-lexical evidence \\
-Base level & 0.5 & Recency/frequency history feature \\
-Recurrence & 0.2 & Recent-resource association candidates \\
+Recency & 1 & Rises to 30 when the query refers to current-session work \\
+Base-level activation & 0.5 & ACT-R recency and frequency \\
+Recurrence & 0.2 & Associates of recently touched resources \\
 \end{longtable}
-}
 
-Table 1. File-level fusion defaults. The reported replay does not
-populate every optional channel.
+The lexical factor \(\gamma\) is the fraction of distinct query terms a file matches, so a file that matches
+one incidental word cannot outrank one that matches the whole request; for the other channels \(\gamma=1\).
+The constant 20 is smaller than the conventional 60 (\citeproc{ref-rrf2009}{Cormack et al. 2009}), which
+sharpens differences among the top few ranks. The normalized score that BrainBox reports as \emph{confidence}
+is a ranking score, not a calibrated probability. The weights were chosen on development repositories that the
+evaluation never scores, together with checks that explicit queries still override habits. No tuning log was
+kept, so they are reasonable defaults rather than an estimated optimum.
 
-A final score normalization supplies the API field called
-\texttt{confidence}; it is not a calibrated probability of relevance.
-Results have count and budget limits, and the wrapper can abstain when
-no supporting evidence is available. Ranking weights were developed
-using the designated development repositories and product-level
-query-sensitivity checks. An immutable tuning log and a quantitative
-channel-ablation study are not present in the evidence used here, so the
-values should not be described as a reproducibly estimated optimum.
+\subsection{3.4 Predicting the next tool}\label{predicting-the-next-tool}
 
-\subsection{4.4 Tool-sequence
-prediction}\label{tool-sequence-prediction}
+Tool calls are more regular than file accesses: an agent tends to search, read, edit and test in recurring
+orders. BrainBox predicts the next tool from the longest recent suffix, up to three tools, that it has seen at
+least four times. It backs off to shorter suffixes and then to direct associations. The sequence ranking is
+fused with tool frequency (weights 1 and 0.5), and the three most likely tools are returned.
 
-Tool prediction backs off from the longest supported suffix, up to three
-tools, to shorter suffixes and then directional associations. Default
-minimum suffix support is four observations. A rank-fusion stage
-combines the sequence-derived ranking with frequency: weights are 1 for
-the sequence channel and 0.5 for frequency; tool recency has weight
-zero. The API returns at most three predicted tools. This is a small
-sequence model over observed tool names, not a planner that decides
-whether the proposed operation is safe or productive.
+\subsection{3.5 Beyond ranking}\label{beyond-ranking}
 
-\subsection{4.5 Optional code and procedure
-components}\label{optional-code-and-procedure-components}
+\textbf{Code search.} Tree-sitter parses source files into syntax-aware chunks and extracts import, call and
+inheritance edges. The edges enter the graph as weak priors that real co-access can override. Snippets are
+retrieved by fusing FTS5 BM25 with optional local embeddings. The default model is a quantized Jina code model
+with 768 dimensions that runs on the CPU. Hooks never download models, and when embeddings are unavailable,
+search falls back to keywords.
 
-\textbf{Code structure and snippets.} Tree-sitter supports extraction of
-import, call and inheritance hints and syntax-aware code chunks.
-Structural edges are weak priors; unchanged files are not repeatedly
-strengthened merely by re-indexing. Snippet retrieval combines FTS5 BM25
-and optional local dense similarity using rank fusion. The default
-embedding profile is Jina code, 768 dimensions with q8 weights; other
-local profiles are configurable. Hooks do not initiate model downloads,
-and lexical retrieval remains available when embeddings are disabled or
-unavailable. A missing vector extension can use a cosine-scan fallback,
-whose scaling differs from indexed search.
-
-\textbf{Injection policy.} The deployed policy chooses SILENT, TOP1,
-TOP3 or TOP5 in a context formed from confidence band, query class,
-project familiarity and session stage. After an initial TOP5 period, it
-uses a UCB-style bonus:
+\textbf{Deciding how much to show.} Showing the agent a long list costs context, and showing it nothing
+forgoes the benefit. A contextual policy therefore chooses among SILENT, TOP1, TOP3 and TOP5. Its context is
+the recall confidence band, the kind of query, how familiar the project is and how far the session has
+progressed. After a short warm-up it selects the arm with the highest upper confidence bound,
 
 \[
-U(a)=\overline{R}_a+0.15\sqrt{\frac{2\log N}{N_a}}.
+U(a)=\overline{R}_a+0.15\sqrt{\frac{2\ln N}{N_a}},
 \]
 
-An unseen arm is explored. For injected suggestions, the implemented
-reward is
+with reward
 
 \[
-R=\sum_{i\in\text{used suggestions}}\frac{v_i}{r_i}
--2\,\frac{\widehat{T}_{\rm injected}}{1000},
+R=\sum_{i\,\in\,\text{used}}\frac{v_i}{r_i}\;-\;2\,\frac{\widehat{T}}{1000}.
 \]
 
-where \(v_i=1\) for a read and 1.5 for an edit, and
-\(\widehat{T}_{\rm injected}=\lceil\text{characters}/4\rceil\). SILENT
-receives zero. This does not observe opportunities lost by silence.
-Reads/edits are attribution signals, not counterfactual evidence that a
-suggestion helped. Ignored recalls can weaken the producing association
-rather than indiscriminately weakening every adjacent edge.
+Here \(v_i\) is 1 for a suggestion the agent later read and 1.5 for one it edited, \(r_i\) is the suggestion's
+rank, and \(\widehat{T}\) estimates the injected tokens as characters divided by four. Silence earns zero.
+When a suggestion is ignored, only the association that produced it is weakened.
 
-\textbf{Procedures.} A deterministic compiler recognizes failed command
-→ successful edits → similar successful rerun patterns, and workflows
-supported by at least three sessions. Error-fix candidates may originate
-from one session. Command outcomes use exit status when available and an
-error detector otherwise; detector-clean output is weaker evidence than
-an explicit passing exit. Workflow retrieval requires a matching live
-prefix and a concrete command-bearing step. Formatting constrains paths
-and command text and labels output as historical observation.
-Helpful/harmful counters can deprecate failing procedures. None of these
-safeguards constitutes a proof against prompt injection or poisoned
-histories.
+\textbf{Procedures.} At the end of a session, a deterministic miner looks for a failing command followed by
+edits and then a passing rerun of a similar command. It also looks for workflows repeated across at least
+three sessions. Error-fix procedures are keyed by a fingerprint of the error. Every procedure keeps counts of
+helpful and harmful outcomes and is retired when it keeps failing. Procedures are shown to the agent as quoted
+observations from past sessions, never as instructions.
 
-\section{5. Evaluation protocol}\label{evaluation-protocol}
+These three components are part of the system but outside the evaluation in Section 5, which measures ranking
+alone.
 
-\subsection{5.1 Data and selection}\label{data-and-selection}
+\subsection{3.6 A note on names}\label{a-note-on-names}
 
-The public source is the Nebius SWE-rebench OpenHands trajectory
-collection (\citeproc{ref-nebius2025}{Trofimova et al. 2025}). The
-recorded catalog has 67,074 rows; this is not the evaluation sample
-size. Selection deduplicates attempts by issue, ranks repositories by
-distinct issue count, takes a five-repository slice, and assigns
-alternating global repository ranks to development or test. The reported
-test slice contains 40 trajectories, at most 20 per repository, from
-Pillow and conan; sqlglot, dvc and streamlink are the designated
-development repositories. This is a selected, repository-disjoint
-evaluation, not a random sample of all SWE-rebench tasks.
+BrainBox borrows its vocabulary from neuroscience (neurons, synapses, myelination, spike timing) because the
+analogy is a good guide to the design. The mechanisms themselves are engineering heuristics. The reinforcement
+value saturates but has nothing like the sliding threshold of BCM theory. The directional factor reflects the
+order of events rather than spike timing, and \emph{myelination} is the name of a database column. The first
+version of this paper described its dynamics as matching models from neuroscience. We no longer make that
+claim.
 
-The local run selects 97 sessions from up to five project groups in the
-author's OMP logs. Its loader scanned 715 session files spanning nine
-source projects; the nine-project metadata describes the scanned corpus,
-not the selected evaluation cohort. Local inputs were not released, and
-the recorded run used the all-project split. We treat this as a
-secondary descriptive cohort, not an independently auditable held-out
-benchmark.
+\section{4. Evaluation design}\label{evaluation-design}
 
-For the public data, the loader uses PR-number-like issue order as its
-chronology proxy and chooses a single attempt per issue. For local data,
-it uses the parser's session order. Neither is sufficient to establish
-perfect temporal correspondence with actual repository state. The
-simulated clock advances one second per event from a fixed epoch.
-Consequently, the replay does not evaluate real-time forgetting across
-days or weeks.
+\subsection{4.1 The question}\label{the-question}
 
-\subsection{5.2 Candidate universe and probe
-timing}\label{candidate-universe-and-probe-timing}
+We measure prediction. Given memory built from an agent's earlier work in a repository, how highly does
+BrainBox rank what the agent touches next? Good prediction is necessary for a useful memory but not
+sufficient. A memory that ranks well might still be ignored, injected at the wrong moment, or cost more
+context than it saves. Those questions need live experiments, which Section 6 discusses.
 
-An in-memory database and baseline indexes are initialized per
-repository. Selected trajectories are processed in the prescribed order;
-state persists across tasks within that repository, while per-session
-transient state is reset. At the beginning of target task \(t\), the
-evaluator freezes file and tool candidate universes \(U_t\) to resources
-observed in earlier tasks. For sequential probes it records prefix
-events after predicting them, but newly observed resources remain
-outside \(U_t\) until a later task.
+\subsection{4.2 Data}\label{data}
 
-The four reported target labels are:
+\textbf{Public trajectories.} The public cohort comes from Nebius's release of OpenHands trajectories on
+SWE-rebench tasks (\citeproc{ref-nebius2025}{Trofimova et al. 2025}), 67,074 trajectories in our catalog
+snapshot. We keep the earliest attempt for each issue and rank repositories by their number of distinct
+issues. The five largest then alternate between development (sqlglot, dvc and streamlink) and test (Pillow and
+conan). The test cohort holds 40 tasks, at most 20 per repository, ordered by pull-request number as a proxy
+for time. Thirty of the 40 trajectories did not resolve their issue. We score what the agent did, not whether
+it succeeded.
+
+\textbf{Local sessions.} The second cohort is 97 sessions of the author's own agent work, drawn from at most
+five projects out of 715 session files spanning nine. These sessions are private and still growing, so we
+report them as a secondary, descriptive cohort rather than an independently auditable benchmark.
+
+\subsection{4.3 Replay without foresight}\label{replay-without-foresight}
+
+Each repository gets a fresh in-memory database, and its tasks are replayed in order. Before task \(t\)
+begins, the evaluator freezes the candidate universe \(U_t\), the files and tools seen in earlier tasks. Every
+probe ranks only members of \(U_t\). Within a task, each event is predicted before it is recorded, and
+resources first seen during the task join the universe only for later tasks. The simulated clock advances one
+second per event, so time-based features see the order of events but not the days between sessions.
+
+We ask four questions of each task:
 
 \begin{itemize}
 \tightlist
 \item
-  \textbf{P1-edit:} rank the task's edited files from its initial
-  task-text query, before observing target-task events.
+  \textbf{P1-edit.} From the task description alone, which files will the agent edit?
 \item
-  \textbf{P1-read:} the analogous retrieval probe for files read during
-  the task.
+  \textbf{P1-read.} From the same description, which files will it read?
 \item
-  \textbf{P2:} predict each upcoming read/edit file from prefix context,
-  before recording that event.
+  \textbf{P2.} At each step, which file will it touch next?
 \item
-  \textbf{P3:} predict each upcoming tool from prior tools, before
-  recording that tool event.
+  \textbf{P3.} At each step, which tool will it call next?
 \end{itemize}
 
-Gold sets come from parsed trace activity, not independent relevance
-annotation. At any probe, the scored gold is \(G'_t=G_t\cap U_t\). A
-probe with \(G'_t=\varnothing\) contributes to coverage statistics but
-not ranking metrics. For P1, novel files are also removed from a mixed
-gold set. Thus the experiment measures \textbf{retrieval conditional on
-prior-resource coverage}, not full-repository localization and not
-discovery of new files. Prefix-only ordering reduces one source of
-target leakage but does not remove dataset selection, parser or
-repository-version biases.
+Gold answers come from the trajectory itself. A probe's eligible gold is \(G'_t=G_t\cap U_t\), and probes with
+no eligible gold count toward coverage but not ranking. The results therefore measure retrieval among things
+memory \emph{could} know, the natural ceiling for any history-based method. They do not measure localization
+over an entire repository.
 
-\subsection{5.3 Metrics, baselines and
-uncertainty}\label{metrics-baselines-and-uncertainty}
+\subsection{4.4 Metrics, baselines and uncertainty}\label{metrics-baselines-and-uncertainty}
 
-File rankings are truncated at ten; tool rankings at three. Reciprocal
-rank is the inverse rank of the first eligible relevant item, or zero if
-absent. We report MRR@10 for files (the stored field is \texttt{mrr})
-and MRR@3 for tools. For multi-file P1 gold, this measures finding the
-first relevant file, not retrieving all relevant files.
+We report mean reciprocal rank (MRR) truncated at ten for files and at three for tools. For P1, a task's
+reciprocal rank uses its first relevant file. P2 and P3 average over individual predictions, so long
+trajectories weigh more. Each comparison is paired: BrainBox and the baseline rank the same targets, and a
+95\% interval for their difference comes from 1,000 bootstrap resamples of whole trajectories (seed 42).
+Resampling whole trajectories respects the correlation within a task, though not between tasks that share a
+repository's growing history.
 
-All point estimates average over scored probe opportunities. P2 and P3
-therefore weight longer trajectories more heavily. Paired intervals
-resample trajectory clusters 1,000 times with seed 42, retain each
-sampled cluster's sum and count, and use the 2.5th and 97.5th
-percentiles of the resulting event-weighted differences. This preserves
-within-trajectory clustering but not all dependence between trajectories
-that share a growing repository history. No repository-cluster
-uncertainty estimate or multiple-comparison correction is provided.
-Intervals spanning zero indicate insufficient evidence of a difference,
-not equivalence.
-
-Comparators share the candidate universe and parsed history. They are
-locally implemented heuristics, not complete competing memory products:
+The baselines see the same history and the same candidate universe:
 
 \begin{itemize}
 \tightlist
 \item
-  \textbf{Recency:} descending last-access order.
+  \textbf{Recency:} most recently touched first.
 \item
-  \textbf{Frequency:} descending historical touch count.
+  \textbf{Frequency:} most often touched first.
 \item
-  \textbf{BM25:} lexical ranking of accumulated path/context terms, with
-  \(k_1=1.2\) and \(b=0.75\); it does not index the repository's full
-  source code.
+  \textbf{BM25:} lexical match between the query and each file's accumulated path and context (\(k_1=1.2\),
+  \(b=0.75\)).
 \item
-  \textbf{Co-session (EdgeBank-style):} overlap between a candidate's
-  historical sessions and sessions containing current-prefix resources.
-  It is a local co-occurrence baseline, not a reproduction of a complete
-  published EdgeBank evaluation.
+  \textbf{Co-session:} files that shared past sessions with the current task's files, in the spirit of
+  EdgeBank.
 \item
-  \textbf{Random:} seeded permutation of candidates.
+  \textbf{Random:} a seeded shuffle.
 \end{itemize}
 
-The strongest observed comparator is selected separately per probe and
-cohort for compact reporting. That selection is post hoc. All baselines
-are reported in Appendix A to avoid hiding weaker or stronger
-comparisons.
+For each probe the tables show the strongest baseline, chosen after the fact. Appendix A lists all five.
 
-\subsection{5.4 What was actually
-exercised}\label{what-was-actually-exercised}
+\subsection{4.5 Scope}\label{scope}
 
-All principal runs have embeddings \textbf{off}. Replay calls core
-recording, error association, recall and tool prediction. It does not
-populate source-code snippet indexes, scan structural code graphs, run
-the prompt-injection policy or execute mined procedures. It also does
-not run an agent with and without suggestions. Accordingly, Tables 2--5
-do not establish benefits from code embeddings, static structure, the
-policy or procedure mining.
+All runs use keyword retrieval with embeddings off. The replay exercises recording, error association, recall
+and tool prediction. It does not build code indexes, run the injection policy, apply procedures or put a live
+agent in the loop. The artifacts contain token figures for injected path lists, but these are estimates and we
+do not report them as savings.
 
-Artifact fields labelled injected tokens are character-based estimates
-for short path lists; they are not tokenizer counts from live prompts
-and are not net tokens saved. Earlier synthetic scenarios and production
-counter estimates are not used as evidence of cost reduction in this
-revision. Historical latency figures are likewise not carried forward as
-a current controlled benchmark.
+\section{5. Results}\label{results}
 
-\section{6. Results}\label{results}
+\subsection{5.1 Coverage}\label{coverage}
 
-\subsection{6.1 Coverage before ranking
-quality}\label{coverage-before-ranking-quality}
+The first result is a limit (Table 2). Only 17\% of public next-file targets, and 42\% of local ones, had been
+touched in an earlier task. For tools the figures are 96\% and 73\%. Within these histories, agents working on
+a new task mostly touch files they have never touched before, and those files are invisible to any memory of
+past behavior. The rankings that follow are therefore conditional. They describe how well BrainBox orders the
+part of the future it could have known.
 
-{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}llrrrr@{}}
+\caption{Coverage. \emph{Eligible} targets were seen in an earlier task. For P1, gold targets are summed over
+tasks; for P2 and P3 they are individual predictions.}\tabularnewline
+\toprule\noalign{}
+Cohort & Probe & Gold targets & Eligible & Probes & Scored \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Cohort & Probe & Gold targets & Eligible & Probes & Scored \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Public & P1-edit & 298 & 28 & 40 & 16 \\
+& P1-read & 374 & 92 & 40 & 30 \\
+& P2 next file & 1,303 & 221 & 1,303 & 221 \\
+& P3 next tool & 2,727 & 2,625 & 2,727 & 2,625 \\
+Local & P1-edit & 693 & 121 & 97 & 38 \\
+& P1-read & 980 & 343 & 97 & 57 \\
+& P2 next file & 5,885 & 2,490 & 5,885 & 2,490 \\
+& P3 next tool & 9,663 & 7,083 & 9,663 & 7,083 \\
+\end{longtable}
+
+\subsection{5.2 Public trajectories}\label{public-trajectories}
+
+\begin{longtable}[]{@{}lrrlrlr@{}}
+\caption{Public cohort, conditional MRR (MRR@3 for tools). \emph{Baseline} is the strongest of the five for
+each probe, and \emph{Difference} is version 2 minus that baseline. \emph{n} counts trajectories with at least
+one scored target. Version 1 was replayed on the same cohort and settings; version-to-version changes are
+descriptive, with no paired interval.}\tabularnewline
+\toprule\noalign{}
+Probe & Version 1 & Version 2 & Baseline & Difference & 95\% CI & \emph{n} \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Probe & Version 1 & Version 2 & Baseline & Difference & 95\% CI & \emph{n} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+P1-edit & 0.307 & 0.307 & BM25 0.216 & +0.092 & {[}−0.018, +0.224{]} & 16 \\
+P1-read & 0.191 & 0.267 & BM25 0.206 & +0.061 & {[}−0.038, +0.165{]} & 30 \\
+P2 next file & 0.223 & 0.409 & Recency 0.430 & −0.021 & {[}−0.049, +0.003{]} & 30 \\
+P3 next tool & 0.479 & 0.767 & Frequency 0.748 & \textbf{+0.019} & \textbf{{[}+0.012, +0.027{]}} & 38 \\
+\end{longtable}
+
+Tool prediction is the clear result. BrainBox improves on the strongest baseline, frequency, by 0.019 with an
+interval that excludes zero, and on the version-1 predictor by 0.29 (from 0.479 to 0.767). Retrieval from the
+task description also leads the best baseline, BM25, by 0.06 to 0.09, but with only 16 and 30 scored tasks the
+intervals are wide and include zero. Next-file prediction improved substantially on version 1 (from 0.223 to
+0.409) and is now level with recency. Edited-file retrieval is unchanged at 0.307.
+
+\subsection{5.3 Local sessions}\label{local-sessions}
+
+\begin{longtable}[]{@{}lrlrlr@{}}
+\caption{Local cohort, conditional MRR (MRR@3 for tools). \emph{n} counts sessions with at least one scored
+target.}\tabularnewline
+\toprule\noalign{}
+Probe & Version 2 & Baseline & Difference & 95\% CI & \emph{n} \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Probe & Version 2 & Baseline & Difference & 95\% CI & \emph{n} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+P1-edit & 0.703 & Frequency 0.791 & −0.089 & {[}−0.185, 0.000{]} & 38 \\
+P1-read & 0.555 & BM25 0.547 & +0.008 & {[}−0.101, +0.123{]} & 57 \\
+P2 next file & 0.702 & Recency 0.701 & +0.001 & {[}−0.003, +0.006{]} & 64 \\
+P3 next tool & 0.686 & Recency 0.662 & \textbf{+0.024} & \textbf{{[}+0.010, +0.036{]}} & 85 \\
+\end{longtable}
+
+The private cohort repeats the tool result: BrainBox beats recency by 0.024, with an interval clear of zero.
+It also contains the clearest loss. For the files the agent went on to edit, ranking by plain frequency scores
+0.791 against BrainBox's 0.703, and the interval reaches zero only at its upper edge. In a user's own
+long-running projects, the files edited most often are a strong guess for the next edit, and BrainBox's
+query-aware fusion gives some of that away. The read-file and next-file differences are within ±0.01 of the
+best baseline and indistinguishable from it. Figure 4 shows both cohorts together.
+
+\begin{figure}
+\centering
+\includegraphics[width=1\linewidth,height=\textheight,keepaspectratio,alt={Results on both cohorts. Conditional MRR with embeddings off; next-tool scores are MRR@3. Hatched bars show version 1, red bars version 2, and dashed bars the strongest baseline for each probe. The version-1 local bars come from a run whose scanned session set differs slightly (713 rather than 715 files) and are descriptive only.}]{figures/eval.pdf}
+\caption{\textbf{Results on both cohorts.} Conditional MRR with embeddings off; next-tool scores are MRR@3.
+Hatched bars show version 1, red bars version 2, and dashed bars the strongest baseline for each probe. The
+version-1 local bars come from a run whose scanned session set differs slightly (713 rather than 715 files)
+and are descriptive only.}
+\end{figure}
+
+\section{6. Discussion}\label{discussion}
+
+\subsection{6.1 Tools are habits; files are tasks}\label{tools-are-habits-files-are-tasks}
+
+The results draw a consistent line between two kinds of behavior. Tool use is habitual: an agent's sequences
+of calls recur from task to task, so its own history predicts them well. That is where BrainBox's sequence
+model, which conditions on up to three previous tools, earns a dependable advantage over simple frequency and
+recency. Files are tied to tasks. Most files a task needs are new to memory, and among the familiar ones,
+recency and frequency already capture much of what history can tell. BrainBox's associative and query-aware
+channels bring it level with those heuristics, and ahead of lexical search when given a task description,
+though not by a significant margin. They do not leave the heuristics behind.
+
+The local edited-file loss suggests a concrete improvement. In long-running personal projects, a file's
+long-run edit frequency deserves more weight than the current fusion gives it. Adapting channel weights per
+project, for example with the same bandit machinery that already controls injection, is the natural next step.
+It is untested here.
+
+\subsection{6.2 Limitations}\label{limitations}
+
+\textbf{Prediction is not productivity.} The trajectories are fixed, so the replay cannot show that
+suggestions would be read, that searches would be skipped, or that patches would improve. Better next-tool
+prediction may reflect the conventions of one agent framework more than transferable knowledge.
+
+\textbf{Coverage bounds the scores.} Conditioning on previously seen resources keeps the protocol free of
+leakage, but it leaves new files unscored. An unconditional measure, reported separately for tasks dominated
+by known and by new files, would complete the picture. The small number of scored P1 tasks also limits
+precision.
+
+\textbf{Selection and tuning.} The public test set covers two repositories and is ordered by pull-request
+number, a proxy for time. The local cohort is private and evolving. Ranking defaults were developed on
+separate repositories, but results were inspected during engineering, so the protocol is not preregistered.
+
+\textbf{No ablations.} Several ranking mechanisms changed together between versions, and the available runs do
+not isolate their contributions. A small embedding comparison mentioned in the project documentation is
+omitted because its query set and raw outcomes are not part of this evidence.
+
+\textbf{Feedback is heuristic.} Confidence is not calibrated, opens and edits are imperfect evidence that a
+suggestion helped, and the injection policy carries no regret guarantee in a shifting environment.
+
+\textbf{Security and privacy.} Memory records commands, paths and excerpts, so the local database should be
+treated as sensitive. A poisoned repository could manufacture misleading associations or procedures.
+Presenting procedures as quoted observations limits the damage but does not authenticate them, and permission
+to act must remain outside the memory.
+
+\textbf{Scale and provenance.} Each update and traversal is bounded, at most \(s(10+10^2+10^3)\) edge visits
+for \(s\) seeds before filtering. Consolidation keeps the access log to the last 30 days and 5,000 rows, and
+decay prunes weak associations, but we have not measured how the database grows over months of use. Latency
+was not re-measured for this version. The current result artifacts record their settings but not a source
+commit or input manifest (Section 8).
+
+\subsection{6.3 Next experiments}\label{next-experiments}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  A live study with memory switched on and off at random, measuring task success, tool calls, tokens counted
+  by a real tokenizer, and wall-clock time.
+\item
+  Unconditional retrieval scores, with separate reports for tasks dominated by known and by new files.
+\item
+  Channel ablations and adaptive channel weights per project.
+\item
+  Evaluation of code search and embeddings on a released query set.
+\item
+  Source-pinned reruns with frozen input manifests.
+\end{enumerate}
+
+\section{7. What changed since version 1}\label{what-changed-since-version-1}
+
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}@{}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.4500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5500}}@{}}
+\caption{Claims in the first version and their status in this one.}\tabularnewline
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
-Cohort / probe
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-Gold occurrences
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-Eligible gold
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-Opportunities
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-Scored
+Version 1
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Version 2
+\end{minipage} \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Version 1
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Version 2
 \end{minipage} \\
 \midrule\noalign{}
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-SWE P1-edit & 298 & 28 & 40 & 16 \\
-SWE P1-read & 374 & 92 & 40 & 30 \\
-SWE P2 & 1,303 & 221 & 1,303 & 221 \\
-SWE P3 & 2,727 & 2,625 & 2,727 & 2,625 \\
-Local P1-edit & 693 & 121 & 97 & 38 \\
-Local P1-read & 980 & 343 & 97 & 57 \\
-Local P2 & 5,885 & 2,490 & 5,885 & 2,490 \\
-Local P3 & 9,663 & 7,083 & 9,663 & 7,083 \\
+Gross token savings of 8.9\% in production and about 40\% in simulation & Withdrawn as evidence. Both were
+estimates built on assumed search costs. Replaced by measured prediction quality. \\
+67\% top-1 recall on 15 hand-labeled queries, five times a baseline & Superseded by chronological replay of
+137 recorded trajectories against five baselines with paired intervals. \\
+Learning dynamics ``match'' BCM, Ebbinghaus and spreading-activation models & Reframed as engineering
+heuristics inspired by those models (Section 3.6). \\
+First deployed system of its kind; existing memories confined to declarative knowledge & Removed. Positioning
+is now descriptive (Section 2). \\
+Superiority over Mem0, Zep, Letta, LangMem and others & Removed. No head-to-head experiments were run. \\
+Recall in under 5 ms & Not re-measured for version 2, so not claimed. \\
+Recall by spreading activation behind confidence gates & Rank fusion of seven channels, ACT-R base level,
+directional learning, suffix-based tool prediction, code search, a learned injection policy and mined
+procedures. \\
 \end{longtable}
-}
 
-Table 2. Eligibility is membership in the frozen prior-task candidate
-universe. P1 gold counts sum unique targets within each task; they are
-not corpus-wide unique-file counts. P2/P3 count individual target
-opportunities.
+The first version was right about the opportunity and generous about the evidence. This version keeps the
+system, which has grown considerably, and narrows the claims to what the replay can support.
 
-Only 16.96\% of SWE next-file opportunities and 42.31\% of local
-next-file opportunities are eligible. Tool coverage is much higher:
-96.26\% and 73.30\%, respectively. This difference is central to
-interpretation. A strong conditional file ranker may still remain silent
-or miss most novel work; the experiment does not score those novel
-targets as ranking failures.
+\section{8. Reproducibility}\label{reproducibility}
 
-\subsection{6.2 Selected public
-trajectories}\label{selected-public-trajectories}
+The methods described here were checked against source revision \texttt{0edc2ed}. The numbers come from four
+result files under \texttt{eval-results/}:
 
-{\def\LTcaptype{none} % do not increment counter
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1667}}@{}}
+\begin{longtable}[]{@{}lll@{}}
+\caption{Result files behind Tables 2--4 and Appendix A.}\tabularnewline
 \toprule\noalign{}
-\begin{minipage}[b]{\linewidth}\raggedright
-Probe
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-Historical engine
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-Current run
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Best baseline
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Difference {[}95\% interval{]}
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-Clusters
-\end{minipage} \\
+Cohort & Version 2 & Version 1 (commit \texttt{9750d2f}) \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Cohort & Version 2 & Version 1 (commit \texttt{9750d2f}) \\
 \midrule\noalign{}
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-P1-edit & 0.307 & 0.307 & BM25 0.216 & +0.092 {[}−0.018, +0.224{]} &
-16 \\
-P1-read & 0.191 & 0.267 & BM25 0.206 & +0.061 {[}−0.038, +0.165{]} &
-30 \\
-P2 & 0.223 & 0.409 & Recency 0.430 & −0.021 {[}−0.049, +0.003{]} & 30 \\
-P3 & 0.479 & 0.767 & Frequency 0.748 & +0.019 {[}+0.012, +0.027{]} &
-38 \\
+Public & \texttt{2026-10-08T18-01-31-878Z} & \texttt{2026-10-08T17-37-06-513Z} \\
+Local & \texttt{2026-10-08T18-06-22-676Z} & \texttt{2026-10-08T17-42-39-240Z} \\
 \end{longtable}
-}
 
-Table 3. SWE conditional MRR@10 for files and MRR@3 for tools.
-Difference is current-run minus the indicated heuristic, not current
-minus historical engine. Historical/current public artifacts have
-matching declared options, coverage and baseline scores; missing
-immutable input manifests prevent a stronger identity claim.
+The files record their settings but not the source commit, parser version, dataset revision or selected
+inputs. The link between these numbers and revision \texttt{0edc2ed} therefore rests on timing and matching
+settings rather than a recorded hash. Result files are not committed to the repository. The companion file
+\texttt{paper/evidence.json} preserves the aggregate figures used here, together with SHA-256 hashes of the
+originals, and contains no private session text.
 
-The clearest result is tool prediction: its interval against the
-strongest measured heuristic is positive. The improvement over the
-historical sequence predictor is descriptive; the artifacts do not
-include a paired historical-versus-current interval. File results do not
-support a blanket superiority claim. Both P1 point estimates exceed
-BM25, but their intervals include zero. Next-file prediction improves
-over the historical engine while remaining below recency in point
-estimate, with uncertainty spanning zero.
-
-At three decimal places P1-edit appears unchanged; the raw historical
-and current values are 0.3067708333 and 0.3072916667. The draft does not
-interpret this tiny difference as a meaningful improvement.
-
-\subsection{6.3 Local sessions}\label{local-sessions}
-
-{\def\LTcaptype{none} % do not increment counter
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}@{}}
-\toprule\noalign{}
-\begin{minipage}[b]{\linewidth}\raggedright
-Probe
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-Current run
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Best baseline
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Difference {[}95\% interval{]}
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-Clusters
-\end{minipage} \\
-\midrule\noalign{}
-\endhead
-\bottomrule\noalign{}
-\endlastfoot
-P1-edit & 0.703 & Frequency 0.791 & −0.089 {[}−0.185, 0.000{]} & 38 \\
-P1-read & 0.555 & BM25 0.547 & +0.008 {[}−0.101, +0.123{]} & 57 \\
-P2 & 0.702 & Recency 0.701 & +0.001 {[}−0.003, +0.006{]} & 64 \\
-P3 & 0.686 & Recency 0.662 & +0.024 {[}+0.010, +0.036{]} & 85 \\
-\end{longtable}
-}
-
-Table 4. Secondary, private local cohort, scored under the same
-eligibility rule. The P1-edit upper endpoint is approximately zero
-(stored floating-point value \(1.46\times10^{-19}\)), so we do not claim
-a strictly negative interval.
-
-Tool prediction again has a positive interval against the strongest
-observed heuristic. Frequency is substantially better on edited-file
-point estimates. Read-file and next-file differences are small relative
-to their intervals. These observations caution against adding memory
-complexity without simple comparators.
-
-A historical local run exists, but its scanned source count differs from
-the current run (713 versus 715 sessions). Even though aggregate
-denominators and comparator scores match, neither artifact retains
-selected input identities. We therefore omit a controlled local
-version-to-version claim rather than infer exact cohort identity from
-matching aggregates.
-
-\section{7. Discussion and
-limitations}\label{discussion-and-limitations}
-
-\textbf{Evidence supports prediction, not productivity.} The agent
-traces are fixed. Better next-tool prediction may reflect repeated
-interface conventions rather than transferable task knowledge. The
-evaluator does not show that suggestions are read, that searches are
-avoided, or that patches become more correct. A deployment study must
-measure task outcomes, actual tokenizer counts, failed-action rates and
-wall-clock cost under randomized or otherwise controlled memory-on/off
-assignment.
-
-\textbf{Coverage conditions the headline scores.} Prior-access
-candidates exclude unseen files even after their first appearance within
-a target task. This is intentionally conservative about information
-leakage, but unlike full-repository retrieval. A broader experiment
-should report unconditional quality and separate known-resource and
-novel-resource tasks. The current small P1 cluster counts particularly
-limit precision.
-
-\textbf{Selection and adaptation remain risks.} The public cohort covers
-two selected test repositories, not broad language or repository
-diversity. PR-number ordering is only a chronology proxy. The local
-corpus is private and evolving. Development-informed ranking choices do
-not constitute a preregistered protocol; evaluation results were
-inspected during engineering. Repository-level separation alone does not
-establish that all later design decisions were independent of test
-observations.
-
-\textbf{No causal mechanism attribution.} Multiple ranking mechanisms
-changed together. The available artifacts do not isolate benefits from
-asymmetric co-access, base-level features, recurrence, query coverage or
-the sequence-frequency mixture. No quantitative ablation result is
-claimed. Similarly, a separate small embedding comparison mentioned in
-project documentation is omitted because the draft's evidence set does
-not contain its query manifest and raw outcomes.
-
-\textbf{Confidence and feedback are heuristic.} A normalized fusion
-score is not calibrated relevance. Opens and edits can be prompted by
-existing agent intent, so credit attribution can reward suggestions that
-did not help. Ignored suggestions are not necessarily wrong. UCB-style
-exploration also operates under changing task distributions and
-imperfect rewards; this paper supplies no regret guarantee or online
-policy result.
-
-\textbf{Security and privacy.} A poisoned repository can manufacture
-co-accesses, misleading error fingerprints or command histories.
-Labeling procedure text as observation and constraining paths/commands
-reduces some presentation risk, but does not authenticate the source or
-make execution safe. Permission checks and tool-execution authorization
-must remain outside the memory system. Local databases and raw session
-logs should be treated as sensitive artifacts. Sanitization is not a
-guarantee that secrets never enter memory.
-
-\textbf{Systems scale.} Per-event windows and per-seed graph expansion
-are bounded, but the number of resources, associations, logs and
-procedures is not globally capped by those bounds. If \(s\) seeds are
-expanded with fan-out at most ten and depth at most three, the traversal
-budget has a worst-case shape proportional to \(s(10+10^2+10^3)\) before
-filtering and deduplication; SQL access, candidate generation and
-indexing add work. This is not an end-to-end complexity or latency
-guarantee. Vector-scan fallback, growing logs, file renames and
-multi-process SQLite contention require separate evaluation.
-
-\section{8. Reproducibility and artifact
-scope}\label{reproducibility-and-artifact-scope}
-
-The methods were checked against source revision
-\texttt{0edc2ed728f71d4b986a39e5d56a9dca505b0ab3}. The numerical
-evidence predates this manuscript revision and comes from these result
-directories under \texttt{eval-results/}:
-
-\begin{itemize}
-\tightlist
-\item
-  Public current: \texttt{2026-10-08T18-01-31-878Z}.
-\item
-  Public historical: \texttt{2026-10-08T17-37-06-513Z}.
-\item
-  Local current: \texttt{2026-10-08T18-06-22-676Z}.
-\item
-  Local historical, not used for controlled version comparison:
-  \texttt{2026-10-08T17-42-39-240Z}.
-\end{itemize}
-
-The historical engine loader names commit \texttt{9750d2f}. Current-run
-artifacts record engine mode and options but no source commit hash,
-parser hash, input manifest or dataset revision. Therefore, the
-inspected source revision must not be mistaken for a proven executable
-provenance link to those older runs. Result directories are excluded by
-the repository's ignore rules; a fresh clone does not include them. The
-companion \texttt{paper/evidence.json} preserves the aggregate fields
-used for the manuscript plus original-file SHA-256 hashes, without
-exporting private session text. It is a transcription aid, not a
-replacement for missing per-probe records or original inputs.
-
-The public replay commands, from the repository root, are:
+The public results can be regenerated from the repository root:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\ExtensionTok{npm}\NormalTok{ ci }\AttributeTok{{-}{-}ignore{-}scripts}
-\ExtensionTok{npm}\NormalTok{ rebuild better{-}sqlite3}
-\ExtensionTok{npm}\NormalTok{ run eval }\AttributeTok{{-}{-}} \AttributeTok{{-}{-}source}\NormalTok{ nebius }\AttributeTok{{-}{-}repos}\NormalTok{ 5 }\DataTypeTok{\textbackslash{}}
-  \AttributeTok{{-}{-}max{-}tasks{-}per{-}repo}\NormalTok{ 20 }\AttributeTok{{-}{-}split}\NormalTok{ test }\DataTypeTok{\textbackslash{}}
-  \AttributeTok{{-}{-}embeddings}\NormalTok{ off }\AttributeTok{{-}{-}engine}\NormalTok{ new }\AttributeTok{{-}{-}seed}\NormalTok{ 42 }\AttributeTok{{-}{-}json}
-\ExtensionTok{npm}\NormalTok{ run eval }\AttributeTok{{-}{-}} \AttributeTok{{-}{-}source}\NormalTok{ nebius }\AttributeTok{{-}{-}repos}\NormalTok{ 5 }\DataTypeTok{\textbackslash{}}
-  \AttributeTok{{-}{-}max{-}tasks{-}per{-}repo}\NormalTok{ 20 }\AttributeTok{{-}{-}split}\NormalTok{ test }\DataTypeTok{\textbackslash{}}
-  \AttributeTok{{-}{-}embeddings}\NormalTok{ off }\AttributeTok{{-}{-}engine}\NormalTok{ old }\AttributeTok{{-}{-}seed}\NormalTok{ 42 }\AttributeTok{{-}{-}json}
+\ExtensionTok{npm}\NormalTok{ ci }\AttributeTok{{-}{-}ignore{-}scripts} \KeywordTok{\&\&} \ExtensionTok{npm}\NormalTok{ rebuild better{-}sqlite3}
+\ExtensionTok{npm}\NormalTok{ run eval }\AttributeTok{{-}{-}} \AttributeTok{{-}{-}source}\NormalTok{ nebius }\AttributeTok{{-}{-}repos}\NormalTok{ 5 }\AttributeTok{{-}{-}max{-}tasks{-}per{-}repo}\NormalTok{ 20 }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}{-}split}\NormalTok{ test }\AttributeTok{{-}{-}embeddings}\NormalTok{ off }\AttributeTok{{-}{-}engine}\NormalTok{ new }\AttributeTok{{-}{-}seed}\NormalTok{ 42 }\AttributeTok{{-}{-}json}
 \end{Highlighting}
 \end{Shaded}
 
-Skipping install scripts avoids automatically configuring an editor or
-downloading a model during evaluation setup. Native dependencies still
-require a working platform toolchain. The historical mode prepares a
-legacy worktree and may need network/dependency access. Public data
-selection uses a cache and dataset catalog, so future reruns can differ
-if that source changes. The local command uses \texttt{-\/-source\ omp}
-and omits \texttt{-\/-split}, reading the invoking user's session
-directory; it cannot reproduce the private cohort on another machine.
-
-No new benchmark run was performed for this writing revision.
-Compilation and numerical consistency checks validate the manuscript
-artifact, not the system's scientific claims. Before an archival
-submission, frozen public input manifests, a source-pinned rerun,
-explicit ablations and an online task-success experiment would
-materially strengthen the evidence. Their absence is a limitation of
-this completed draft, not an experiment reported as done.
+Replacing \texttt{-\/-engine\ new} with \texttt{-\/-engine\ old} replays version 1, which needs a worktree of
+commit \texttt{9750d2f}; the command prints how to create one. The dataset is fetched and cached on first use,
+so future reruns can differ if the source changes. The local cohort cannot be reproduced on another machine.
 
 \section{9. Conclusion}\label{conclusion}
 
-BrainBox implements local behavioral memory from coding-agent traces
-without modifying a language model or requiring LLM calls for memory
-maintenance. In the stored, coverage-conditioned replay results, its
-most consistent advantage is next-tool prediction. File retrieval is
-less decisive: frequency wins an important local point comparison,
-recency remains competitive, and novel files fall outside the measured
-universe. These findings motivate a narrower research claim than
-universal memory superiority: lightweight operational history can
-improve prediction of repeated tool use, while its value for end-to-end
-software engineering remains to be established.
+An agent's own history is a modest but dependable signal. In BrainBox's hands it predicts the next tool better
+than any simple heuristic we tried, and it ranks familiar files about as well as the best of them. Most of
+what an agent touches in a new task lies outside that history, and on long-running personal projects, raw
+frequency remains a formidable guess. BrainBox makes this history cheap to keep, local to the machine and open
+to inspection. The next version of this paper should test whether keeping it makes agents finish real work
+sooner.
 
-\section{Appendix A. All heuristic point
-comparisons}\label{appendix-a.-all-heuristic-point-comparisons}
+\newpage
 
-{\def\LTcaptype{none} % do not increment counter
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}@{}}
+\section*{Appendix A. All baselines}\label{appendix-a.-all-baselines}
+\addcontentsline{toc}{section}{Appendix A. All baselines}
+
+\begin{longtable}[]{@{}llrrrrrr@{}}
+\caption{Conditional MRR for every method (MRR@3 for tools).}\tabularnewline
 \toprule\noalign{}
-\begin{minipage}[b]{\linewidth}\raggedright
-Cohort / probe
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-BrainBox
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-Recency
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-Frequency
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-BM25
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-Co-session
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
-Random
-\end{minipage} \\
+Cohort & Probe & BrainBox & Recency & Frequency & BM25 & Co-session & Random \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Cohort & Probe & BrainBox & Recency & Frequency & BM25 & Co-session & Random \\
 \midrule\noalign{}
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-SWE P1-edit & 0.307 & 0.167 & 0.100 & 0.216 & 0.100 & 0.030 \\
-SWE P1-read & 0.267 & 0.071 & 0.173 & 0.206 & 0.075 & 0.113 \\
-SWE P2 & 0.409 & 0.430 & 0.156 & 0.254 & 0.274 & 0.035 \\
-SWE P3 & 0.767 & 0.691 & 0.748 & 0.671 & 0.743 & 0.357 \\
-Local P1-edit & 0.703 & 0.577 & 0.791 & 0.447 & 0.158 & 0.138 \\
-Local P1-read & 0.555 & 0.397 & 0.431 & 0.547 & 0.011 & 0.142 \\
-Local P2 & 0.702 & 0.701 & 0.587 & 0.495 & 0.485 & 0.049 \\
-Local P3 & 0.686 & 0.662 & 0.590 & 0.595 & 0.440 & 0.161 \\
+Public & P1-edit & 0.307 & 0.167 & 0.100 & 0.216 & 0.100 & 0.030 \\
+& P1-read & 0.267 & 0.071 & 0.173 & 0.206 & 0.075 & 0.113 \\
+& P2 next file & 0.409 & 0.430 & 0.156 & 0.254 & 0.274 & 0.035 \\
+& P3 next tool & 0.767 & 0.691 & 0.748 & 0.671 & 0.743 & 0.357 \\
+Local & P1-edit & 0.703 & 0.577 & 0.791 & 0.447 & 0.158 & 0.138 \\
+& P1-read & 0.555 & 0.397 & 0.431 & 0.547 & 0.011 & 0.142 \\
+& P2 next file & 0.702 & 0.701 & 0.587 & 0.495 & 0.485 & 0.049 \\
+& P3 next tool & 0.686 & 0.662 & 0.590 & 0.595 & 0.440 & 0.161 \\
 \end{longtable}
-}
 
-Table 5. Stored current-run conditional MRR values rounded to three
-decimals. File and tool cutoffs differ as specified in Section 5.3; no
-inference should compare them as identical tasks.
+\section*{Appendix B. Where each mechanism lives}\label{appendix-b.-where-each-mechanism-lives}
+\addcontentsline{toc}{section}{Appendix B. Where each mechanism lives}
 
-\section{Appendix B. Implementation-to-claim
-map}\label{appendix-b.-implementation-to-claim-map}
-
-{\def\LTcaptype{none} % do not increment counter
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}@{}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3083}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.4167}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2750}}@{}}
+\caption{Source map.}\tabularnewline
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
-Implementation
+Source
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Manuscript role
+Mechanisms
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Evidenced by ranking replay?
+Exercised by the replay
+\end{minipage} \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Source
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Mechanisms
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Exercised by the replay
 \end{minipage} \\
 \midrule\noalign{}
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-\texttt{src/hebbian.ts} & Access updates, graph recall, temporal
-features, fusion, tool prediction & Yes, as a combined system; no
-isolated attribution \\
-\texttt{src/policy.ts} & Injection decisions, attribution and reward &
-No \\
+\texttt{src/hebbian.ts} & Co-access learning, spreading activation, base level, fusion, tool prediction & Yes,
+as a whole \\
+\texttt{src/policy.ts} & Injection policy, outcome attribution & No \\
 \texttt{src/procedures.ts} & Error-fix and workflow mining & No \\
-\texttt{src/snippets.ts}, \texttt{src/codegraph.ts} & Optional source
-retrieval and structural priors & No populated source index in these
-runs \\
-\texttt{src/embeddings.ts} & Optional CPU embedding profiles & Disabled
-in principal runs \\
-\texttt{src/eval/} & Selection, parsing, probe timing, comparators and
-uncertainty & Defines the replay protocol \\
+\texttt{src/snippets.ts}, \texttt{src/codegraph.ts} & Code chunks, hybrid search, structural edges & No \\
+\texttt{src/embeddings.ts} & Local embedding models & Disabled \\
+\texttt{src/eval/} & Replay, probes, baselines, bootstrap & Defines the protocol \\
 \end{longtable}
-}
 
 \section*{References}\label{references}
 \addcontentsline{toc}{section}{References}
 
 \protect\phantomsection\label{refs}
 \begin{CSLReferences}{1}{1}
+\bibitem[\citeproctext]{ref-collins1975}
+Collins, Allan M., and Elizabeth F. Loftus. 1975. {``A Spreading-Activation Theory of Semantic Processing.''}
+\emph{Psychological Review} 82 (6): 407--28. \url{https://doi.org/10.1037/0033-295X.82.6.407}.
+
 \bibitem[\citeproctext]{ref-rrf2009}
-Cormack, Gordon V., Charles L. A. Clarke, and Stefan Buettcher. 2009.
-{``Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank
-Learning Methods.''} \emph{Proceedings of SIGIR}, 758--59.
+Cormack, Gordon V., Charles L. A. Clarke, and Stefan Buettcher. 2009. {``Reciprocal Rank Fusion Outperforms
+Condorcet and Individual Rank Learning Methods.''} \emph{Proceedings of SIGIR}, 758--59.
 \url{https://doi.org/10.1145/1571941.1572114}.
 
 \bibitem[\citeproctext]{ref-heuristics2025}
-Cornell, Filip, Oleg Smirnov, Gabriela Zarzar Gandler, and Lele Cao.
-2025. {``On the Power of Heuristics in Temporal Graphs.''} \emph{arXiv
-Preprint arXiv:2502.04910}. \url{https://arxiv.org/abs/2502.04910}.
+Cornell, Filip, Oleg Smirnov, Gabriela Zarzar Gandler, and Lele Cao. 2025. {``On the Power of Heuristics in
+Temporal Graphs.''} \emph{arXiv Preprint arXiv:2502.04910}. \url{https://arxiv.org/abs/2502.04910}.
 
 \bibitem[\citeproctext]{ref-macla2025}
-Forouzandeh, Saman, Wei Peng, Parham Moradi, Xinghuo Yu, and Mahdi
-Jalili. 2025. {``Learning Hierarchical Procedural Memory for {LLM}
-Agents Through Bayesian Selection and Contrastive Refinement.''}
-\emph{arXiv Preprint arXiv:2512.18950}.
-\url{https://arxiv.org/abs/2512.18950}.
+Forouzandeh, Saman, Wei Peng, Parham Moradi, Xinghuo Yu, and Mahdi Jalili. 2025. {``Learning Hierarchical
+Procedural Memory for {LLM} Agents Through Bayesian Selection and Contrastive Refinement.''} \emph{arXiv
+Preprint arXiv:2512.18950}. \url{https://arxiv.org/abs/2512.18950}.
+
+\bibitem[\citeproctext]{ref-hebb1949}
+Hebb, Donald O. 1949. \emph{The Organization of Behavior: A Neuropsychological Theory}. Wiley.
 
 \bibitem[\citeproctext]{ref-actr2025}
-Innerebner, Kevin, Dominik Kowald, Markus Schedl, and Elisabeth Lex.
-2025. {``Hybrid Personalization Using Declarative and Procedural Memory
-Modules of the Cognitive Architecture {ACT-R}.''} \emph{arXiv Preprint
+Innerebner, Kevin, Dominik Kowald, Markus Schedl, and Elisabeth Lex. 2025. {``Hybrid Personalization Using
+Declarative and Procedural Memory Modules of the Cognitive Architecture {ACT-R}.''} \emph{arXiv Preprint
 arXiv:2505.05083}. \url{https://arxiv.org/abs/2505.05083}.
 
 \bibitem[\citeproctext]{ref-magma2026}
-Jiang, Dongming, Yi Li, Guanpeng Li, and Bingzhe Li. 2026. {``{MAGMA}: A
-Multi-Graph Based Agentic Memory Architecture for {AI} Agents.''}
-\emph{arXiv Preprint arXiv:2601.03236}.
+Jiang, Dongming, Yi Li, Guanpeng Li, and Bingzhe Li. 2026. {``{MAGMA}: A Multi-Graph Based Agentic Memory
+Architecture for {AI} Agents.''} \emph{arXiv Preprint arXiv:2601.03236}.
 \url{https://arxiv.org/abs/2601.03236}.
 
 \bibitem[\citeproctext]{ref-synapse2026}
-Jiang, Hanqi, Junhao Chen, Yi Pan, et al. 2026. {``{SYNAPSE}: Empowering
-{LLM} Agents with Episodic-Semantic Memory via Spreading Activation.''}
-\emph{arXiv Preprint arXiv:2601.02744}.
+Jiang, Hanqi, Junhao Chen, Yi Pan, et al. 2026. {``{SYNAPSE}: Empowering {LLM} Agents with Episodic-Semantic
+Memory via Spreading Activation.''} \emph{arXiv Preprint arXiv:2601.02744}.
 \url{https://arxiv.org/abs/2601.02744}.
 
 \bibitem[\citeproctext]{ref-nemori2025}
-Ma, Wenquan, Jiayan Nan, Wenlong Wu, and Yize Chen. 2025. {``What
-Deserves Memory: Adaptive Memory Distillation for {LLM} Agents.''}
-\emph{arXiv Preprint arXiv:2508.03341}.
+Ma, Wenquan, Jiayan Nan, Wenlong Wu, and Yize Chen. 2025. {``What Deserves Memory: Adaptive Memory
+Distillation for {LLM} Agents.''} \emph{arXiv Preprint arXiv:2508.03341}.
 \url{https://arxiv.org/abs/2508.03341}.
 
+\bibitem[\citeproctext]{ref-fido1991}
+Palmer, Mark, and Stanley B. Zdonik. 1991. {``Fido: A Cache That Learns to Fetch.''} \emph{Proceedings of the
+17th International Conference on Very Large Data Bases (VLDB)}, 255--64.
+\url{https://vldb.org/conf/1991/P255.PDF}.
+
 \bibitem[\citeproctext]{ref-cortex2025}
-Ruan, Chaoyi, Chao Bi, Kaiwen Zheng, Ziji Shi, Xinyi Wan, and Jialin Li.
-2025. {``Cortex: Achieving Low-Latency, Cost-Efficient Remote Data
-Access for {LLM} via Semantic-Aware Knowledge Caching.''} \emph{arXiv
+Ruan, Chaoyi, Chao Bi, Kaiwen Zheng, Ziji Shi, Xinyi Wan, and Jialin Li. 2025. {``Cortex: Achieving
+Low-Latency, Cost-Efficient Remote Data Access for {LLM} via Semantic-Aware Knowledge Caching.''} \emph{arXiv
 Preprint arXiv:2509.17360}. \url{https://arxiv.org/abs/2509.17360}.
 
 \bibitem[\citeproctext]{ref-safa2024}
-Safa, Ali. 2024. {``Continual Learning with Hebbian Plasticity in Sparse
-and Predictive Coding Networks: A Survey and Perspective.''} \emph{arXiv
-Preprint arXiv:2407.17305}. \url{https://arxiv.org/abs/2407.17305}.
+Safa, Ali. 2024. {``Continual Learning with Hebbian Plasticity in Sparse and Predictive Coding Networks: A
+Survey and Perspective.''} \emph{arXiv Preprint arXiv:2407.17305}. \url{https://arxiv.org/abs/2407.17305}.
 
 \bibitem[\citeproctext]{ref-nebius2025}
-Trofimova, Maria, Anton Shevtsov, Badertdinov Ibragim, Konstantin Pyaev,
-Simon Karasik, and Alexander Golubev. 2025. \emph{{OpenHands}
-Trajectories with {Qwen3-Coder-480B-A35B-Instruct}}. Nebius dataset
-card.
+Trofimova, Maria, Anton Shevtsov, Badertdinov Ibragim, Konstantin Pyaev, Simon Karasik, and Alexander Golubev.
+2025. \emph{{OpenHands} Trajectories with {Qwen3-Coder-480B-A35B-Instruct}}. Nebius dataset card.
 \url{https://huggingface.co/datasets/nebius/SWE-rebench-openhands-trajectories}.
 
 \bibitem[\citeproctext]{ref-toolmem2025}
-Xiao, Yunzhong, Yangmin Li, Hewei Wang, Yunlong Tang, and Zora Zhiruo
-Wang. 2025. {``{ToolMem}: Enhancing Multimodal Agents with Learnable
-Tool Capability Memory.''} \emph{arXiv Preprint arXiv:2510.06664}.
+Xiao, Yunzhong, Yangmin Li, Hewei Wang, Yunlong Tang, and Zora Zhiruo Wang. 2025. {``{ToolMem}: Enhancing
+Multimodal Agents with Learnable Tool Capability Memory.''} \emph{arXiv Preprint arXiv:2510.06664}.
 \url{https://arxiv.org/abs/2510.06664}.
 
 \bibitem[\citeproctext]{ref-amem2025}
-Xu, Wujiang, Zujie Liang, Kai Mei, Hang Gao, Juntao Tan, and Yongfeng
-Zhang. 2025. {``{A-MEM}: Agentic Memory for {LLM} Agents.''} \emph{arXiv
-Preprint arXiv:2502.12110}. \url{https://arxiv.org/abs/2502.12110}.
+Xu, Wujiang, Zujie Liang, Kai Mei, Hang Gao, Juntao Tan, and Yongfeng Zhang. 2025. {``{A-MEM}: Agentic Memory
+for {LLM} Agents.''} \emph{arXiv Preprint arXiv:2502.12110}. \url{https://arxiv.org/abs/2502.12110}.
 
 \bibitem[\citeproctext]{ref-cast2025}
-Zhang, Yilin, Xinran Zhao, Zora Zhiruo Wang, Chenyang Yang, Jiayi Wei,
-and Tongshuang Wu. 2025. {``{cAST}: Enhancing Code Retrieval-Augmented
-Generation with Structural Chunking via Abstract Syntax Tree.''}
-\emph{arXiv Preprint arXiv:2506.15655}.
-\url{https://arxiv.org/abs/2506.15655}.
+Zhang, Yilin, Xinran Zhao, Zora Zhiruo Wang, Chenyang Yang, Jiayi Wei, and Tongshuang Wu. 2025. {``{cAST}:
+Enhancing Code Retrieval-Augmented Generation with Structural Chunking via Abstract Syntax Tree.''}
+\emph{arXiv Preprint arXiv:2506.15655}. \url{https://arxiv.org/abs/2506.15655}.
 
 \end{CSLReferences}
 

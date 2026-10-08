@@ -1,30 +1,31 @@
 # BrainBox research-paper draft
 
-The revised manuscript is **BrainBox: Local Behavioral Memory for Coding Agents** (8 October 2026). This is a working draft, not a new arXiv/Zenodo deposit. Author identity and the previous concept DOI are retained; the draft does not claim that the DOI already resolves to this revision.
+The manuscript is **BrainBox: Local Behavioral Memory for Coding Agents**, version 2 (8 October 2026). It is written to be deposited as a new version under concept DOI 10.5281/zenodo.18664906; until that happens, the DOI still resolves to the February version.
 
 ## Files
 
-- `../WHITEPAPER.md`: editable manuscript source, with Pandoc metadata, equations and citation keys.
-- `references.bib`: 13 references checked against primary sources during the revision.
+- `../WHITEPAPER.md`: manuscript source, with Pandoc metadata, equations and citation keys. Figures point at `assets/*.svg` so they display on GitHub.
+- `references.bib`: 16 references, each checked against its primary source.
+- `figures.mjs`: exports four README figures (the loop, Hebbian learning, spreading activation, results) as vector PDFs in their settled frame, without the plate's own "fig. N" line. Output goes to `figures/` (ignored).
 - `brainbox.tex`: generated standalone LaTeX, including the resolved bibliography. Regenerate rather than editing it independently.
-- `brainbox.pdf`: compiled reading copy. PDFs remain ignored by the repository.
+- `brainbox.pdf`: compiled reading copy (ignored by git; upload this file to Zenodo).
 - `evidence.json`: aggregate data from four existing evaluation artifacts, their original paths and SHA-256 hashes. No private session text, task IDs or local project paths are included.
-- `build.sh`: regenerate LaTeX and PDF from the Markdown source.
+- `build.sh`: exports the figures, then regenerates LaTeX and PDF from the Markdown source.
 - `gemini-review.md`: historical external critique; not a verified reference or an evaluation artifact. Some statements describe obsolete code, so the revised manuscript is grounded in current code and raw results instead.
 
 ## Build
 
-Requires Pandoc with citeproc and Tectonic. This revision was compiled using Pandoc 3.9 and Tectonic 0.17.0. Tectonic downloads its TeX bundle dependencies on the first build.
+Requires Node, Chromium (for the figure export), Pandoc with citeproc, and Tectonic. This version was compiled with Pandoc 3.9 and Tectonic 0.17.0; Tectonic downloads its TeX bundle, including the TeX Gyre Pagella text and math fonts, on the first build.
 
 ```bash
 # From the repository root:
 bash paper/build.sh
 
 # Or choose explicit binary paths:
-PANDOC=/path/to/pandoc TECTONIC=/path/to/tectonic bash paper/build.sh
+PANDOC=/path/to/pandoc TECTONIC=/path/to/tectonic CHROMIUM=/path/to/chromium bash paper/build.sh
 ```
 
-No Node tests, model downloads or editor installation hooks are needed to build the paper. `brainbox.tex` is standalone and can also be compiled with a compatible XeLaTeX installation.
+If a figure scene changes, run `npm run visuals` first so `assets/*.svg` is current. No tests, model downloads or install hooks are involved.
 
 ## Evidence boundary
 
@@ -41,9 +42,9 @@ The revision replaces the older draft's headline estimated-token-savings claims 
 
 ## Revision record
 
-- Replaced the legacy v4.0/February narrative with the v0.2 implementation and stored October replay evidence.
-- Distinguished implemented components from evaluated components.
-- Added coverage denominators, all five heuristic comparators, paired intervals, ordering assumptions and provenance limitations.
-- Removed unsupported first-in-field, biological-validation, instantaneous-recall and measured-token-savings claims.
-- Corrected related-work metadata and excluded citations not verified during the evidence audit.
-- Retained the manuscript author's identity; prepared with coding-assistant drafting and evidence-review support. Author review is required before submission or publication.
+- Rewrote the paper around one question (how well an agent's own history predicts what it touches next) and the v0.2 implementation.
+- Added four vector figures. The Hebbian figure was corrected to the update rule's actual values (0.10, 0.38, 0.66 after 1, 5 and 20 sessions; ceiling 1.0); the README and website copies were corrected with it.
+- Added coverage denominators, all five baselines, paired intervals, ordering assumptions and provenance limits. Every number in Tables 2–4 and Appendix A was checked against `evidence.json`.
+- Added Section 7, which lists each version-1 claim and its status: withdrawn, superseded, reframed or removed.
+- Corrected related-work metadata and added three foundational references (Hebb 1949, Collins & Loftus 1975, Palmer & Zdonik 1991).
+- Prepared with coding-assistant drafting and evidence review. The author must review it before deposit.
