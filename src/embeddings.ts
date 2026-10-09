@@ -2,7 +2,12 @@
 import { existsSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { pipeline as createPipeline, AutoModel, AutoTokenizer, Tensor, env } from "@huggingface/transformers";
+import type * as Transformers from "@huggingface/transformers";
+
+// Optional dependency that may be absent: it pulls in native modules (onnxruntime, sharp) that can
+// fail to install, so a static import would crash the CLI. When it cannot load, embeddings are off
+// and every caller falls back to lexical retrieval.
+const transformers: typeof Transformers | null = await import("@huggingface/transformers").catch(() => null);
 
 export interface EmbeddingModel {
   id: string;
@@ -29,7 +34,7 @@ export const EMBEDDING_MODEL = selected;
 export const EMBEDDING_DIM = selected.dims;
 export const EMBEDDING_MODEL_ID = `${selected.id}:${selected.quantization}:${selected.dims}:${selected.pooling}`;
 export const HOOK_EMBEDDING_TIMEOUT_MS = 1200;
-const defaultCacheDir = env.cacheDir;
+const defaultCacheDir = transformers?.env.cacheDir ?? join(process.cwd(), ".cache");
 
 export function embeddingCacheDir(): string {
   return process.env.BRAINBOX_MODEL_CACHE ? resolve(process.env.BRAINBOX_MODEL_CACHE) : defaultCacheDir;
@@ -47,7 +52,7 @@ export function embeddingModelStatus(): { cached: boolean; cacheDir: string; byt
   const missing: string[] = [];
   for (const file of files) {
     const cached = join(cacheDir, EMBEDDING_MODEL.id, file);
-    const local = join(env.localModelPath, EMBEDDING_MODEL.id, file);
+    const local = transformers ? join(transformers.env.localModelPath, EMBEDDING_MODEL.id, file) : cached;
     const path = existsSync(cached) ? cached : local;
     try {
       const stat = statSync(path);
@@ -67,16 +72,12 @@ let hookDeadlineExceeded = false;
 
 export function isEmbeddingAvailable(): boolean {
   if (process.env.BRAINBOX_EMBEDDINGS === "off") return false;
-  if (available !== null) return available;
-  let dir = dirname(fileURLToPath(import.meta.url));
-  for (let i = 0; i < 6; i++, dir = dirname(dir)) {
-    if (existsSync(join(dir, "node_modules", "@huggingface", "transformers"))) return available = true;
-  }
-  return available = false;
+  return available ??= transformers !== null;
 }
 
 async function getPipeline(): Promise<Embedder | null> {
-  if (!isEmbeddingAvailable()) return null;
+  if (!transformers || !isEmbeddingAvailable()) return null;
+  const { pipeline: createPipeline, AutoModel, AutoTokenizer, Tensor, env } = transformers;
   const hook = process.env.BRAINBOX_HOOK === "1";
   env.allowRemoteModels = !hook;
   env.cacheDir = embeddingCacheDir();

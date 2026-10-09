@@ -2,6 +2,7 @@
  * Minimal async test harness shared by src/test.ts and src/tests/*.test.ts.
  * Test files register suites at import time; src/test.ts runs them all.
  */
+import type Database from "better-sqlite3";
 import { openDb } from "./db.js";
 import { HebbianEngine } from "./hebbian.js";
 
@@ -32,7 +33,12 @@ export function ok(cond: boolean, msg = "assertion failed") {
 }
 
 /** Create a fresh in-memory DB + engine. Fully isolated. */
-export function sandbox(sessionId = "test") {
+export function sandbox(sessionId = "test"): {
+  db: Database.Database;
+  engine: HebbianEngine;
+  reset: () => void;
+  close: () => void;
+} {
   const db = openDb(":memory:");
   const engine = new HebbianEngine(db, sessionId);
   const reset = () => {

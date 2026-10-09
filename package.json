@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "npm run build",
     "postinstall": "node dist/cli.js install",
     "dev": "tsx src/cli.ts",
     "test": "tsx src/test.ts",
@@ -31,7 +32,6 @@
     "procedural-memory"
   ],
   "dependencies": {
-    "@huggingface/transformers": "^3.3.0",
     "@kilocode/plugin": "^1.0.21",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "better-sqlite3": "^13.0.3",
@@ -43,6 +43,7 @@
     "zod": "^4.3.6"
   },
   "optionalDependencies": {
+    "@huggingface/transformers": "^3.3.0",
     "fsevents": "^2.3.3"
   },
   "devDependencies": {

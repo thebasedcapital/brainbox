@@ -69,7 +69,7 @@ That's it. The postinstall script:
 4. Registers the MCP server via `claude mcp add`, with 8 tools: `record`, `recall`, `explain`, `error`, `resolve`, `predict_next`, `stats`, `decay`.
 5. Creates `~/.brainbox/` and starts a background download of the embedding model.
 
-Hooks never download models. Until the model is cached (`brainbox models pull`), recall runs lexical-only.
+Hooks never download models. Until the model is cached (`brainbox models pull`), recall runs lexical-only. Embeddings come from the optional `@huggingface/transformers` dependency; if its native modules can't install on your machine (for example, `sharp` with a system libvips and no build tools), BrainBox still installs and runs with keyword search. `brainbox models status` shows which mode you are in.
 
 **Kill the cold start** by seeding from git history and the code graph:
 

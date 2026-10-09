@@ -16,7 +16,7 @@
  *   npx tsx src/cli.ts daemon uninstall    # remove LaunchAgent
  */
 
-import fsevents from "fsevents";
+import { createRequire } from "node:module";
 import { createServer, type Server, type Socket } from "node:net";
 import {
   existsSync,
@@ -253,10 +253,18 @@ function enqueue(
 
 // --- FSEvents Watcher (native macOS — one fd per root) ---
 
+/** The slice of the optional, macOS-only `fsevents` package this daemon uses. */
+interface FsEvents {
+  watch(dir: string, handler: (path: string, flags: number, id: string) => void): () => Promise<void>;
+  getInfo(path: string, flags: number): { event?: string };
+}
+
 function startWatcher(
   config: DaemonConfig,
   db: ReturnType<typeof openDb>
 ): (() => void) {
+  // Loaded here, not at module scope: `daemon status`/`stop` must still work where fsevents is absent.
+  const fsevents = createRequire(import.meta.url)("fsevents") as FsEvents;
   const dirs = config.watch.map(expandHome).filter((d) => existsSync(d));
 
   if (dirs.length === 0) {

@@ -412,6 +412,13 @@ switch (command) {
     console.log(`Model: ${EMBEDDING_MODEL.id}`);
     console.log(`Profile: ${process.env.BRAINBOX_EMBED_MODEL || "jina-code"} (${EMBEDDING_MODEL.quantization}, ${EMBEDDING_MODEL.dims} dims)`);
     console.log(`Fingerprint: ${EMBEDDING_MODEL_ID}`);
+    if (!isEmbeddingAvailable()) {
+      console.log("Embeddings: off (BRAINBOX_EMBEDDINGS=off, or the optional @huggingface/transformers package is missing or failed to install). Recall uses keyword search.");
+      if (action === "pull") {
+        process.exitCode = 1;
+        break;
+      }
+    }
     if (action === "pull") {
       try {
         const result = await pullEmbeddingModel();
